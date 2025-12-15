@@ -1,0 +1,64 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+
+# Environment variables
+.env
+.env.local
+.env*.local
+
+# Logs
+*.log
+logs/
+**/logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Docs
+docs/
+
+# Backend specific
+backend/tmp/
+backend/log/
+backend/.bundle
+backend/storage/
+backend/public/assets
+backend/config/master.key
+backend/config/credentials.yml.enc
+
+# Frontend specific
+frontend/.next/
+frontend/out/
+frontend/.vercel
+
+# Shared
+shared/dist/
+shared/node_modules/
+
+# Packages
+packages/*/dist/
+packages/*/node_modules/
+
+# Docker
+docker-compose.override.yml
+
+# Temporary files
+tmp/
+*.tmp

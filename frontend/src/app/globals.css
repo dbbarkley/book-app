@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Mobile-first base styles */
+@layer base {
+  :root {
+    --foreground-rgb: 15, 23, 42; /* slate-900 */
+    --background-rgb: 255, 255, 255;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --foreground-rgb: 248, 250, 252; /* slate-50 */
+      --background-rgb: 15, 23, 42; /* slate-900 */
+    }
+  }
+
+  body {
+    @apply bg-white text-slate-900 antialiased;
+    color: rgb(var(--foreground-rgb));
+    background-color: rgb(var(--background-rgb));
+  }
+
+  /* Smooth scrolling for mobile */
+  html {
+    @apply scroll-smooth;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* Utility classes */
+@layer utilities {
+  .container-mobile {
+    @apply px-4 mx-auto max-w-full;
+  }
+
+  @screen sm {
+    .container-mobile {
+      @apply px-6;
+    }
+  }
+
+  @screen md {
+    .container-mobile {
+      @apply px-8 max-w-4xl;
+    }
+  }
+
+  @screen lg {
+    .container-mobile {
+      @apply max-w-6xl;
+    }
+  }
+
+  /* Touch-friendly tap targets */
+  .tap-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+}

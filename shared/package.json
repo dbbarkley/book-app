@@ -1,0 +1,22 @@
+{
+  "name": "@book-app/shared",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "scripts": {
+    "type-check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.0"
+  },
+  "dependencies": {
+    "axios": "^1.6.0",
+    "zustand": "^4.4.0"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0"
+  }
+}
+
