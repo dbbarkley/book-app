@@ -1,5 +1,10 @@
 class UserBook < ApplicationRecord
-  validates :shelf, presence: true, inclusion: { in: %w[to_read reading read] }
+  STATUSES = %w[to_read reading read dnf].freeze
+  VISIBILITIES = %w[public private].freeze
+
+  validates :status, presence: true, inclusion: { in: STATUSES }
+  validates :visibility, presence: true, inclusion: { in: VISIBILITIES }
+  validates :shelf, presence: true, inclusion: { in: STATUSES }
   validates :user_id, presence: true
   validates :book_id, presence: true
   validates :user_id, uniqueness: { scope: :book_id }
@@ -9,17 +14,30 @@ class UserBook < ApplicationRecord
   belongs_to :book
 
   # Scopes
-  scope :to_read, -> { where(shelf: 'to_read') }
-  scope :reading, -> { where(shelf: 'reading') }
-  scope :read, -> { where(shelf: 'read') }
-  scope :by_shelf, ->(shelf) { where(shelf: shelf) }
+  scope :to_read, -> { where(status: 'to_read') }
+  scope :reading, -> { where(status: 'reading') }
+  scope :read, -> { where(status: 'read') }
+  scope :dnf, -> { where(status: 'dnf') }
+  scope :by_status, ->(status) { where(status: status) }
+  scope :publicly_visible, -> { where(visibility: 'public') }
   scope :rated, -> { where.not(rating: nil) }
   scope :reviewed, -> { where.not(review: nil) }
 
   # Calculate completion percentage when pages are updated
   before_save :calculate_completion_percentage
+  before_validation :sync_status_with_shelf
 
   private
+
+  def sync_status_with_shelf
+    if status.blank? && shelf.present?
+      self.status = shelf
+    end
+    if status.present?
+      self.shelf = status
+    end
+    self.visibility = 'public' if visibility.blank?
+  end
 
   def calculate_completion_percentage
     if pages_read.present? && total_pages.present? && total_pages > 0

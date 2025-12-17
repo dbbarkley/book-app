@@ -4,9 +4,8 @@
 // Shows: To Read, Reading, Read sections
 // Mobile-first design with TailwindCSS
 
-import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useAuth, useBooksStore, type UserBook } from '@book-app/shared'
+import { useAuth, usePrivateLibrary, useUserLibrary } from '@book-app/shared'
 import BookCard from '@/components/BookCard'
 import Button from '@/components/Button'
 
@@ -27,31 +26,17 @@ import Button from '@/components/Button'
  * - Adjust className to StyleSheet
  */
 export default function BooksLibraryPage() {
-  const { isAuthenticated, user } = useAuth()
-  const { getUserBooks, loading, error } = useBooksStore()
-  const [toReadBooks, setToReadBooks] = useState<UserBook[]>([])
-  const [readingBooks, setReadingBooks] = useState<UserBook[]>([])
-  const [readBooks, setReadBooks] = useState<UserBook[]>([])
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      loadBooks()
-    }
-  }, [isAuthenticated])
-
-  const loadBooks = async () => {
-    try {
-      // Fetch all user books
-      const allBooks = await getUserBooks()
-      
-      // Organize by shelf
-      setToReadBooks(allBooks.filter(ub => ub.shelf === 'to_read'))
-      setReadingBooks(allBooks.filter(ub => ub.shelf === 'reading'))
-      setReadBooks(allBooks.filter(ub => ub.shelf === 'read'))
-    } catch (err) {
-      console.error('Failed to load books:', err)
-    }
-  }
+  const { isAuthenticated } = useAuth()
+  const {
+    toReadBooks,
+    readingBooks,
+    readBooks,
+    dnfBooks,
+    loading: libraryLoading,
+    error: libraryError,
+  } = useUserLibrary()
+  const { privateBooks, loading: privateLoading, error: privateError } =
+    usePrivateLibrary()
 
   if (!isAuthenticated) {
     return (
@@ -81,7 +66,8 @@ export default function BooksLibraryPage() {
     )
   }
 
-  const totalBooks = toReadBooks.length + readingBooks.length + readBooks.length
+  const totalPublicBooks =
+    toReadBooks.length + readingBooks.length + readBooks.length + dnfBooks.length
 
   return (
     <div className="container-mobile py-6 sm:py-8">
@@ -91,9 +77,9 @@ export default function BooksLibraryPage() {
           <div>
             <h1 className="text-3xl font-bold text-slate-900 mb-2">My Library</h1>
             <p className="text-slate-600">
-              {totalBooks === 0
+              {totalPublicBooks === 0
                 ? 'Start building your reading collection'
-                : `${totalBooks} ${totalBooks === 1 ? 'book' : 'books'} in your library`}
+                : `${totalPublicBooks} ${totalPublicBooks === 1 ? 'book' : 'books'} in your library`}
             </p>
           </div>
           <div className="flex gap-2">
@@ -111,14 +97,14 @@ export default function BooksLibraryPage() {
         </div>
 
         {/* Error Message */}
-        {error && (
+        {libraryError && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-            <p className="text-sm text-red-800">{error}</p>
+            <p className="text-sm text-red-800">{libraryError}</p>
           </div>
         )}
 
         {/* Loading State */}
-        {loading && totalBooks === 0 && (
+        {libraryLoading && totalPublicBooks === 0 && (
           <div className="text-center py-12">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
             <p className="mt-4 text-slate-600">Loading your library...</p>
@@ -126,7 +112,7 @@ export default function BooksLibraryPage() {
         )}
 
         {/* Empty State */}
-        {!loading && totalBooks === 0 && (
+        {!libraryLoading && totalPublicBooks === 0 && (
           <div className="text-center py-12 bg-slate-50 rounded-lg">
             <div className="text-6xl mb-4">📚</div>
             <h2 className="text-xl font-semibold text-slate-900 mb-2">No books yet</h2>
@@ -154,7 +140,9 @@ export default function BooksLibraryPage() {
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
               {readingBooks.map((userBook) => (
                 <div key={userBook.id} className="relative">
-                  {userBook.book && <BookCard book={userBook.book} showDescription={false} />}
+                  {userBook.book && (
+                    <BookCard book={userBook.book} showDescription={false} userBook={userBook} />
+                  )}
                   {/* Progress Badge */}
                   {userBook.completion_percentage !== undefined && userBook.completion_percentage > 0 && (
                     <div className="absolute top-2 right-2 bg-primary-600 text-white text-xs font-bold px-2 py-1 rounded shadow">
@@ -162,6 +150,36 @@ export default function BooksLibraryPage() {
                     </div>
                   )}
                 </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* DNF Section */}
+        { (
+          <section className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-2xl font-semibold text-slate-900 flex items-center gap-2">
+                  <span className="text-2xl">🚫</span>
+                  Did Not Finish
+                </h2>
+                <p className="text-xs uppercase tracking-[0.35em] text-slate-500 mt-1">
+                  These books stay out of your read total.
+                </p>
+              </div>
+              <span className="text-sm text-slate-500">{dnfBooks.length}</span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              {dnfBooks.map((userBook) => (
+                userBook.book && (
+                  <BookCard
+                    key={userBook.id}
+                    book={userBook.book}
+                    showDescription={false}
+                    userBook={userBook}
+                  />
+                )
               ))}
             </div>
           </section>
@@ -179,7 +197,14 @@ export default function BooksLibraryPage() {
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
               {toReadBooks.map((userBook) => (
-                userBook.book && <BookCard key={userBook.id} book={userBook.book} showDescription={false} />
+                userBook.book && (
+                  <BookCard
+                    key={userBook.id}
+                    book={userBook.book}
+                    showDescription={false}
+                    userBook={userBook}
+                  />
+                )
               ))}
             </div>
           </section>
@@ -198,7 +223,9 @@ export default function BooksLibraryPage() {
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
               {readBooks.map((userBook) => (
                 <div key={userBook.id} className="relative">
-                  {userBook.book && <BookCard book={userBook.book} showDescription={false} />}
+                  {userBook.book && (
+                    <BookCard book={userBook.book} showDescription={false} userBook={userBook} />
+                  )}
                   {/* Rating Badge */}
                   {userBook.rating && (
                     <div className="absolute top-2 right-2 bg-yellow-500 text-white text-xs font-bold px-2 py-1 rounded shadow flex items-center gap-1">
@@ -210,6 +237,47 @@ export default function BooksLibraryPage() {
             </div>
           </section>
         )}
+
+        {/* Private Section */}
+        <section className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-2xl font-semibold text-slate-900 flex items-center gap-2">
+                <span className="text-2xl">🔐</span>
+                Private
+              </h2>
+              <p className="text-xs uppercase tracking-[0.35em] text-slate-500 mt-1">
+                Only you can see this list
+              </p>
+            </div>
+            <span className="text-sm text-slate-500">{privateBooks.length}</span>
+          </div>
+          {privateError && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4 text-sm text-yellow-700">
+              {privateError}
+            </div>
+          )}
+          {privateLoading ? (
+            <p className="text-sm text-slate-500">Loading private books...</p>
+          ) : privateBooks.length === 0 ? (
+            <div className="bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-6 text-center text-slate-500">
+              No private books yet
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              {privateBooks.map((userBook) => (
+                userBook.book && (
+                  <BookCard
+                    key={userBook.id}
+                    book={userBook.book}
+                    showDescription={false}
+                    userBook={userBook}
+                  />
+                )
+              ))}
+            </div>
+          )}
+        </section>
       </div>
     </div>
   )

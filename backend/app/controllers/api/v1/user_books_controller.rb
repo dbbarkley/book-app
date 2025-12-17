@@ -6,18 +6,17 @@ module Api
       # GET /api/v1/user/books
       def index
         user_books = current_user.user_books.includes(book: :author)
-        
-        # Filter by shelf if specified
-        user_books = user_books.where(shelf: params[:shelf]) if params[:shelf].present?
-        
-        # Pagination
+
+        status_filter = params[:status].presence || params[:shelf].presence
+        user_books = user_books.where(status: status_filter) if status_filter.present?
+        user_books = user_books.where(visibility: params[:visibility]) if params[:visibility].present?
+
         page = params[:page]&.to_i || 1
-        per_page = params[:per_page]&.to_i || 100
-        per_page = [per_page, 100].min
-        
+        per_page = [params[:per_page]&.to_i || 100, 100].min
+
         total_count = user_books.count
         user_books = user_books.limit(per_page).offset((page - 1) * per_page)
-        
+
         render json: {
           user_books: user_books.map { |ub| serialize_user_book(ub) },
           pagination: {
@@ -37,29 +36,26 @@ module Api
       # POST /api/v1/user/books
       def create
         book_id = params[:book_id]
-        shelf = params[:shelf]
-        
-        # Handle Google Books results (negative IDs)
+        return render_error('Missing book_id') unless book_id.present?
+
         if book_id.to_i < 0
-          # Create book from Google Books data
           book = find_or_create_book_from_google_books(params)
           book_id = book.id
         end
 
-        # Check if user already has this book
-        user_book = current_user.user_books.find_by(book_id: book_id)
-        
-        if user_book
-          # Update existing shelf
-          user_book.update!(shelf: shelf)
-        else
-          # Create new user_book
-          user_book = current_user.user_books.create!(
-            book_id: book_id,
-            shelf: shelf,
-            total_pages: params[:total_pages]
-          )
-        end
+        status = normalize_status(params[:status] || params[:shelf]) || 'to_read'
+        visibility = normalize_visibility(params[:visibility])
+
+        user_book = current_user.user_books.find_or_initialize_by(book_id: book_id)
+        user_book.assign_attributes(
+          status: status,
+          shelf: status,
+          visibility: visibility,
+          total_pages: params[:total_pages],
+          dnf_reason: params[:dnf_reason],
+          dnf_page: params[:dnf_page]
+        )
+        user_book.save!
 
         render json: { user_book: serialize_user_book(user_book) }, status: :created
       end
@@ -67,14 +63,20 @@ module Api
       # PATCH /api/v1/user/books/:book_id
       def update
         update_params = user_book_params
-        
-        # Set timestamps for shelf changes
-        if update_params[:shelf].present? && @user_book.shelf != update_params[:shelf]
-          case update_params[:shelf]
+        normalized_status = normalize_status(update_params[:status] || update_params[:shelf])
+        if normalized_status.present?
+          update_params[:status] = normalized_status
+          update_params[:shelf] = normalized_status
+        end
+
+        if normalized_status.present? && normalized_status != @user_book.status
+          case normalized_status
           when 'reading'
             update_params[:started_at] ||= Time.current if @user_book.started_at.nil?
           when 'read'
             update_params[:finished_at] ||= Time.current if @user_book.finished_at.nil?
+          when 'dnf'
+            update_params[:finished_at] = nil
           end
         end
 
@@ -100,12 +102,18 @@ module Api
 
       def user_book_params
         params.require(:user_book).permit(
+          :status,
           :shelf,
+          :visibility,
           :pages_read,
           :total_pages,
           :completion_percentage,
           :rating,
-          :review
+          :review,
+          :dnf_reason,
+          :dnf_page,
+          :started_at,
+          :finished_at
         )
       end
 
@@ -159,12 +167,16 @@ module Api
           id: user_book.id,
           book_id: user_book.book_id,
           book: serialize_book(user_book.book),
+          status: user_book.status,
           shelf: user_book.shelf,
+          visibility: user_book.visibility,
           pages_read: user_book.pages_read,
           total_pages: user_book.total_pages,
           completion_percentage: user_book.completion_percentage,
           rating: user_book.rating,
           review: user_book.review,
+          dnf_reason: user_book.dnf_reason,
+          dnf_page: user_book.dnf_page,
           started_at: user_book.started_at,
           finished_at: user_book.finished_at,
           created_at: user_book.created_at,
@@ -183,6 +195,22 @@ module Api
           author_name: book.author.name,
           google_books_id: book.google_books_id
         }
+      end
+
+      def normalize_status(value)
+        return unless value.present?
+        status = value.to_s
+        UserBook::STATUSES.include?(status) ? status : nil
+      end
+
+      def normalize_visibility(value)
+        visibility = value.to_s.presence
+        return visibility if visibility && UserBook::VISIBILITIES.include?(visibility)
+        UserBook::VISIBILITIES.first
+      end
+
+      def render_error(message)
+        render json: { errors: [message] }, status: :unprocessable_entity
       end
     end
   end

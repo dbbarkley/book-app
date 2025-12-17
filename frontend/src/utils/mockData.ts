@@ -176,6 +176,17 @@ export const mockBooks: Book[] = [
     author_name: 'Chimamanda Ngozi Adichie',
     followers_count: 890,
   },
+  {
+    id: 7,
+    title: 'The Secret History',
+    isbn: '978-1400072180',
+    description:
+      'A group of classics students at an elite college becomes entangled in murder, loyalty, and secrets.',
+    cover_image_url: 'https://picsum.photos/300/400?random=7',
+    release_date: '1992-09-01',
+    author_name: 'Donna Tartt',
+    followers_count: 1020,
+  },
 ]
 
 export const mockEvents: Event[] = [
@@ -232,6 +243,7 @@ export const mockUserBooks: UserBook[] = [
     book_id: 1,
     book: mockBooks[0],
     shelf: 'read',
+    status: 'read',
     pages_read: 432,
     total_pages: 432,
     completion_percentage: 100,
@@ -247,6 +259,7 @@ export const mockUserBooks: UserBook[] = [
     book_id: 2,
     book: mockBooks[1],
     shelf: 'reading',
+    status: 'reading',
     pages_read: 120,
     total_pages: 127,
     completion_percentage: 94,
@@ -262,6 +275,7 @@ export const mockUserBooks: UserBook[] = [
     book_id: 3,
     book: mockBooks[2],
     shelf: 'to_read',
+    status: 'to_read',
     pages_read: undefined,
     total_pages: 324,
     completion_percentage: 0,
@@ -277,6 +291,7 @@ export const mockUserBooks: UserBook[] = [
     book_id: 4,
     book: mockBooks[3],
     shelf: 'read',
+    status: 'read',
     pages_read: 352,
     total_pages: 352,
     completion_percentage: 100,
@@ -292,6 +307,7 @@ export const mockUserBooks: UserBook[] = [
     book_id: 5,
     book: mockBooks[4],
     shelf: 'reading',
+    status: 'reading',
     pages_read: 180,
     total_pages: 296,
     completion_percentage: 61,
@@ -301,6 +317,38 @@ export const mockUserBooks: UserBook[] = [
     finished_at: undefined,
     created_at: '2024-01-18T00:00:00Z',
     updated_at: '2024-01-26T00:00:00Z',
+  },
+  {
+    id: 6,
+    book_id: 6,
+    book: mockBooks[5],
+    shelf: 'dnf',
+    status: 'dnf',
+    pages_read: 120,
+    total_pages: 432,
+    completion_percentage: 28,
+    dnf_reason: 'Lost steam in the third act',
+    dnf_page: 146,
+    visibility: 'public',
+    started_at: '2024-02-01T00:00:00Z',
+    finished_at: undefined,
+    created_at: '2024-02-01T00:00:00Z',
+    updated_at: '2024-02-02T00:00:00Z',
+  },
+  {
+    id: 7,
+    book_id: 7,
+    book: mockBooks[6],
+    shelf: 'reading',
+    status: 'reading',
+    pages_read: 90,
+    total_pages: 338,
+    completion_percentage: 26,
+    visibility: 'private',
+    started_at: '2024-02-10T00:00:00Z',
+    finished_at: undefined,
+    created_at: '2024-02-10T00:00:00Z',
+    updated_at: '2024-02-20T00:00:00Z',
   },
 ]
 
@@ -445,6 +493,19 @@ export const mockFeedItems: FeedItem[] = [
     feedable: mockUserBooks[3],
     user: mockUsers[3], // literarylion
     created_at: new Date(Date.now() - 96 * 60 * 60 * 1000).toISOString(), // 4 days ago
+  },
+  {
+    id: 13,
+    activity_type: 'user_progress_update',
+    metadata: { 
+      user_book_id: 7,
+      pages_read: 90,
+      total_pages: 338,
+      completion_percentage: 26,
+    },
+    feedable: mockUserBooks[6],
+    user: mockUsers[0], // booklover123
+    created_at: new Date(Date.now() - 60 * 60 * 1000).toISOString(), // 1 hour ago
   },
 ]
 

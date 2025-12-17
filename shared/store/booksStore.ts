@@ -3,7 +3,7 @@
 // Manages user's book shelves (to-read, reading, read) and reading progress
 
 import { create } from 'zustand'
-import type { UserBook, BookShelf, Book, PaginationMeta } from '../types'
+import type { UserBook, ShelfStatus, Visibility, Book, PaginationMeta } from '../types'
 import { apiClient } from '../api/client'
 import { useRecommendationsStore } from './recommendationsStore'
 
@@ -19,11 +19,19 @@ interface BooksState {
   error: string | null
   // Actions
   fetchUserBook: (bookId: number) => Promise<UserBook | null>
-  addToShelf: (bookId: number, shelf: BookShelf, bookData?: Book) => Promise<UserBook>
+  addToShelf: (
+    bookId: number,
+    status: ShelfStatus,
+    bookData?: Book,
+    options?: { visibility?: Visibility; dnf_reason?: string; dnf_page?: number }
+  ) => Promise<UserBook>
   updateProgress: (
     bookId: number,
     updates: {
-      shelf?: BookShelf
+      status?: ShelfStatus
+      visibility?: Visibility
+      dnf_reason?: string
+      dnf_page?: number
       pages_read?: number
       total_pages?: number
       completion_percentage?: number
@@ -31,15 +39,29 @@ interface BooksState {
       review?: string
     }
   ) => Promise<UserBook>
+  updateVisibility: (bookId: number, visibility: Visibility) => Promise<UserBook>
   saveReview: (bookId: number, rating: number, review?: string) => Promise<UserBook>
-  getUserBooks: (shelf?: BookShelf, page?: number, perPage?: number) => Promise<UserBook[]>
+  getUserBooks: (params?: {
+    shelf?: ShelfStatus
+    visibility?: Visibility
+    page?: number
+    perPage?: number
+  }) => Promise<UserBook[]>
   // Search result management
   cacheSearchResults: (books: Book[]) => void
   getSearchResult: (bookId: number) => Book | null
   clearSearchResults: () => void
   // Helpers
   getUserBookByBookId: (bookId: number) => UserBook | null
-  getShelfBooks: (shelf: BookShelf) => UserBook[]
+  getShelfBooks: (status: ShelfStatus) => UserBook[]
+}
+
+const normalizeUserBook = (userBook: UserBook): UserBook => {
+  return {
+    ...userBook,
+    shelf: userBook.status ?? userBook.shelf,
+    visibility: userBook.visibility ?? 'public',
+  }
 }
 
 /**
@@ -72,14 +94,15 @@ export const useBooksStore = create<BooksState>((set, get) => ({
     set({ loading: true, error: null })
     try {
       const userBook = await apiClient.getUserBook(bookId)
+      const normalized = normalizeUserBook(userBook)
       set((state) => ({
         userBooks: {
           ...state.userBooks,
-          [bookId]: userBook,
+          [bookId]: normalized,
         },
         loading: false,
       }))
-      return userBook
+      return normalized
     } catch (error) {
       // If book is not on user's shelf, return null (not an error)
       if (error instanceof Error && error.message.includes('404')) {
@@ -94,14 +117,20 @@ export const useBooksStore = create<BooksState>((set, get) => ({
     }
   },
 
-  addToShelf: async (bookId: number, shelf: BookShelf, bookData?: Book) => {
+  addToShelf: async (
+    bookId: number,
+    status: ShelfStatus,
+    bookData?: Book,
+    options?: { visibility?: Visibility; dnf_reason?: string; dnf_page?: number }
+  ) => {
     set({ loading: true, error: null })
     try {
-      const userBook = await apiClient.addBookToShelf(bookId, shelf, bookData)
+      const userBook = await apiClient.addBookToShelf(bookId, status, bookData, options)
+      const normalized = normalizeUserBook(userBook)
       set((state) => ({
         userBooks: {
           ...state.userBooks,
-          [userBook.book_id]: userBook,
+          [normalized.book_id]: normalized,
         },
         loading: false,
       }))
@@ -111,7 +140,7 @@ export const useBooksStore = create<BooksState>((set, get) => ({
         .catch((error) => {
           console.warn('Failed to refresh recommendations after shelf update', error)
         })
-      return userBook
+      return normalized
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to add book to shelf',
@@ -125,10 +154,11 @@ export const useBooksStore = create<BooksState>((set, get) => ({
     set({ loading: true, error: null })
     try {
       const userBook = await apiClient.updateBookProgress(bookId, updates)
+      const normalized = normalizeUserBook(userBook)
       set((state) => ({
         userBooks: {
           ...state.userBooks,
-          [bookId]: userBook,
+          [bookId]: normalized,
         },
         loading: false,
       }))
@@ -138,10 +168,31 @@ export const useBooksStore = create<BooksState>((set, get) => ({
         .catch((error) => {
           console.warn('Failed to refresh recommendations after updating progress', error)
         })
-      return userBook
+      return normalized
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to update progress',
+        loading: false,
+      })
+      throw error
+    }
+  },
+  updateVisibility: async (bookId: number, visibility: Visibility) => {
+    set({ loading: true, error: null })
+    try {
+      const userBook = await apiClient.updateBookVisibility(bookId, visibility)
+      const normalized = normalizeUserBook(userBook)
+      set((state) => ({
+        userBooks: {
+          ...state.userBooks,
+          [bookId]: normalized,
+        },
+        loading: false,
+      }))
+      return normalized
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to update visibility',
         loading: false,
       })
       throw error
@@ -152,10 +203,11 @@ export const useBooksStore = create<BooksState>((set, get) => ({
     set({ loading: true, error: null })
     try {
       const userBook = await apiClient.saveBookReview(bookId, rating, review)
+      const normalized = normalizeUserBook(userBook)
       set((state) => ({
         userBooks: {
           ...state.userBooks,
-          [bookId]: userBook,
+          [bookId]: normalized,
         },
         loading: false,
       }))
@@ -175,13 +227,29 @@ export const useBooksStore = create<BooksState>((set, get) => ({
     }
   },
 
-  getUserBooks: async (shelf?: BookShelf, page = 1, perPage = 20) => {
+  getUserBooks: async ({
+    shelf,
+    visibility,
+    page = 1,
+    perPage = 20,
+  }: {
+    shelf?: ShelfStatus
+    visibility?: Visibility
+    page?: number
+    perPage?: number
+  } = {}) => {
     set({ loading: true, error: null })
     try {
-      const response = await apiClient.getUserBooks({ shelf, page, per_page: perPage })
+      const response = await apiClient.getUserBooks({
+        shelf,
+        visibility,
+        page,
+        per_page: perPage,
+      })
       const userBooksMap: Record<number, UserBook> = {}
       response.user_books.forEach((ub) => {
-        userBooksMap[ub.book_id] = ub
+        const normalized = normalizeUserBook(ub)
+        userBooksMap[normalized.book_id] = normalized
       })
       set((state) => ({
         userBooks: {
@@ -190,7 +258,7 @@ export const useBooksStore = create<BooksState>((set, get) => ({
         },
         loading: false,
       }))
-      return response.user_books
+      return response.user_books.map(normalizeUserBook)
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to fetch user books',
@@ -225,8 +293,10 @@ export const useBooksStore = create<BooksState>((set, get) => ({
     return get().userBooks[bookId] || null
   },
 
-  getShelfBooks: (shelf: BookShelf) => {
-    return Object.values(get().userBooks).filter((ub) => ub.shelf === shelf)
+  getShelfBooks: (status: ShelfStatus, visibility?: Visibility) => {
+    return Object.values(get().userBooks).filter(
+      (ub) => ub.status === status && (visibility ? ub.visibility === visibility : true)
+    )
   },
 }))
 

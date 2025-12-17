@@ -222,9 +222,10 @@ export default function BookPage() {
             {/* Shelf Selector */}
             <ShelfSelector
               bookId={book.id}
-              currentShelf={userBook?.shelf}
+              currentShelf={userBook?.status}
               bookData={book}
               onShelfChange={handleShelfChange}
+              userBook={userBook}
             />
 
             {/* Reading Progress */}

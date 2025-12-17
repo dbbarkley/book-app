@@ -2,7 +2,7 @@
 // Reusable in Next.js and React Native
 
 import { create } from 'zustand'
-import type { FeedItem, PaginationMeta } from '../types'
+import type { FeedItem, PaginationMeta, UserBook } from '../types'
 import { apiClient } from '../api/client'
 
 interface FeedState {
@@ -25,8 +25,16 @@ export const useFeedStore = create<FeedState>((set, get) => ({
     set({ loading: true, error: null })
     try {
       const response = await apiClient.getFeed(page, perPage, activityType)
+      const sanitizedItems = response.feed_items.filter((item) => {
+        const feedable = item.feedable as UserBook | undefined
+        if (!feedable || typeof feedable.visibility === 'undefined') {
+          return true
+        }
+        // Private books should never be shared in feeds or public timelines.
+        return feedable.visibility !== 'private'
+      })
       set({
-        items: page === 1 ? response.feed_items : [...get().items, ...response.feed_items],
+        items: page === 1 ? sanitizedItems : [...get().items, ...sanitizedItems],
         pagination: response.pagination,
         loading: false,
       })

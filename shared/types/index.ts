@@ -168,18 +168,25 @@ export interface OnboardingResponse {
 }
 
 // User Book Types - For tracking reading progress and shelves
-export type BookShelf = 'to_read' | 'reading' | 'read'
+export type ShelfStatus = 'to_read' | 'reading' | 'read' | 'dnf'
+export type BookShelf = ShelfStatus // Backward compat alias for existing imports
+export type Visibility = 'public' | 'private'
 
 export interface UserBook {
   id: number
   book_id: number
   book?: Book
-  shelf: BookShelf
+  // API stores the current status (with DNF) while we keep `shelf` for legacy clients
+  status: ShelfStatus
+  shelf?: ShelfStatus
   pages_read?: number
   total_pages?: number
   completion_percentage?: number
   rating?: number // 1-5 stars
   review?: string
+  visibility?: Visibility // Private books should stay out of followers' feeds/profiles
+  dnf_reason?: string // Record why the reader stopped so we can explain the DNF entry
+  dnf_page?: number // Capture the last page read when a book was DNF'd
   started_at?: string
   finished_at?: string
   created_at: string

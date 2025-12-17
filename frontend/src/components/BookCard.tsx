@@ -4,7 +4,7 @@
 // Now with smart cover loading, shimmer effects, and modern placeholders
 
 import Link from 'next/link'
-import type { Book } from '@book-app/shared'
+import type { Book, UserBook } from '@book-app/shared'
 import { formatDate, truncateText } from '../utils/format'
 import { BookCoverImage } from './BookCoverImage'
 
@@ -12,13 +12,17 @@ interface BookCardProps {
   book: Book
   showDescription?: boolean
   coverSize?: 'small' | 'medium' | 'large'
+  userBook?: UserBook
 }
 
-export default function BookCard({ 
-  book, 
+export default function BookCard({
+  book,
   showDescription = true,
-  coverSize = 'medium' 
+  coverSize = 'medium',
+  userBook,
 }: BookCardProps) {
+  const isPrivate = userBook?.visibility === 'private'
+  const isDnf = userBook?.status === 'dnf'
   return (
     <Link
       href={`/books/${book.id}`}
@@ -39,6 +43,14 @@ export default function BookCard({
         <h3 className="text-lg font-semibold text-slate-900 mb-1 line-clamp-2">
           {book.title}
         </h3>
+          {isPrivate && (
+            <p className="text-xs text-slate-500 flex items-center gap-1 mb-2">
+              <span aria-label="Private book" role="img">
+                🔒
+              </span>
+              Only you can see this
+            </p>
+          )}
         {book.author_name && (
           <p className="text-sm text-slate-600 mb-2">by {book.author_name}</p>
         )}
@@ -47,6 +59,20 @@ export default function BookCard({
             {truncateText(book.description, 150)}
           </p>
         )}
+          {isDnf && (
+            <>
+              {/* DNF metadata keeps these entries visible without counting them as “read.” */}
+              <p
+                className="text-xs italic text-slate-500 mb-2"
+                title={userBook?.dnf_reason ? `Reason: ${userBook?.dnf_reason}` : undefined}
+              >
+                DNF at page {userBook?.dnf_page ?? '—'}
+                {userBook?.dnf_reason && (
+                  <span className="text-slate-400"> • {userBook.dnf_reason}</span>
+                )}
+              </p>
+            </>
+          )}
         <div className="flex items-center justify-between text-xs text-slate-500">
           <span>Released {formatDate(book.release_date)}</span>
           {book.followers_count !== undefined && (

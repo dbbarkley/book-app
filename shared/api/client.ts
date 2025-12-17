@@ -13,7 +13,8 @@ import type {
   Notification,
   PaginationMeta,
   UserBook,
-  BookShelf,
+  ShelfStatus,
+  Visibility,
   RecommendedBook,
   RecommendedAuthor,
   RecommendedEventGroup,
@@ -256,11 +257,27 @@ export class ApiClient {
     return response.data.user_book
   }
 
-  async addBookToShelf(bookId: number, shelf: BookShelf, bookData?: Book) {
+  async addBookToShelf(
+    bookId: number,
+    status: ShelfStatus,
+    bookData?: Book,
+    options?: { visibility?: Visibility; dnf_reason?: string; dnf_page?: number }
+  ) {
+    // TODO: Backend must persist status/visibility/dnf metadata for each user book.
     // For Google Books results (negative IDs), include full book data
     const payload: any = {
       book_id: bookId,
-      shelf,
+      status,
+      shelf: status, // Keep legacy param until backend drops it
+    }
+    if (options?.visibility) {
+      payload.visibility = options.visibility
+    }
+    if (options?.dnf_reason) {
+      payload.dnf_reason = options.dnf_reason
+    }
+    if (options?.dnf_page !== undefined) {
+      payload.dnf_page = options.dnf_page
     }
     
     // If it's a Google Books result, include the book data
@@ -281,7 +298,10 @@ export class ApiClient {
   async updateBookProgress(
     bookId: number,
     updates: {
-      shelf?: BookShelf
+      status?: ShelfStatus
+      visibility?: Visibility
+      dnf_reason?: string
+      dnf_page?: number
       pages_read?: number
       total_pages?: number
       completion_percentage?: number
@@ -295,7 +315,21 @@ export class ApiClient {
     return response.data.user_book
   }
 
-  async getUserBooks(params?: { shelf?: BookShelf; page?: number; per_page?: number }) {
+  async updateBookVisibility(bookId: number, visibility: Visibility) {
+    // TODO: Backend should allow visibility-only updates for user books.
+    const response = await this.client.patch<{ user_book: UserBook }>(`/user/books/${bookId}`, {
+      user_book: { visibility },
+    })
+    return response.data.user_book
+  }
+
+  async getUserBooks(params?: {
+    shelf?: ShelfStatus
+    visibility?: Visibility
+    page?: number
+    per_page?: number
+  }) {
+    // TODO: Backend should honor `visibility` so public shelves never leak private books.
     const response = await this.client.get<{ user_books: UserBook[]; pagination?: PaginationMeta }>(
       '/user/books',
       { params }

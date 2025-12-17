@@ -34,12 +34,16 @@ export {
   useBookDetails,
   useBookShelf,
   useBookProgress,
+  useUpdateBookShelf,
+  useUpdateBookVisibility,
   useBookReview,
   useGoodreadsImport,
   useImportStatus,
   useRecommendedBooks,
   useRecommendedAuthors,
   useRecommendedEvents,
+  useUserLibrary,
+  usePrivateLibrary,
 } from './hooks'
 
 // Utils
