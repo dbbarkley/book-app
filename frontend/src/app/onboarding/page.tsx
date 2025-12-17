@@ -5,6 +5,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useOnboarding, useAuth } from '@book-app/shared'
 import { apiClient } from '@book-app/shared'
@@ -446,6 +447,16 @@ export default function OnboardingPage() {
               (currentStep === 2 && selectedAuthorIds.length === 0)
             }
           />
+
+          <div className="text-center text-sm text-slate-500 mt-6">
+            <p>
+              Looking for curated picks? After completing onboarding, visit{' '}
+              <Link href="/recommendations" className="text-primary-600 font-semibold hover:underline">
+                Recommendations
+              </Link>{' '}
+              for books and authors tuned to your interests.
+            </p>
+          </div>
         </div>
       </div>
     </div>

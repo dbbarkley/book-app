@@ -12,6 +12,8 @@ export { default as BookList } from './BookList'
 export { default as BookProgress } from './BookProgress'
 export { default as ShelfSelector } from './ShelfSelector'
 export { default as ReviewForm } from './ReviewForm'
+export { default as RecommendedBookCard } from './RecommendedBookCard'
+export { default as RecommendedAuthorCard } from './RecommendedAuthorCard'
 
 // Auth components
 export { default as Button } from './Button'

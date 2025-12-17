@@ -96,11 +96,18 @@ export default function BooksLibraryPage() {
                 : `${totalBooks} ${totalBooks === 1 ? 'book' : 'books'} in your library`}
             </p>
           </div>
-          <Link href="/books/search">
-            <Button variant="primary">
-              + Add Books
-            </Button>
-          </Link>
+          <div className="flex gap-2">
+            <Link href="/recommendations">
+              <Button variant="outline" size="sm">
+                Recommendations
+              </Button>
+            </Link>
+            <Link href="/books/search">
+              <Button variant="primary">
+                + Add Books
+              </Button>
+            </Link>
+          </div>
         </div>
 
         {/* Error Message */}
