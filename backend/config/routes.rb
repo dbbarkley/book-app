@@ -25,6 +25,11 @@ Rails.application.routes.draw do
       
       # Feed
       get 'feed', to: 'feed#index'
+
+      # Recommendations
+      get 'recommendations/books', to: 'recommendations#books'
+      get 'recommendations/authors', to: 'recommendations#authors'
+      get 'recommendations/events', to: 'recommendations#events'
       
       # Authors
       resources :authors, only: [:index, :show, :create] do

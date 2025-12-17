@@ -26,6 +26,7 @@ export function useFeed() {
     loading: store.loading,
     error: store.error,
     fetchFeed: store.fetchFeed,
+    refreshFeed: store.refreshFeed,
     clearFeed: store.clearFeed,
   }
 }

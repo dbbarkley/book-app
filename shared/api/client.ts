@@ -14,6 +14,9 @@ import type {
   PaginationMeta,
   UserBook,
   BookShelf,
+  RecommendedBook,
+  RecommendedAuthor,
+  RecommendedEventGroup,
 } from '../types'
 
 // Get API base URL from environment
@@ -324,6 +327,28 @@ export class ApiClient {
   async getEvent(id: number) {
     const response = await this.client.get<{ event: Event }>(`/events/${id}`)
     return response.data.event
+  }
+
+  // Recommendation endpoints
+  async getRecommendedBooks() {
+    const response = await this.client.get<{
+      recommended_books?: RecommendedBook[]
+      books?: RecommendedBook[]
+    }>('/recommendations/books')
+    return response.data.recommended_books ?? response.data.books ?? []
+  }
+
+  async getRecommendedAuthors() {
+    const response = await this.client.get<{
+      recommended_authors?: RecommendedAuthor[]
+      authors?: RecommendedAuthor[]
+    }>('/recommendations/authors')
+    return response.data.recommended_authors ?? response.data.authors ?? []
+  }
+
+  async getRecommendedEvents() {
+    const response = await this.client.get<{ recommended_events?: RecommendedEventGroup[] }>('/recommendations/events')
+    return response.data.recommended_events ?? []
   }
 
   // Notification endpoints

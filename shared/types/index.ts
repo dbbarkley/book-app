@@ -35,6 +35,46 @@ export interface Book {
   google_books_id?: string // Google Books API ID (if from Google Books)
 }
 
+export interface RecommendedBook {
+  id: number
+  book: Book
+  reason: string
+  score?: number
+  source?: string
+}
+
+export interface RecommendedAuthor {
+  id: number
+  author: Author
+  reason: string
+  score?: number
+  source?: string
+}
+
+export interface RecommendedEvent {
+  id: number
+  event: Event
+  reason: string
+  score?: number
+  source?: string
+}
+
+export interface RecommendedEventGroup {
+  group: string
+  title: string
+  description: string
+  events: RecommendedEvent[]
+}
+
+export interface RecommendedEvent {
+  id: number
+  event: Event
+  reason: string
+  score?: number
+  source?: string
+  group?: 'followed_authors' | 'related_books' | string
+}
+
 export interface Event {
   id: number
   title: string
@@ -72,6 +112,9 @@ export interface FeedItem {
     | 'book_release' 
     | 'author_event' 
     | 'author_announcement'
+    | 'book_recommendation'
+    | 'event_recommendation'
+    | 'follow_activity'
     | 'user_added_book'
     | 'user_finished_book'
     | 'user_progress_update'

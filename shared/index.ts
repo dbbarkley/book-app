@@ -37,6 +37,9 @@ export {
   useBookReview,
   useGoodreadsImport,
   useImportStatus,
+  useRecommendedBooks,
+  useRecommendedAuthors,
+  useRecommendedEvents,
 } from './hooks'
 
 // Utils

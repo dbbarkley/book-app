@@ -11,6 +11,7 @@ interface FeedState {
   loading: boolean
   error: string | null
   fetchFeed: (page?: number, perPage?: number, activityType?: string) => Promise<void>
+  refreshFeed: () => Promise<void>
   clearFeed: () => void
 }
 
@@ -35,6 +36,10 @@ export const useFeedStore = create<FeedState>((set, get) => ({
         loading: false,
       })
     }
+  },
+
+  refreshFeed: async () => {
+    await get().fetchFeed(1)
   },
 
   clearFeed: () => {

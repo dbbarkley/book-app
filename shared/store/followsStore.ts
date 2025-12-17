@@ -4,6 +4,7 @@
 import { create } from 'zustand'
 import type { Follow } from '../types'
 import { apiClient } from '../api/client'
+import { useRecommendationsStore } from './recommendationsStore'
 
 interface FollowsState {
   follows: Follow[]
@@ -55,6 +56,12 @@ export const useFollowsStore = create<FollowsState>((set, get) => ({
       const currentFollows = get().follows || []
       set({ follows: [...currentFollows, follow] })
       console.log('Follow added to store')
+      useRecommendationsStore
+        .getState()
+        .refresh()
+        .catch((error) => {
+          console.warn('Failed to refresh recommendations after following an author', error)
+        })
     } catch (error) {
       console.error('followsStore.follow error:', error)
       set({
@@ -69,6 +76,12 @@ export const useFollowsStore = create<FollowsState>((set, get) => ({
       await apiClient.unfollow(followId)
       const currentFollows = get().follows || []
       set({ follows: currentFollows.filter((f) => f.id !== followId) })
+      useRecommendationsStore
+        .getState()
+        .refresh()
+        .catch((error) => {
+          console.warn('Failed to refresh recommendations after unfollowing', error)
+        })
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to unfollow',

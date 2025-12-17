@@ -5,6 +5,7 @@
 import { create } from 'zustand'
 import type { UserBook, BookShelf, Book, PaginationMeta } from '../types'
 import { apiClient } from '../api/client'
+import { useRecommendationsStore } from './recommendationsStore'
 
 interface BooksState {
   // User books by book ID for quick lookup
@@ -104,6 +105,12 @@ export const useBooksStore = create<BooksState>((set, get) => ({
         },
         loading: false,
       }))
+      useRecommendationsStore
+        .getState()
+        .refresh()
+        .catch((error) => {
+          console.warn('Failed to refresh recommendations after shelf update', error)
+        })
       return userBook
     } catch (error) {
       set({
@@ -125,6 +132,12 @@ export const useBooksStore = create<BooksState>((set, get) => ({
         },
         loading: false,
       }))
+      useRecommendationsStore
+        .getState()
+        .refresh()
+        .catch((error) => {
+          console.warn('Failed to refresh recommendations after updating progress', error)
+        })
       return userBook
     } catch (error) {
       set({
@@ -146,6 +159,12 @@ export const useBooksStore = create<BooksState>((set, get) => ({
         },
         loading: false,
       }))
+      useRecommendationsStore
+        .getState()
+        .refresh()
+        .catch((error) => {
+          console.warn('Failed to refresh recommendations after saving review', error)
+        })
       return userBook
     } catch (error) {
       set({
