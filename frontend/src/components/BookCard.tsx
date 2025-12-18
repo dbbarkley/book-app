@@ -26,10 +26,10 @@ export default function BookCard({
   return (
     <Link
       href={`/books/${book.id}`}
-      className="block bg-white rounded-lg border border-slate-200 overflow-hidden hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
+      className="block bg-background-card rounded-lg border border-border-default overflow-hidden hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
     >
       {/* Book cover with smart loading and fallback */}
-      <div className="aspect-[2/3] w-full overflow-hidden bg-slate-100 flex items-center justify-center">
+      <div className="aspect-[2/3] w-full overflow-hidden bg-background-muted flex items-center justify-center">
         <BookCoverImage
           src={book.cover_image_url}
           title={book.title}
@@ -40,11 +40,11 @@ export default function BookCard({
       </div>
 
       <div className="p-4">
-        <h3 className="text-lg font-semibold text-slate-900 mb-1 line-clamp-2">
+        <h3 className="text-lg font-semibold text-text-primary mb-1 line-clamp-2">
           {book.title}
         </h3>
           {isPrivate && (
-            <p className="text-xs text-slate-500 flex items-center gap-1 mb-2">
+            <p className="text-xs text-text-secondary flex items-center gap-1 mb-2">
               <span aria-label="Private book" role="img">
                 🔒
               </span>
@@ -52,10 +52,10 @@ export default function BookCard({
             </p>
           )}
         {book.author_name && (
-          <p className="text-sm text-slate-600 mb-2">by {book.author_name}</p>
+          <p className="text-sm text-text-secondary mb-2">by {book.author_name}</p>
         )}
         {showDescription && book.description && (
-          <p className="text-sm text-slate-600 mb-2 line-clamp-3">
+          <p className="text-sm text-text-secondary mb-2 line-clamp-3">
             {truncateText(book.description, 150)}
           </p>
         )}
@@ -63,17 +63,17 @@ export default function BookCard({
             <>
               {/* DNF metadata keeps these entries visible without counting them as “read.” */}
               <p
-                className="text-xs italic text-slate-500 mb-2"
+                className="text-xs italic text-text-secondary mb-2"
                 title={userBook?.dnf_reason ? `Reason: ${userBook?.dnf_reason}` : undefined}
               >
                 DNF at page {userBook?.dnf_page ?? '—'}
                 {userBook?.dnf_reason && (
-                  <span className="text-slate-400"> • {userBook.dnf_reason}</span>
+                  <span className="text-text-muted"> • {userBook.dnf_reason}</span>
                 )}
               </p>
             </>
           )}
-        <div className="flex items-center justify-between text-xs text-slate-500">
+        <div className="flex items-center justify-between text-xs text-text-muted">
           <span>Released {formatDate(book.release_date)}</span>
           {book.followers_count !== undefined && (
             <span>{book.followers_count} followers</span>

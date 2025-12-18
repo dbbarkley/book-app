@@ -8,19 +8,22 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
+      },
       colors: {
-        primary: {
-          50: '#f0f9ff',
-          100: '#e0f2fe',
-          200: '#bae6fd',
-          300: '#7dd3fc',
-          400: '#38bdf8',
-          500: '#0ea5e9',
-          600: '#0284c7',
-          700: '#0369a1',
-          800: '#075985',
-          900: '#0c4a6e',
-        },
+        'brand-indigo': '#4F46E5',
+        'brand-indigo-dark': '#312E81',
+        'brand-green': '#16A34A',
+        'text-primary': '#111827',
+        'text-secondary': '#6B7280',
+        'text-muted': '#9CA3AF',
+        'background-app': '#FAFAFA',
+        'background-card': '#FFFFFF',
+        'background-muted': '#F3F4F6',
+        'border-default': '#E5E7EB',
+        'status-error': '#DC2626',
+        'status-warning': '#D97706',
       },
       screens: {
         xs: '475px',
@@ -30,7 +33,7 @@ const config: Config = {
         '88': '22rem',
       },
       animation: {
-        'shimmer': 'shimmer 2s infinite',
+        shimmer: 'shimmer 2s infinite',
         'shimmer-slide': 'shimmer-slide 2s infinite',
       },
       keyframes: {

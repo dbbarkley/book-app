@@ -11,7 +11,7 @@ import {
   useUpdateBookVisibility,
 } from '@book-app/shared'
 import type { ShelfStatus, UserBook, Book, Visibility } from '@book-app/shared'
-
+import InputField from './InputField'
 interface ShelfSelectorProps {
   bookId: number
   currentShelf?: ShelfStatus | null
@@ -144,7 +144,7 @@ export default function ShelfSelector({
             <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
               Last page read (optional)
             </label>
-            <input
+            <InputField
               type="number"
               min={1}
               value={dnfPage}

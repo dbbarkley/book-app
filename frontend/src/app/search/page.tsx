@@ -131,32 +131,30 @@ function SearchContent() {
     <div className="container-mobile py-6 sm:py-8">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">Search</h1>
-          <p className="text-slate-600">
-            Find users and authors
-          </p>
+        <div className="mb-6 space-y-2">
+          <h1 className="text-3xl font-bold text-text-primary">Search</h1>
+          <p className="text-text-secondary">Find users and authors</p>
         </div>
 
         {/* Tabs */}
-        <div className="bg-white rounded-lg border border-slate-200 p-1 mb-6">
+        <div className="bg-background-card rounded-lg border border-border-default p-1 mb-6">
           <div className="flex space-x-1">
             <button
               onClick={() => handleTabChange('authors')}
-              className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
+              className={`flex-1 px-4 py-2 rounded-lg font-medium text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-indigo/60 ${
                 activeTab === 'authors'
-                  ? 'bg-primary-600 text-white'
-                  : 'text-slate-600 hover:bg-slate-100'
+                  ? 'bg-brand-indigo text-white shadow-sm'
+                  : 'text-text-secondary hover:bg-background-muted hover:text-text-primary'
               }`}
             >
               Authors
             </button>
             <button
               onClick={() => handleTabChange('users')}
-              className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
+              className={`flex-1 px-4 py-2 rounded-lg font-medium text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-indigo/60 ${
                 activeTab === 'users'
-                  ? 'bg-primary-600 text-white'
-                  : 'text-slate-600 hover:bg-slate-100'
+                  ? 'bg-brand-indigo text-white shadow-sm'
+                  : 'text-text-secondary hover:bg-background-muted hover:text-text-primary'
               }`}
             >
               Users
@@ -182,7 +180,7 @@ function SearchContent() {
             {searchInput && (
               <button
                 onClick={handleClearSearch}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary"
                 aria-label="Clear search"
               >
                 <svg
@@ -202,7 +200,7 @@ function SearchContent() {
             )}
           </div>
           {activeTab === 'authors' && authorsSource === 'google' && (
-            <p className="mt-2 text-xs text-slate-500">
+            <p className="mt-2 text-xs text-text-muted">
               Powered by Google Books API
             </p>
           )}
@@ -218,8 +216,8 @@ function SearchContent() {
         {/* Loading State */}
         {loading && (activeTab === 'users' ? users.length === 0 : authors.length === 0) && (
           <div className="text-center py-12">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-            <p className="mt-4 text-slate-600">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-brand-indigo"></div>
+            <p className="mt-4 text-text-secondary">
               Searching {activeTab === 'users' ? 'users' : 'authors'}...
             </p>
           </div>
@@ -228,8 +226,8 @@ function SearchContent() {
         {/* Empty State */}
         {!loading && searchInput.trim() && (activeTab === 'users' ? users.length === 0 : authors.length === 0) && (
           <div className="text-center py-12">
-            <p className="text-slate-600 mb-2">No {activeTab} found</p>
-            <p className="text-sm text-slate-500">
+            <p className="text-text-secondary mb-2">No {activeTab} found</p>
+            <p className="text-sm text-text-muted">
               Try adjusting your search terms
             </p>
           </div>
@@ -238,8 +236,8 @@ function SearchContent() {
         {/* Initial State */}
         {!loading && !searchInput.trim() && (
           <div className="text-center py-12">
-            <p className="text-slate-600 mb-2">Start typing to search for {activeTab}</p>
-            <p className="text-sm text-slate-500">
+            <p className="text-text-secondary mb-2">Start typing to search for {activeTab}</p>
+            <p className="text-sm text-text-muted">
               {activeTab === 'users'
                 ? 'Search by username, display name, or bio'
                 : 'Search by author name (includes Google Books results)'}
@@ -276,7 +274,7 @@ function SearchContent() {
 
             {/* Results Count */}
             {searchInput.trim() && (
-              <div className="text-center mt-4 text-sm text-slate-500">
+              <div className="text-center mt-4 text-sm text-text-muted">
                 Showing {authors.length} result{authors.length !== 1 ? 's' : ''}
                 {authorsSource === 'google' && ' (from Google Books)'}
                 {authorsSource === 'both' && ' (local + Google Books)'}
@@ -292,7 +290,7 @@ function SearchContent() {
                 <Link
                   key={user.id}
                   href={`/users/${user.id}`}
-                  className="flex gap-4 bg-white rounded-lg border border-slate-200 p-4 hover:shadow-lg transition-shadow"
+                  className="flex gap-4 rounded-2xl border border-border-default bg-background-card p-4 hover:shadow-lg transition-shadow"
                 >
                   {user.avatar_url && (
                     <div className="flex-shrink-0">
@@ -304,14 +302,14 @@ function SearchContent() {
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-lg font-semibold text-slate-900 mb-1">
+                    <h3 className="text-lg font-semibold text-text-primary mb-1">
                       {user.display_name || user.username}
                     </h3>
                     {user.display_name && (
-                      <p className="text-sm text-slate-600 mb-2">@{user.username}</p>
+                      <p className="text-sm text-text-secondary mb-2">@{user.username}</p>
                     )}
                     {user.bio && (
-                      <p className="text-sm text-slate-600 mb-2 line-clamp-2">{user.bio}</p>
+                      <p className="text-sm text-text-secondary mb-2 line-clamp-2">{user.bio}</p>
                     )}
                   </div>
                 </Link>
@@ -334,7 +332,7 @@ function SearchContent() {
 
             {/* Results Count */}
             {searchInput.trim() && (
-              <div className="text-center mt-4 text-sm text-slate-500">
+              <div className="text-center mt-4 text-sm text-text-muted">
                 Showing {users.length} result{users.length !== 1 ? 's' : ''}
               </div>
             )}
@@ -369,7 +367,7 @@ export default function SearchPage() {
         <div className="container-mobile py-12">
           <div className="text-center">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-            <p className="mt-4 text-slate-600">Loading...</p>
+            <p className="mt-4 text-text-secondary">Loading...</p>
           </div>
         </div>
       }

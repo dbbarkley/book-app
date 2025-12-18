@@ -5,6 +5,7 @@
 'use client'
 
 import React, { useState, useMemo } from 'react'
+import InputField from './InputField'
 import type { Author } from '@book-app/shared'
 
 export interface AuthorSelectorProps {
@@ -59,7 +60,7 @@ export default function AuthorSelector({
     <div className={`space-y-4 ${className}`}>
       {/* Search input */}
       <div className="relative">
-        <input
+        <InputField
           type="text"
           placeholder="Search authors by name..."
           value={searchQuery}

@@ -34,33 +34,33 @@ const BookRecommendation = (item: FeedItem) => {
             <img
               src={book.cover_image_url}
               alt={book.title}
-              className="w-20 h-28 sm:w-24 sm:h-32 object-cover rounded-lg border border-slate-100 shadow-sm"
+              className="w-20 h-28 sm:w-24 sm:h-32 object-cover rounded-lg border border-border-default shadow-sm"
             />
           </Link>
         )}
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 mb-1">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-text-muted mb-1">
             Book Recommendation
           </p>
           <Link href={`/books/${book.id}`}>
-            <h3 className="text-lg font-semibold text-slate-900 hover:text-primary-600 mb-1">
+            <h3 className="text-lg font-semibold text-text-primary hover:text-brand-indigo mb-1">
               {book.title}
             </h3>
           </Link>
-          <p className="text-sm text-slate-600 mb-1">
+          <p className="text-sm text-text-secondary mb-1">
             {book.author_name || book.author?.name || 'Unknown author'}
           </p>
-          <p className="text-sm text-slate-500 line-clamp-2">{reason}</p>
+          <p className="text-sm text-text-muted line-clamp-2">{reason}</p>
         </div>
       </div>
       <div className="flex flex-wrap gap-2">
         <Link
           href={`/books/${book.id}`}
-          className="btn btn-primary px-3 py-1.5 text-sm rounded-full"
+          className="inline-flex items-center justify-center rounded-full border border-border-default bg-background-muted px-3 py-1.5 text-sm font-semibold text-text-secondary transition hover:border-brand-indigo hover:text-brand-indigo"
         >
           View Book
         </Link>
-        <span className="text-xs text-slate-400">
+        <span className="text-xs text-text-muted">
           Score: {item.metadata?.score ?? 'N/A'}
         </span>
       </div>
@@ -76,19 +76,19 @@ const EventRecommendation = (item: FeedItem) => {
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 mb-1">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-text-muted mb-1">
           Event Recommendation
         </p>
         <Link href={`/events/${event.id}`}>
-          <h3 className="text-lg font-semibold text-slate-900 hover:text-primary-600 mb-1">
+          <h3 className="text-lg font-semibold text-text-primary hover:text-brand-indigo mb-1">
             {event.title}
           </h3>
         </Link>
-        <p className="text-sm text-slate-600 mb-1">
+        <p className="text-sm text-text-secondary mb-1">
           {event.author_name || event.author?.name}
         </p>
-        <p className="text-sm text-slate-500 line-clamp-2">{reason}</p>
-        <div className="flex flex-wrap gap-3 text-xs text-slate-500 mt-2">
+        <p className="text-sm text-text-muted line-clamp-2">{reason}</p>
+        <div className="flex flex-wrap gap-3 text-xs text-text-muted mt-2">
           <span>
             📅 {new Date(event.starts_at).toLocaleDateString()} at{' '}
             {new Date(event.starts_at).toLocaleTimeString([], {
@@ -103,11 +103,11 @@ const EventRecommendation = (item: FeedItem) => {
       <div className="flex flex-wrap gap-2">
         <Link
           href={`/events/${event.id}`}
-          className="btn btn-secondary px-3 py-1.5 text-sm rounded-full"
+          className="inline-flex items-center justify-center rounded-full border border-border-default bg-background-muted px-3 py-1.5 text-sm font-semibold text-text-secondary transition hover:border-brand-indigo hover:text-brand-indigo"
         >
           View Event
         </Link>
-        <span className="text-xs text-slate-400">
+        <span className="text-xs text-text-muted">
           Score: {item.metadata?.score ?? 'N/A'}
         </span>
       </div>
@@ -122,18 +122,18 @@ const FollowActivity = (item: FeedItem) => {
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 mb-1">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-text-muted mb-1">
           Follow Activity
         </p>
-        <h3 className="text-lg font-semibold text-slate-900 mb-1">
+        <h3 className="text-lg font-semibold text-text-primary mb-1">
           {item.user?.display_name || item.user?.username} is following {targetAuthor?.name || 'an author'}
         </h3>
-        <p className="text-sm text-slate-500">{reason}</p>
+        <p className="text-sm text-text-muted">{reason}</p>
       </div>
       {targetAuthor && (
         <Link
           href={`/authors/${targetAuthor.id}`}
-          className="btn btn-outline px-3 py-1.5 text-sm rounded-full"
+          className="inline-flex items-center justify-center rounded-full border border-border-default bg-background-muted px-3 py-1.5 text-sm font-semibold text-text-secondary transition hover:border-brand-indigo hover:text-brand-indigo"
         >
           View Author
         </Link>
@@ -158,24 +158,24 @@ const LegacyContent = (item: FeedItem) => {
             </Link>
           )}
           <div className="flex-1 min-w-0">
-            <div className="text-xs text-slate-500 mb-1">New Book Release</div>
-            <Link href={`/books/${book.id}`}>
-              <h3 className="text-lg font-semibold text-slate-900 hover:text-primary-600 mb-1">
-                {book.title}
-              </h3>
+          <div className="text-xs text-text-muted mb-1">New Book Release</div>
+          <Link href={`/books/${book.id}`}>
+            <h3 className="text-lg font-semibold text-text-primary hover:text-brand-indigo mb-1">
+              {book.title}
+            </h3>
+          </Link>
+          {book.author_name && (
+            <Link
+              href={`/authors/${book.author?.id || ''}`}
+              className="text-sm text-text-secondary hover:text-brand-indigo"
+            >
+              by {book.author_name}
             </Link>
-            {book.author_name && (
-              <Link
-                href={`/authors/${book.author?.id || ''}`}
-                className="text-sm text-slate-600 hover:text-primary-600"
-              >
-                by {book.author_name}
-              </Link>
-            )}
-            {book.description && (
-              <p className="text-sm text-slate-600 mt-2 line-clamp-2">{book.description}</p>
-            )}
-            <div className="text-xs text-slate-500 mt-2">
+          )}
+          {book.description && (
+            <p className="text-sm text-text-secondary mt-2 line-clamp-2">{book.description}</p>
+          )}
+          <div className="text-xs text-text-muted mt-2">
               Release: {new Date(book.release_date).toLocaleDateString()}
             </div>
           </div>
@@ -186,24 +186,24 @@ const LegacyContent = (item: FeedItem) => {
       return event ? (
         <div className="flex gap-4">
           <div className="flex-1">
-            <div className="text-xs text-slate-500 mb-1">Upcoming Event</div>
-            <Link href={`/events/${event.id}`}>
-              <h3 className="text-lg font-semibold text-slate-900 hover:text-primary-600 mb-1">
-                {event.title}
-              </h3>
+          <div className="text-xs text-text-muted mb-1">Upcoming Event</div>
+          <Link href={`/events/${event.id}`}>
+            <h3 className="text-lg font-semibold text-text-primary hover:text-brand-indigo mb-1">
+              {event.title}
+            </h3>
+          </Link>
+          {event.author_name && (
+            <Link
+              href={`/authors/${event.author?.id || ''}`}
+              className="text-sm text-text-secondary hover:text-brand-indigo"
+            >
+              with {event.author_name}
             </Link>
-            {event.author_name && (
-              <Link
-                href={`/authors/${event.author?.id || ''}`}
-                className="text-sm text-slate-600 hover:text-primary-600"
-              >
-                with {event.author_name}
-              </Link>
-            )}
-            {event.description && (
-              <p className="text-sm text-slate-600 mt-2 line-clamp-2">{event.description}</p>
-            )}
-            <div className="flex flex-wrap gap-4 mt-2 text-xs text-slate-500">
+          )}
+          {event.description && (
+            <p className="text-sm text-text-secondary mt-2 line-clamp-2">{event.description}</p>
+          )}
+          <div className="flex flex-wrap gap-4 mt-2 text-xs text-text-muted">
               <span>
                 📅 {new Date(event.starts_at).toLocaleDateString()} at{' '}
                 {new Date(event.starts_at).toLocaleTimeString([], {
@@ -230,15 +230,15 @@ const LegacyContent = (item: FeedItem) => {
             </Link>
           )}
           <div className="flex-1 min-w-0">
-            <div className="text-xs text-slate-500 mb-1">Author Announcement</div>
-            <Link href={`/authors/${author.id}`}>
-              <h3 className="text-lg font-semibold text-slate-900 hover:text-primary-600 mb-1">
-                {author.name}
-              </h3>
-            </Link>
-            {author.bio && (
-              <p className="text-sm text-slate-600 mt-2 line-clamp-2">{author.bio}</p>
-            )}
+          <div className="text-xs text-text-muted mb-1">Author Announcement</div>
+          <Link href={`/authors/${author.id}`}>
+            <h3 className="text-lg font-semibold text-text-primary hover:text-brand-indigo mb-1">
+              {author.name}
+            </h3>
+          </Link>
+          {author.bio && (
+            <p className="text-sm text-text-secondary mt-2 line-clamp-2">{author.bio}</p>
+          )}
           </div>
         </div>
       ) : null
@@ -262,9 +262,9 @@ export default function FeedItemComponent({ item }: FeedItemProps) {
   }
 
   return (
-    <article className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
+    <article className="bg-background-card rounded-2xl border border-border-default p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
       {renderContent()}
-      <div className="mt-4 pt-4 border-t border-slate-100 text-xs text-slate-500">
+      <div className="mt-4 pt-4 border-t border-border-default text-xs text-text-muted">
         {formatRelativeTime(item.created_at)}
       </div>
     </article>

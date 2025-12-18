@@ -48,7 +48,7 @@ const InputField = React.forwardRef<HTMLInputElement, InputFieldProps>(
   const inputId = id || `input-${label?.toLowerCase().replace(/\s+/g, '-') || 'field'}`
 
   const baseInputStyles =
-    'block rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed text-gray-900 bg-white placeholder:text-gray-400'
+    'block rounded-lg border border-border-default bg-background-card text-text-primary placeholder:text-text-muted shadow-sm focus:border-brand-indigo focus:ring-2 focus:ring-brand-indigo/50 transition-colors disabled:bg-background-muted disabled:cursor-not-allowed'
 
   const errorInputStyles = error
     ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
@@ -63,13 +63,13 @@ const InputField = React.forwardRef<HTMLInputElement, InputFieldProps>(
       {label && (
         <label
           htmlFor={inputId}
-          className="block text-sm font-medium text-gray-700 mb-1.5"
+          className="block text-sm font-medium text-text-secondary mb-1.5"
         >
           {label}
           {props.required && <span className="text-red-500 ml-1">*</span>}
         </label>
       )}
-      <input
+      <InputField
         ref={ref}
         id={inputId}
         className={`${baseInputStyles} ${errorInputStyles} ${sizeStyles} ${widthStyles} ${className}`}
@@ -89,7 +89,7 @@ const InputField = React.forwardRef<HTMLInputElement, InputFieldProps>(
         </p>
       )}
       {helperText && !error && (
-        <p id={`${inputId}-helper`} className="mt-1.5 text-sm text-gray-500">
+        <p id={`${inputId}-helper`} className="mt-1.5 text-sm text-text-muted">
           {helperText}
         </p>
       )}

@@ -8,6 +8,7 @@ import { useState } from 'react'
 import { useBookProgress } from '@book-app/shared'
 import Button from './Button'
 import type { UserBook } from '@book-app/shared'
+import InputField from './InputField'
 
 interface BookProgressProps {
   bookId: number
@@ -129,7 +130,7 @@ export default function BookProgress({ bookId, userBook, onUpdate }: BookProgres
               <label htmlFor="pages-read" className="block text-sm font-medium text-slate-700 mb-1">
                 Pages Read
               </label>
-              <input
+              <InputField
                 id="pages-read"
                 type="number"
                 min="0"
@@ -143,7 +144,7 @@ export default function BookProgress({ bookId, userBook, onUpdate }: BookProgres
               <label htmlFor="total-pages" className="block text-sm font-medium text-slate-700 mb-1">
                 Total Pages
               </label>
-              <input
+              <InputField
                 id="total-pages"
                 type="number"
                 min="1"
@@ -162,7 +163,7 @@ export default function BookProgress({ bookId, userBook, onUpdate }: BookProgres
             <label htmlFor="completion" className="block text-sm font-medium text-slate-700 mb-1">
               Completion (%)
             </label>
-            <input
+            <InputField
               id="completion"
               type="number"
               min="0"

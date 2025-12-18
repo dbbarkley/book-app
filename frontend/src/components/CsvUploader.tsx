@@ -2,6 +2,7 @@
 
 import { useState, useRef, DragEvent } from 'react'
 import { Upload, FileText, X, AlertCircle } from 'lucide-react'
+import InputField from './InputField'
 
 interface CsvUploaderProps {
   onFileSelected: (file: File) => void
@@ -113,7 +114,7 @@ export function CsvUploader({ onFileSelected, isLoading = false, error = null }:
           ${isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:border-emerald-400 hover:bg-emerald-50'}
         `}
       >
-        <input
+        <InputField
           ref={fileInputRef}
           type="file"
           accept=".csv,text/csv"
