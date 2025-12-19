@@ -93,8 +93,19 @@ const parseCsvForPreview = async (file: File): Promise<ParsedCsvData> => {
 
           const title = values[titleIdx]?.replace(/"/g, '').trim()
           const author = values[authorIdx]?.replace(/"/g, '').trim()
-          const shelf = values[shelfIdx]?.replace(/"/g, '').trim().toLowerCase()
+          const shelfRaw = values[shelfIdx]?.replace(/"/g, '').trim().toLowerCase()
           const rating = parseInt(values[ratingIdx]?.replace(/"/g, '').trim() || '0', 10)
+          let shelf = 'to-read'
+
+          if (shelfRaw === 'read' || values[headers.findIndex((h) => h === 'Date Read')]?.trim()) {
+            shelf = 'read'
+          } else if (shelfRaw === 'currently-reading' || shelfRaw === 'currently reading') {
+            shelf = 'currently-reading'
+          } else if (shelfRaw === 'to-read' || shelfRaw === 'to read') {
+            shelf = 'to-read'
+          } else if (shelfRaw === 'dnf' || shelfRaw === 'did-not-finish') {
+            shelf = 'dnf'
+          }
 
           if (!title || !author) continue
 

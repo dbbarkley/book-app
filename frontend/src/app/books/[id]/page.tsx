@@ -6,9 +6,9 @@
 // Integrated with Rails API backend
 
 import { useState, useEffect } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { useBookDetails, useFollows, useAuth } from '@book-app/shared'
+import { useBookDetails, useFollows, useAuth, useBooksStore } from '@book-app/shared'
 import { BookProgress, ShelfSelector, ReviewForm } from '@/components'
 import { formatDate } from '@/utils/format'
 
@@ -37,6 +37,8 @@ export default function BookPage() {
   const { isFollowing, follow, unfollow, getFollowId } = useFollows()
   const [isFollowingBook, setIsFollowingBook] = useState(false)
   const [followLoading, setFollowLoading] = useState(false)
+  const router = useRouter()
+  const redirectBookId = useBooksStore((state) => state.bookIdRedirectMap[bookId])
 
   // Check if this is a Google Books result (negative ID)
   const isGoogleBooksResult = bookId < 0
@@ -75,6 +77,12 @@ export default function BookPage() {
   const handleShelfChange = () => {
     refetch()
   }
+
+  useEffect(() => {
+    if (book && book.id < 0 && redirectBookId) {
+      router.replace(`/books/${redirectBookId}`)
+    }
+  }, [book, redirectBookId, router])
 
   const handleProgressUpdate = () => {
     refetch()
@@ -230,19 +238,11 @@ export default function BookPage() {
 
             {/* Reading Progress */}
             {userBook && (
-              <BookProgress
-                bookId={book.id}
-                userBook={userBook}
-                onUpdate={handleProgressUpdate}
-              />
+              <BookProgress userBook={userBook} onUpdate={handleProgressUpdate} />
             )}
 
             {/* Review Form */}
-            <ReviewForm
-              bookId={book.id}
-              userBook={userBook}
-              onReviewSubmit={handleReviewSubmit}
-            />
+            <ReviewForm userBook={userBook} onReviewSubmit={handleReviewSubmit} />
           </div>
         )}
 

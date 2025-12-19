@@ -93,14 +93,14 @@ export const useFollowsStore = create<FollowsState>((set, get) => ({
   isFollowing: (followableType: 'User' | 'Author' | 'Book', followableId: number) => {
     const follows = get().follows || []
     return follows.some(
-      (f) => f.followable_type === followableType && f.followable_id === followableId
+      (f) => f?.followable_type === followableType && f?.followable_id === followableId
     )
   },
 
   getFollowId: (followableType: 'User' | 'Author' | 'Book', followableId: number) => {
     const follows = get().follows || []
     const follow = follows.find(
-      (f) => f.followable_type === followableType && f.followable_id === followableId
+      (f) => f?.followable_type === followableType && f?.followable_id === followableId
     )
     return follow?.id ?? null
   },

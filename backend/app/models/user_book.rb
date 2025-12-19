@@ -30,12 +30,20 @@ class UserBook < ApplicationRecord
   private
 
   def sync_status_with_shelf
-    if status.blank? && shelf.present?
+    # If status is default or blank, and shelf is something else, trust shelf
+    if (status == 'to_read' || status.blank?) && shelf.present? && shelf != 'to_read'
       self.status = shelf
     end
+
+    # Keep them in sync
     if status.present?
       self.shelf = status
+    elsif shelf.present?
+      self.status = shelf
     end
+
+    self.status ||= 'to_read'
+    self.shelf ||= status
     self.visibility = 'public' if visibility.blank?
   end
 

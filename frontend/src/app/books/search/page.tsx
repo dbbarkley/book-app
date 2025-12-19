@@ -7,7 +7,6 @@
 import { useBookSearch } from '@book-app/shared'
 import BookCard from '@/components/BookCard'
 import Button from '@/components/Button'
-import InputField from '@/components/InputField'
 import { useEffect, useRef } from 'react'
 
 /**
@@ -51,7 +50,7 @@ export default function BookSearchPage() {
         {/* Search Input */}
         <div className="mb-6">
           <div className="relative">
-            <InputField
+            <input
               ref={searchInputRef}
               type="text"
               value={query}

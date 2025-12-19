@@ -45,14 +45,7 @@ module Api
       def serialize_feedable(feedable)
         case feedable
         when Book
-          {
-            type: 'Book',
-            id: feedable.id,
-            title: feedable.title,
-            author_name: feedable.author.name,
-            cover_image_url: feedable.cover_image_url,
-            release_date: feedable.release_date
-          }
+          serialize_book_payload(feedable).merge(type: 'Book')
         when Event
           {
             type: 'Event',
@@ -69,7 +62,59 @@ module Api
             name: feedable.name,
             avatar_url: feedable.avatar_url
           }
+        when User
+          serialize_user(feedable)
+        when UserBook
+          serialize_user_book_feedable(feedable)
         end
+      end
+
+      def serialize_user(user)
+        {
+          type: 'User',
+          id: user.id,
+          username: user.username,
+          display_name: user.display_name,
+          avatar_url: user.avatar_url
+        }
+      end
+
+      def serialize_user_book_feedable(user_book)
+        serialize_user_book_payload(user_book).merge(type: 'UserBook')
+      end
+
+      def serialize_book_payload(book)
+        return {} unless book
+
+        {
+          id: book.id,
+          title: book.title,
+          author_name: book.author&.name,
+          cover_image_url: book.cover_image_url,
+          release_date: book.release_date
+        }
+      end
+
+      def serialize_user_book_payload(user_book)
+        {
+          id: user_book.id,
+          book_id: user_book.book_id,
+          status: user_book.status,
+          shelf: user_book.shelf,
+          visibility: user_book.visibility,
+          pages_read: user_book.pages_read,
+          total_pages: user_book.total_pages,
+          completion_percentage: user_book.completion_percentage,
+          rating: user_book.rating,
+          review: user_book.review,
+          dnf_reason: user_book.dnf_reason,
+          dnf_page: user_book.dnf_page,
+          started_at: user_book.started_at,
+          finished_at: user_book.finished_at,
+          created_at: user_book.created_at,
+          updated_at: user_book.updated_at,
+          book: serialize_book_payload(user_book.book)
+        }
       end
     end
   end

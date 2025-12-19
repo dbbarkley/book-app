@@ -10,6 +10,7 @@ import { useRecommendationsStore } from './recommendationsStore'
 interface BooksState {
   // User books by book ID for quick lookup
   userBooks: Record<number, UserBook>
+  bookIdRedirectMap: Record<number, number>
   // Search results cache (includes Google Books results)
   searchResults: Record<number, Book>
   searchPagination: PaginationMeta | null
@@ -26,7 +27,7 @@ interface BooksState {
     options?: { visibility?: Visibility; dnf_reason?: string; dnf_page?: number }
   ) => Promise<UserBook>
   updateProgress: (
-    bookId: number,
+    userBookId: number,
     updates: {
       status?: ShelfStatus
       visibility?: Visibility
@@ -39,8 +40,8 @@ interface BooksState {
       review?: string
     }
   ) => Promise<UserBook>
-  updateVisibility: (bookId: number, visibility: Visibility) => Promise<UserBook>
-  saveReview: (bookId: number, rating: number, review?: string) => Promise<UserBook>
+  updateVisibility: (userBookId: number, visibility: Visibility) => Promise<UserBook>
+  saveReview: (userBookId: number, rating: number, review?: string) => Promise<UserBook>
   getUserBooks: (params?: {
     shelf?: ShelfStatus
     visibility?: Visibility
@@ -84,6 +85,7 @@ const normalizeUserBook = (userBook: UserBook): UserBook => {
  */
 export const useBooksStore = create<BooksState>((set, get) => ({
   userBooks: {},
+  bookIdRedirectMap: {},
   searchResults: {},
   searchPagination: null,
   loading: false,
@@ -95,13 +97,24 @@ export const useBooksStore = create<BooksState>((set, get) => ({
     try {
       const userBook = await apiClient.getUserBook(bookId)
       const normalized = normalizeUserBook(userBook)
-      set((state) => ({
-        userBooks: {
-          ...state.userBooks,
-          [bookId]: normalized,
-        },
-        loading: false,
-      }))
+      set((state) => {
+        const redirectMap =
+          bookId !== normalized.book_id
+            ? {
+                ...state.bookIdRedirectMap,
+                [bookId]: normalized.book_id,
+              }
+            : state.bookIdRedirectMap
+
+        return {
+          userBooks: {
+            ...state.userBooks,
+            [normalized.book_id]: normalized,
+          },
+          bookIdRedirectMap: redirectMap,
+          loading: false,
+        }
+      })
       return normalized
     } catch (error) {
       // If book is not on user's shelf, return null (not an error)
@@ -150,15 +163,15 @@ export const useBooksStore = create<BooksState>((set, get) => ({
     }
   },
 
-  updateProgress: async (bookId: number, updates) => {
+  updateProgress: async (userBookId: number, updates) => {
     set({ loading: true, error: null })
     try {
-      const userBook = await apiClient.updateBookProgress(bookId, updates)
+      const userBook = await apiClient.updateBookProgress(userBookId, updates)
       const normalized = normalizeUserBook(userBook)
       set((state) => ({
         userBooks: {
           ...state.userBooks,
-          [bookId]: normalized,
+          [normalized.book_id]: normalized,
         },
         loading: false,
       }))
@@ -177,15 +190,15 @@ export const useBooksStore = create<BooksState>((set, get) => ({
       throw error
     }
   },
-  updateVisibility: async (bookId: number, visibility: Visibility) => {
+  updateVisibility: async (userBookId: number, visibility: Visibility) => {
     set({ loading: true, error: null })
     try {
-      const userBook = await apiClient.updateBookVisibility(bookId, visibility)
+      const userBook = await apiClient.updateBookVisibility(userBookId, visibility)
       const normalized = normalizeUserBook(userBook)
       set((state) => ({
         userBooks: {
           ...state.userBooks,
-          [bookId]: normalized,
+          [normalized.book_id]: normalized,
         },
         loading: false,
       }))
@@ -199,15 +212,15 @@ export const useBooksStore = create<BooksState>((set, get) => ({
     }
   },
 
-  saveReview: async (bookId: number, rating: number, review?: string) => {
+  saveReview: async (userBookId: number, rating: number, review?: string) => {
     set({ loading: true, error: null })
     try {
-      const userBook = await apiClient.saveBookReview(bookId, rating, review)
+      const userBook = await apiClient.saveBookReview(userBookId, rating, review)
       const normalized = normalizeUserBook(userBook)
       set((state) => ({
         userBooks: {
           ...state.userBooks,
-          [bookId]: normalized,
+          [normalized.book_id]: normalized,
         },
         loading: false,
       }))
@@ -230,8 +243,8 @@ export const useBooksStore = create<BooksState>((set, get) => ({
   getUserBooks: async ({
     shelf,
     visibility,
-    page = 1,
-    perPage = 20,
+    page,
+    perPage,
   }: {
     shelf?: ShelfStatus
     visibility?: Visibility

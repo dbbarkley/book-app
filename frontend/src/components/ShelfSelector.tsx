@@ -11,12 +11,13 @@ import {
   useUpdateBookVisibility,
 } from '@book-app/shared'
 import type { ShelfStatus, UserBook, Book, Visibility } from '@book-app/shared'
-import InputField from './InputField'
+
 interface ShelfSelectorProps {
   bookId: number
   currentShelf?: ShelfStatus | null
   bookData?: Book // For Google Books results
-  onShelfChange?: (shelf: ShelfStatus) => void
+  // eslint-disable-next-line no-unused-vars
+  onShelfChange?: (value: ShelfStatus) => void
   userBook?: UserBook | null
 }
 
@@ -69,7 +70,6 @@ export default function ShelfSelector({
     setLocalError(null)
     const trimmedReason = dnfReason.trim()
     const payload = {
-      bookId,
       status,
       visibility: isPrivate ? 'private' : 'public',
       dnf_page: status === 'dnf' && dnfPage ? parseInt(dnfPage, 10) : undefined,
@@ -77,8 +77,14 @@ export default function ShelfSelector({
     }
 
     try {
-      if (userBook) {
-        await updateShelf(payload)
+      if (userBook?.id) {
+        await updateShelf({
+          userBookId: userBook.id,
+          status,
+          visibility: payload.visibility as Visibility,
+          dnf_reason: payload.dnf_reason,
+          dnf_page: payload.dnf_page,
+        })
       } else {
         await addToShelf(bookId, status, bookData, {
           visibility: payload.visibility as Visibility,
@@ -101,9 +107,9 @@ export default function ShelfSelector({
   const handlePrivacyChange = async (visibility: Visibility) => {
     if (visibility === (isPrivate ? 'private' : 'public')) return
     setIsPrivate(visibility === 'private')
-    if (!userBook) return
+    if (!userBook?.id) return
     try {
-      await setVisibility(bookId, visibility)
+      await setVisibility(userBook.id, visibility)
     } catch (error) {
       console.error('Failed to update visibility:', error)
       setLocalError('Unable to update privacy. Try again.')
@@ -144,7 +150,7 @@ export default function ShelfSelector({
             <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
               Last page read (optional)
             </label>
-            <InputField
+            <input
               type="number"
               min={1}
               value={dnfPage}
@@ -199,9 +205,9 @@ export default function ShelfSelector({
             Private
           </button>
         </div>
-        <p className="text-xs text-slate-500">
-          Private books stay out of the public feed, followers' timelines, and your profile.
-        </p>
+          <p className="text-xs text-slate-500">
+            Private books stay out of the public feed, followers&apos; timelines, and your profile.
+          </p>
       </div>
 
       {errorMessage && (

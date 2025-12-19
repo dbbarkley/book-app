@@ -4,14 +4,12 @@
 // Mobile-first design with TailwindCSS
 // Reusable in Next.js and React Native (with minor adjustments)
 
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
 import { useBookProgress } from '@book-app/shared'
 import Button from './Button'
 import type { UserBook } from '@book-app/shared'
-import InputField from './InputField'
 
 interface BookProgressProps {
-  bookId: number
   userBook?: UserBook | null
   onUpdate?: () => void
 }
@@ -29,7 +27,7 @@ interface BookProgressProps {
  * - Adjust className to StyleSheet
  * - Keep the same prop interface
  */
-export default function BookProgress({ bookId, userBook, onUpdate }: BookProgressProps) {
+export default function BookProgress({ userBook, onUpdate }: BookProgressProps) {
   const { updateProgress, loading } = useBookProgress()
   const [pagesRead, setPagesRead] = useState(userBook?.pages_read?.toString() || '')
   const [totalPages, setTotalPages] = useState(userBook?.total_pages?.toString() || '')
@@ -40,10 +38,14 @@ export default function BookProgress({ bookId, userBook, onUpdate }: BookProgres
     userBook?.total_pages ? 'pages' : 'percentage'
   )
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     try {
-      if (mode === 'pages') {
+    if (!userBook?.id) {
+      return
+    }
+
+    if (mode === 'pages') {
         const updates: {
           pages_read?: number
           total_pages?: number
@@ -56,11 +58,11 @@ export default function BookProgress({ bookId, userBook, onUpdate }: BookProgres
             (updates.pages_read / updates.total_pages) * 100
           )
         }
-        await updateProgress(bookId, updates)
+        await updateProgress(userBook.id, updates)
       } else {
         const percentage = parseInt(completionPercentage)
         if (percentage >= 0 && percentage <= 100) {
-          await updateProgress(bookId, { completion_percentage: percentage })
+        await updateProgress(userBook.id, { completion_percentage: percentage })
         }
       }
       onUpdate?.()
@@ -130,7 +132,7 @@ export default function BookProgress({ bookId, userBook, onUpdate }: BookProgres
               <label htmlFor="pages-read" className="block text-sm font-medium text-slate-700 mb-1">
                 Pages Read
               </label>
-              <InputField
+              <input
                 id="pages-read"
                 type="number"
                 min="0"
@@ -144,7 +146,7 @@ export default function BookProgress({ bookId, userBook, onUpdate }: BookProgres
               <label htmlFor="total-pages" className="block text-sm font-medium text-slate-700 mb-1">
                 Total Pages
               </label>
-              <InputField
+              <input
                 id="total-pages"
                 type="number"
                 min="1"
@@ -163,7 +165,7 @@ export default function BookProgress({ bookId, userBook, onUpdate }: BookProgres
             <label htmlFor="completion" className="block text-sm font-medium text-slate-700 mb-1">
               Completion (%)
             </label>
-            <InputField
+            <input
               id="completion"
               type="number"
               min="0"

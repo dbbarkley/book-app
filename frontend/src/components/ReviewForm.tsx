@@ -10,7 +10,6 @@ import Button from './Button'
 import type { UserBook } from '@book-app/shared'
 
 interface ReviewFormProps {
-  bookId: number
   userBook?: UserBook | null
   onReviewSubmit?: () => void
 }
@@ -20,7 +19,7 @@ interface ReviewFormProps {
  * 
  * Usage:
  * ```tsx
- * <ReviewForm bookId={book.id} userBook={userBook} />
+ * <ReviewForm userBook={userBook} />
  * ```
  * 
  * For React Native:
@@ -31,7 +30,7 @@ interface ReviewFormProps {
  * Note: This is a placeholder feature. The backend endpoint
  * needs to be implemented for full functionality.
  */
-export default function ReviewForm({ bookId, userBook, onReviewSubmit }: ReviewFormProps) {
+export default function ReviewForm({ userBook, onReviewSubmit }: ReviewFormProps) {
   const { saveReview, loading } = useBookReview()
   const [rating, setRating] = useState(userBook?.rating || 0)
   const [review, setReview] = useState(userBook?.review || '')
@@ -43,8 +42,12 @@ export default function ReviewForm({ bookId, userBook, onReviewSubmit }: ReviewF
       alert('Please select a rating')
       return
     }
+    if (!userBook?.id) {
+      return
+    }
+
     try {
-      await saveReview(bookId, rating, review || undefined)
+      await saveReview(userBook.id, rating, review || undefined)
       onReviewSubmit?.()
     } catch (error) {
       console.error('Failed to save review:', error)

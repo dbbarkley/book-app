@@ -12,25 +12,42 @@ module Api
         user_books = user_books.where(visibility: params[:visibility]) if params[:visibility].present?
 
         page = params[:page]&.to_i || 1
-        per_page = [params[:per_page]&.to_i || 100, 100].min
+        parsed_per_page = params[:per_page]&.to_i
+        per_page =
+          if parsed_per_page.present? && parsed_per_page.positive?
+            [parsed_per_page, 100].min
+          end
 
         total_count = user_books.count
-        user_books = user_books.limit(per_page).offset((page - 1) * per_page)
-
-        render json: {
-          user_books: user_books.map { |ub| serialize_user_book(ub) },
-          pagination: {
+        if per_page
+          user_books = user_books.limit(per_page).offset((page - 1) * per_page)
+          pagination = {
             page: page,
             per_page: per_page,
             total_pages: (total_count.to_f / per_page).ceil,
             total_count: total_count
           }
-        }, status: :ok
+        else
+          pagination = nil
+        end
+
+      render json: {
+        user_books: user_books.map { |ub| serialize_user_book(ub) },
+        pagination: pagination
+      }, status: :ok
       end
 
-      # GET /api/v1/user/books/:book_id
+      # GET /api/v1/user/books/:id
       def show
         render json: { user_book: serialize_user_book(@user_book) }, status: :ok
+      end
+
+      # GET /api/v1/user/books/by_book/:book_id
+      def show_by_book
+        user_book = current_user.user_books.find_by(book_id: params[:book_id])
+        return render_error('User book not found', status: :not_found) unless user_book
+
+        render json: { user_book: serialize_user_book(user_book) }, status: :ok
       end
 
       # POST /api/v1/user/books
@@ -56,6 +73,11 @@ module Api
           dnf_page: params[:dnf_page]
         )
         user_book.save!
+        if user_book.saved_change_to_id? &&
+             user_book.status == 'to_read' &&
+             user_book.visibility == 'public'
+          enqueue_user_book_activity(user_book, 'user_added_book')
+        end
 
         render json: { user_book: serialize_user_book(user_book) }, status: :created
       end
@@ -81,6 +103,14 @@ module Api
         end
 
         @user_book.update!(update_params)
+        if @user_book.visibility == 'public' && @user_book.saved_change_to_status?
+          case @user_book.status
+          when 'read'
+            enqueue_user_book_activity(@user_book, 'user_finished_book')
+          when 'to_read'
+            enqueue_user_book_activity(@user_book, 'user_added_book')
+          end
+        end
         render json: { user_book: serialize_user_book(@user_book) }, status: :ok
       end
 
@@ -97,7 +127,7 @@ module Api
       private
 
       def set_user_book
-        @user_book = current_user.user_books.find_by!(book_id: params[:id])
+        @user_book = current_user.user_books.find(params[:id])
       end
 
       def user_book_params
@@ -184,6 +214,17 @@ module Api
         }
       end
 
+      def enqueue_user_book_activity(user_book, activity_type)
+        return unless user_book.visibility == 'public'
+
+        GenerateUserActivityFeedItemsJob.perform_later(
+          current_user.id,
+          'UserBook',
+          user_book.id,
+          activity_type
+        )
+      end
+
       def serialize_book(book)
         {
           id: book.id,
@@ -209,8 +250,8 @@ module Api
         UserBook::VISIBILITIES.first
       end
 
-      def render_error(message)
-        render json: { errors: [message] }, status: :unprocessable_entity
+      def render_error(message, status: :unprocessable_entity)
+        render json: { errors: [message] }, status: status
       end
     end
   end

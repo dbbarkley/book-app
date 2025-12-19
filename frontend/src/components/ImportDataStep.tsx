@@ -6,7 +6,6 @@
 
 import React, { useState } from 'react'
 import Button from './Button'
-import InputField from './InputField'
 
 export interface ImportDataStepProps {
   onImport?: (service: 'goodreads' | 'storygraph', file: File) => Promise<void>
@@ -139,7 +138,7 @@ export default function ImportDataStep({
               Upload your export file
             </label>
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-              <InputField
+              <input
                 type="file"
                 accept=".csv,.json"
                 onChange={handleFileSelect}

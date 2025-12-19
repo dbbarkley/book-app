@@ -42,7 +42,7 @@ export interface OnboardingGuardProps {
  */
 export default function OnboardingGuard({
   children,
-  allowedRoutes = ['/onboarding', '/login', '/signup', '/forgot-password'],
+  allowedRoutes = ['/onboarding', '/login', '/signup', '/forgot-password', '/import/goodreads'],
 }: OnboardingGuardProps) {
   const router = useRouter()
   const pathname = usePathname()

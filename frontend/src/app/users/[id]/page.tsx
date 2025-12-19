@@ -24,6 +24,10 @@ interface UserProfileData {
   } | null
   following: Follow[]
   followers: User[]
+  currentUserFollow: {
+    following: boolean
+    follow_id?: number | null
+  } | null
 }
 
 /**
@@ -46,19 +50,20 @@ function UserProfileContent() {
   const router = useRouter()
   const userId = parseInt(params.id as string, 10)
   const { user: currentUser, isAuthenticated } = useAuth()
-  const { isFollowing, getFollowId, unfollow, follow } = useFollows()
+  const { unfollow, follow } = useFollows()
 
   const [profileData, setProfileData] = useState<UserProfileData>({
     user: null,
     stats: null,
     following: [],
     followers: [],
+    currentUserFollow: null,
   })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'following' | 'followers'>('following')
-  const [isFollowingUser, setIsFollowingUser] = useState(false)
   const [followLoading, setFollowLoading] = useState(false)
+  const [message, setMessage] = useState<string | null>(null)
 
   const isOwnProfile = currentUser?.id === userId
 
@@ -71,11 +76,9 @@ function UserProfileContent() {
     }
   }, [userId])
 
-  useEffect(() => {
-    if (profileData.user && !isOwnProfile) {
-      setIsFollowingUser(isFollowing('User', profileData.user.id))
-    }
-  }, [profileData.user, isFollowing, isOwnProfile])
+  const currentFollow = profileData.currentUserFollow
+  const alreadyFollowing = currentFollow?.following ?? false
+  const currentFollowId = currentFollow?.follow_id ?? null
 
   const fetchProfile = async () => {
     setLoading(true)
@@ -93,6 +96,7 @@ function UserProfileContent() {
         stats: profile.stats,
         following,
         followers,
+        currentUserFollow: profile.current_user_follow || { following: false },
       })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load user profile')
@@ -105,16 +109,15 @@ function UserProfileContent() {
     if (!profileData.user || isOwnProfile) return
 
     setFollowLoading(true)
+    setError(null)
+    setMessage(null)
     try {
-      if (isFollowingUser) {
-        const followId = getFollowId('User', profileData.user.id)
-        if (followId) {
-          await unfollow(followId)
-          setIsFollowingUser(false)
-        }
+      if (alreadyFollowing && currentFollowId) {
+        await unfollow(currentFollowId)
+        setMessage(`Unfollowed ${profileData.user.display_name || profileData.user.username}`)
       } else {
         await follow('User', profileData.user.id)
-        setIsFollowingUser(true)
+        setMessage(`Now following ${profileData.user.display_name || profileData.user.username}`)
       }
       // Refresh profile to update stats
       await fetchProfile()
@@ -136,7 +139,7 @@ function UserProfileContent() {
     )
   }
 
-  if (error || !profileData.user) {
+  if (!profileData.user) {
     return (
       <div className="container-mobile py-12">
         <div className="text-center">
@@ -155,6 +158,16 @@ function UserProfileContent() {
   return (
     <div className="container-mobile py-6 sm:py-8">
       <div className="max-w-4xl mx-auto">
+        {error && (
+          <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+            {error}
+          </div>
+        )}
+        {message && (
+          <div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            {message}
+          </div>
+        )}
         {/* User Header Card */}
         <div className="bg-white rounded-lg border border-slate-200 p-6 sm:p-8 shadow-sm mb-6">
           <div className="flex flex-col sm:flex-row gap-6">
@@ -188,14 +201,20 @@ function UserProfileContent() {
               )}
               {!isOwnProfile && (
                 <div className="flex justify-center sm:justify-start">
-                  <Button
-                    variant={isFollowingUser ? 'secondary' : 'primary'}
-                    onClick={handleFollowToggle}
-                    isLoading={followLoading}
-                    disabled={followLoading}
-                  >
-                    {isFollowingUser ? '✓ Following' : '+ Follow'}
-                  </Button>
+                  {profileData.currentUserFollow ? (
+                    <Button
+                      variant={alreadyFollowing ? 'secondary' : 'primary'}
+                      onClick={handleFollowToggle}
+                      isLoading={followLoading}
+                      disabled={followLoading}
+                    >
+                      {alreadyFollowing ? '✓ Following' : '+ Follow'}
+                    </Button>
+                  ) : (
+                    <div className="px-6 py-3 text-sm text-text-muted border border-border-default rounded-lg">
+                      Checking follow status...
+                    </div>
+                  )}
                 </div>
               )}
               {isOwnProfile && (

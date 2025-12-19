@@ -11,7 +11,7 @@
 
 import Link from 'next/link'
 import { formatRelativeTime } from '../utils/format'
-import type { FeedItem, Book, Event, Author } from '@book-app/shared'
+import type { FeedItem, Book, Event, Author, User, UserBook } from '@book-app/shared'
 
 interface FeedItemProps {
   item: FeedItem
@@ -116,8 +116,11 @@ const EventRecommendation = (item: FeedItem) => {
 }
 
 const FollowActivity = (item: FeedItem) => {
-  const targetAuthor = item.metadata?.author as Author
-  const reason = formatContext(item, 'Followed author activity')
+  const actor = item.metadata?.actor as User | undefined
+  const targetUser = item.feedable as User | undefined
+  const reason = formatContext(item, 'Follow activity')
+  const actorDisplay = actor?.display_name || actor?.username || 'Someone'
+  const targetDisplay = targetUser?.display_name || targetUser?.username || 'someone'
 
   return (
     <div className="flex flex-col gap-4">
@@ -126,18 +129,83 @@ const FollowActivity = (item: FeedItem) => {
           Follow Activity
         </p>
         <h3 className="text-lg font-semibold text-text-primary mb-1">
-          {item.user?.display_name || item.user?.username} is following {targetAuthor?.name || 'an author'}
+          {actor ? (
+            <Link href={`/users/${actor.id}`}>{actorDisplay}</Link>
+          ) : (
+            actorDisplay
+          )}{' '}
+          is now following{' '}
+          {targetUser ? (
+            <Link href={`/users/${targetUser.id}`}>{targetDisplay}</Link>
+          ) : (
+            targetDisplay
+          )}
         </h3>
         <p className="text-sm text-text-muted">{reason}</p>
       </div>
-      {targetAuthor && (
+      {targetUser && (
         <Link
-          href={`/authors/${targetAuthor.id}`}
+          href={`/users/${targetUser.id}`}
           className="inline-flex items-center justify-center rounded-full border border-border-default bg-background-muted px-3 py-1.5 text-sm font-semibold text-text-secondary transition hover:border-brand-indigo hover:text-brand-indigo"
         >
-          View Author
+          View profile
         </Link>
       )}
+    </div>
+  )
+}
+
+const UserBookActivity = (item: FeedItem) => {
+  const actor = item.metadata?.actor as User | undefined
+  const userBook = item.feedable as UserBook | undefined
+  const book = userBook?.book
+  if (!book) return null
+
+  const actorDisplay = actor?.display_name || actor?.username || 'Someone'
+  const targetHeading = item.activity_type === 'user_finished_book' ? 'Finished Book' : 'Want to Read'
+  const actionText =
+    item.activity_type === 'user_finished_book' ? 'finished reading' : 'wants to read'
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-text-muted mb-1">
+          {targetHeading}
+        </p>
+        <h3 className="text-lg font-semibold text-text-primary mb-1">
+          {actor ? (
+            <Link href={`/users/${actor.id}`}>{actorDisplay}</Link>
+          ) : (
+            actorDisplay
+          )}{' '}
+          {actionText} <Link href={`/books/${book.id}`}>{book.title}</Link>
+        </h3>
+        <p className="text-sm text-text-muted">{book.author_name || book.author?.name}</p>
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        {book.cover_image_url && (
+          <Link href={`/books/${book.id}`} className="flex-shrink-0">
+            <img
+              src={book.cover_image_url}
+              alt={book.title}
+              className="w-20 h-28 object-cover rounded-lg border border-border-default shadow-sm"
+            />
+          </Link>
+        )}
+        <div className="flex flex-wrap gap-2 items-center text-xs text-text-muted">
+          <Link
+            href={`/books/${book.id}`}
+            className="inline-flex items-center justify-center rounded-full border border-border-default bg-background-muted px-3 py-1.5 font-semibold text-text-secondary transition hover:border-brand-indigo hover:text-brand-indigo"
+          >
+            View Book
+          </Link>
+          {userBook?.status && (
+            <span className="px-2 py-1 rounded-full bg-background-muted text-xs text-text-secondary">
+              Status: {userBook.status}
+            </span>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
@@ -254,6 +322,12 @@ export default function FeedItemComponent({ item }: FeedItemProps) {
     }
     if (item.activity_type === 'event_recommendation') {
       return EventRecommendation(item)
+    }
+    if (
+      item.activity_type === 'user_finished_book' ||
+      item.activity_type === 'user_added_book'
+    ) {
+      return UserBookActivity(item)
     }
     if (item.activity_type === 'follow_activity') {
       return FollowActivity(item)

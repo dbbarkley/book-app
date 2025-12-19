@@ -248,7 +248,7 @@ function SettingsContent() {
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 Username
               </label>
-              <InputField
+              <input
                 type="text"
                 value={user.username}
                 disabled

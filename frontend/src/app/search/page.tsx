@@ -6,7 +6,7 @@
 
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useUserSearch, useEnhancedAuthorSearch } from '@book-app/shared'
+import { useAuth, useUserSearch, useEnhancedAuthorSearch } from '@book-app/shared'
 import AuthorCard from '@/components/AuthorCard'
 import InputField from '@/components/InputField'
 import Button from '@/components/Button'
@@ -21,6 +21,7 @@ function SearchContent() {
   const searchParams = useSearchParams()
   const initialQuery = searchParams.get('q') || ''
   const initialTab = (searchParams.get('type') as 'users' | 'authors') || 'authors'
+  const { user: currentUser } = useAuth()
 
   const [activeTab, setActiveTab] = useState<'users' | 'authors'>(initialTab)
   const [searchInput, setSearchInput] = useState(initialQuery)
@@ -40,6 +41,7 @@ function SearchContent() {
     initialQuery: activeTab === 'users' ? initialQuery : '',
     pageSize: 20,
   })
+  const filteredUsers = users.filter((user) => user.id !== currentUser?.id)
 
   // Author search (with Google Books)
   const {
@@ -214,7 +216,7 @@ function SearchContent() {
         )}
 
         {/* Loading State */}
-        {loading && (activeTab === 'users' ? users.length === 0 : authors.length === 0) && (
+        {loading && (activeTab === 'users' ? filteredUsers.length === 0 : authors.length === 0) && (
           <div className="text-center py-12">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-brand-indigo"></div>
             <p className="mt-4 text-text-secondary">
@@ -224,7 +226,7 @@ function SearchContent() {
         )}
 
         {/* Empty State */}
-        {!loading && searchInput.trim() && (activeTab === 'users' ? users.length === 0 : authors.length === 0) && (
+        {!loading && searchInput.trim() && (activeTab === 'users' ? filteredUsers.length === 0 : authors.length === 0) && (
           <div className="text-center py-12">
             <p className="text-text-secondary mb-2">No {activeTab} found</p>
             <p className="text-sm text-text-muted">
@@ -283,10 +285,10 @@ function SearchContent() {
           </>
         )}
 
-        {activeTab === 'users' && users.length > 0 && (
+        {activeTab === 'users' && filteredUsers.length > 0 && (
           <>
             <div className="space-y-4 mb-6">
-              {users.map((user: User) => (
+              {filteredUsers.map((user: User) => (
                 <Link
                   key={user.id}
                   href={`/users/${user.id}`}
@@ -331,11 +333,11 @@ function SearchContent() {
             )}
 
             {/* Results Count */}
-            {searchInput.trim() && (
-              <div className="text-center mt-4 text-sm text-text-muted">
-                Showing {users.length} result{users.length !== 1 ? 's' : ''}
-              </div>
-            )}
+                {searchInput.trim() && (
+                  <div className="text-center mt-4 text-sm text-text-muted">
+                    Showing {filteredUsers.length} result{filteredUsers.length !== 1 ? 's' : ''}
+                  </div>
+                )}
           </>
         )}
       </div>

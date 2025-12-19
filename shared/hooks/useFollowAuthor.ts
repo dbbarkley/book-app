@@ -4,7 +4,7 @@
 
 import { useState, useEffect } from 'react'
 import { useFollowsStore } from '../store/followsStore'
-import { apiClient } from '../api/client'
+import { useAuthStore } from '../store/authStore'
 
 interface UseFollowAuthorResult {
   isFollowing: boolean
@@ -35,7 +35,18 @@ export function useFollowAuthor(authorId: number | null) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const { isFollowing: checkFollowing, getFollowId, follow, unfollow } = useFollowsStore()
+  const follows = useFollowsStore((state) => state.follows)
+  const { isAuthenticated } = useAuthStore()
+  const { follow, unfollow, fetchFollows, isFollowing: checkFollowing, getFollowId } =
+    useFollowsStore()
+
+  useEffect(() => {
+    if (isAuthenticated && (!Array.isArray(follows) || follows.length === 0)) {
+      fetchFollows().catch(() => {
+        // store handles errors
+      })
+    }
+  }, [isAuthenticated, fetchFollows, follows])
 
   const isFollowing = authorId ? checkFollowing('Author', authorId) : false
   const followId = authorId ? getFollowId('Author', authorId) : null

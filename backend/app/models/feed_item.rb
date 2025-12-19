@@ -4,7 +4,21 @@ class FeedItem < ApplicationRecord
   validates :feedable_id, presence: true
   validates :activity_type, presence: true
 
-  ACTIVITY_TYPES = %w[book_release author_event author_announcement].freeze
+  ACTIVITY_TYPES = %w[
+    book_release
+    author_event
+    author_announcement
+    book_recommendation
+    event_recommendation
+    follow_activity
+    user_added_book
+    user_finished_book
+    user_progress_update
+    user_review
+    user_followed_author
+    user_followed_user
+    friend_activity
+  ].freeze
 
   validates :activity_type, inclusion: { in: ACTIVITY_TYPES }
 

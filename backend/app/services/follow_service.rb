@@ -19,6 +19,7 @@ class FollowService < BaseService
     follow = create_follow(followable)
     if follow.persisted?
       enqueue_backfill_job(follow)
+      enqueue_user_follow_activity(follow)
       success!(follow)
     else
       failure!(follow.errors.full_messages)
@@ -64,6 +65,26 @@ class FollowService < BaseService
       @follower.id,
       follow.followable_type,
       follow.followable_id
+    )
+  end
+
+  def enqueue_user_follow_activity(follow)
+    return unless follow.followable_type == 'User'
+
+    target_user = follow.followable
+    return unless target_user
+
+    GenerateUserActivityFeedItemsJob.perform_later(
+      @follower.id,
+      'User',
+      target_user.id,
+      'follow_activity',
+      target_user: {
+        id: target_user.id,
+        username: target_user.username,
+        display_name: target_user.display_name,
+        avatar_url: target_user.avatar_url
+      }
     )
   end
 end

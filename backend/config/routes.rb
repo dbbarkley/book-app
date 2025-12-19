@@ -43,6 +43,7 @@ Rails.application.routes.draw do
       
       # User Books (shelves, reading progress)
       resources :user_books, only: [:index, :create, :show, :update], path: 'user/books' do
+        get 'by_book/:book_id', on: :collection, action: :show_by_book
         post 'review', on: :member
       end
       

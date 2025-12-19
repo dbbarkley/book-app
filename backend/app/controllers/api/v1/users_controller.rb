@@ -18,11 +18,22 @@ module Api
       end
 
       def profile
+        current_follow = nil
+        if current_user
+          current_follow = current_user.follows.find_by(followable: @user)
+        end
+
         render json: {
           user: serialize_user(@user),
           stats: {
             followers_count: @user.followers.count,
             following_count: @user.follows.count
+          },
+          current_user_follow: current_follow ? {
+            following: true,
+            follow_id: current_follow.id
+          } : {
+            following: false
           }
         }, status: :ok
       end

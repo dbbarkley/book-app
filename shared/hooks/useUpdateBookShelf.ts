@@ -3,7 +3,7 @@ import { useBooksStore } from '../store/booksStore'
 import type { ShelfStatus, UserBook, Visibility } from '../types'
 
 interface UpdateShelfParams {
-  bookId: number
+  userBookId: number
   status: ShelfStatus
   visibility?: Visibility
   dnf_reason?: string
@@ -26,7 +26,7 @@ export function useUpdateBookShelf(): UseUpdateBookShelfReturn {
   const updateShelf = async (params: UpdateShelfParams) => {
     setLocalError(null)
     try {
-      return await updateProgress(params.bookId, {
+      return await updateProgress(params.userBookId, {
         status: params.status,
         visibility: params.visibility,
         dnf_reason: params.dnf_reason,

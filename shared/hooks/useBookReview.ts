@@ -6,7 +6,7 @@ import { useBooksStore } from '../store/booksStore'
 import type { UserBook } from '../types'
 
 interface UseBookReviewReturn {
-  saveReview: (bookId: number, rating: number, review?: string) => Promise<UserBook>
+  saveReview: (userBookId: number, rating: number, review?: string) => Promise<UserBook>
   loading: boolean
   error: string | null
 }
@@ -36,7 +36,7 @@ export function useBookReview(): UseBookReviewReturn {
   const { saveReview: saveReviewStore, loading, error } = useBooksStore()
   const [localError, setLocalError] = useState<string | null>(null)
 
-  const saveReview = async (bookId: number, rating: number, review?: string) => {
+  const saveReview = async (userBookId: number, rating: number, review?: string) => {
     setLocalError(null)
     try {
       return await saveReviewStore(bookId, rating, review)

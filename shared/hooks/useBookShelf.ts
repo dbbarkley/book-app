@@ -3,10 +3,15 @@
 
 import { useState } from 'react'
 import { useBooksStore } from '../store/booksStore'
-import type { BookShelf, UserBook, Book } from '../types'
+import type { BookShelf, UserBook, Book, Visibility } from '../types'
 
 interface UseBookShelfReturn {
-  addToShelf: (bookId: number, shelf: BookShelf, bookData?: Book) => Promise<UserBook>
+  addToShelf: (
+    bookId: number,
+    shelf: BookShelf,
+    bookData?: Book,
+    options?: { visibility?: Visibility; dnf_reason?: string; dnf_page?: number }
+  ) => Promise<UserBook>
   loading: boolean
   error: string | null
 }
@@ -30,10 +35,15 @@ export function useBookShelf(): UseBookShelfReturn {
   const { addToShelf: addToShelfStore, loading, error } = useBooksStore()
   const [localError, setLocalError] = useState<string | null>(null)
 
-  const addToShelf = async (bookId: number, shelf: BookShelf, bookData?: Book) => {
+  const addToShelf = async (
+    bookId: number,
+    shelf: BookShelf,
+    bookData?: Book,
+    options?: { visibility?: Visibility; dnf_reason?: string; dnf_page?: number }
+  ) => {
     setLocalError(null)
     try {
-      return await addToShelfStore(bookId, shelf, bookData)
+      return await addToShelfStore(bookId, shelf, bookData, options)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to add book to shelf'
       setLocalError(errorMessage)

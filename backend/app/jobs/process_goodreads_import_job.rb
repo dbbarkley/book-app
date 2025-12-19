@@ -126,13 +126,14 @@ class ProcessGoodreadsImportJob < ApplicationJob
       avg_rating: avg_rating
     )
 
-    # Convert Goodreads shelf to our shelf
-    shelf = convert_shelf_to_status(exclusive_shelf)
+    # Convert Goodreads shelf to our shelf status
+    status = convert_shelf_to_status(exclusive_shelf, row)
 
     # Create or update user book
     user_book = UserBook.find_or_initialize_by(user: user, book: book)
     user_book.assign_attributes(
-      shelf: shelf,
+      status: status,
+      shelf: status,
       rating: my_rating > 0 ? my_rating : nil,
       started_at: date_added,
       finished_at: date_read
@@ -192,17 +193,26 @@ class ProcessGoodreadsImportJob < ApplicationJob
     )
   end
 
-  def convert_shelf_to_status(shelf)
-    case shelf&.downcase
-    when 'read'
-      'read'
-    when 'currently-reading'
-      'reading'
-    when 'to-read'
-      'to_read'
-    else
-      'to_read' # Default
+  def convert_shelf_to_status(shelf, row = nil)
+    status = case shelf&.downcase&.strip
+             when 'read'
+               'read'
+             when 'currently-reading', 'reading', 'currently reading'
+               'reading'
+             when 'to-read', 'to read', 'wishlist'
+               'to_read'
+             when 'dnf', 'did-not-finish', 'dropped'
+               'dnf'
+             else
+               nil
+             end
+
+    # Fallback: If status is still unclear but there's a Date Read, it's definitely 'read'
+    if status.nil? && row && row['Date Read'].present?
+      status = 'read'
     end
+
+    status || 'to_read'
   end
 
   def parse_date(date_string)

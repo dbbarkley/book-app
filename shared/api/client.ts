@@ -253,7 +253,7 @@ export class ApiClient {
   // User Book endpoints (for shelves and reading progress)
   // These endpoints need to be implemented in the Rails backend
   async getUserBook(bookId: number) {
-    const response = await this.client.get<{ user_book: UserBook }>(`/user/books/${bookId}`)
+    const response = await this.client.get<{ user_book: UserBook }>(`/user/books/by_book/${bookId}`)
     return response.data.user_book
   }
 
@@ -296,7 +296,7 @@ export class ApiClient {
   }
 
   async updateBookProgress(
-    bookId: number,
+    userBookId: number,
     updates: {
       status?: ShelfStatus
       visibility?: Visibility
@@ -309,15 +309,14 @@ export class ApiClient {
       review?: string
     }
   ) {
-    const response = await this.client.patch<{ user_book: UserBook }>(`/user/books/${bookId}`, {
+    const response = await this.client.patch<{ user_book: UserBook }>(`/user/books/${userBookId}`, {
       user_book: updates,
     })
     return response.data.user_book
   }
 
-  async updateBookVisibility(bookId: number, visibility: Visibility) {
-    // TODO: Backend should allow visibility-only updates for user books.
-    const response = await this.client.patch<{ user_book: UserBook }>(`/user/books/${bookId}`, {
+  async updateBookVisibility(userBookId: number, visibility: Visibility) {
+    const response = await this.client.patch<{ user_book: UserBook }>(`/user/books/${userBookId}`, {
       user_book: { visibility },
     })
     return response.data.user_book
@@ -329,10 +328,15 @@ export class ApiClient {
     page?: number
     per_page?: number
   }) {
-    // TODO: Backend should honor `visibility` so public shelves never leak private books.
+    const query: Record<string, string> = {}
+    if (params?.shelf) query.shelf = params.shelf
+    if (params?.visibility) query.visibility = params.visibility
+    if (params?.page) query.page = params.page.toString()
+    if (params?.per_page) query.per_page = params.per_page.toString()
+
     const response = await this.client.get<{ user_books: UserBook[]; pagination?: PaginationMeta }>(
       '/user/books',
-      { params }
+      { params: query }
     )
     return {
       user_books: response.data.user_books || [],
@@ -340,8 +344,8 @@ export class ApiClient {
     }
   }
 
-  async saveBookReview(bookId: number, rating: number, review?: string) {
-    const response = await this.client.post<{ user_book: UserBook }>(`/user/books/${bookId}/review`, {
+  async saveBookReview(userBookId: number, rating: number, review?: string) {
+    const response = await this.client.post<{ user_book: UserBook }>(`/user/books/${userBookId}/review`, {
       rating,
       review,
     })

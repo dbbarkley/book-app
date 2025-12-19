@@ -36,7 +36,7 @@ import { mockGenres, mockAuthors } from '@/utils/onboardingData'
  */
 export default function OnboardingPage() {
   const router = useRouter()
-  const { isAuthenticated, user } = useAuth()
+  const { isAuthenticated, user, refreshUser } = useAuth()
   const {
     currentStep,
     totalSteps,
@@ -123,8 +123,9 @@ export default function OnboardingPage() {
     if (currentStep === totalSteps - 1) {
       const result = await submitPreferences()
       if (result.success) {
-        // Update user object in auth store to reflect onboarding completion
-        // This will be refreshed on next page load, but we can trigger a refresh
+        await refreshUser().catch(() => {
+          // If refresh fails, allow navigation anyway
+        })
         router.push('/')
         router.refresh()
       }
@@ -140,7 +141,9 @@ export default function OnboardingPage() {
   const handleSkip = async () => {
     const result = await skipOnboarding()
     if (result.success) {
-      // Update user object in auth store to reflect onboarding completion
+      await refreshUser().catch(() => {
+        // Continue even if refresh fails
+      })
       router.push('/')
       router.refresh()
     }

@@ -13,7 +13,7 @@ interface UpdateProgressParams {
 }
 
 interface UseBookProgressReturn {
-  updateProgress: (bookId: number, updates: UpdateProgressParams) => Promise<UserBook>
+  updateProgress: (userBookId: number, updates: UpdateProgressParams) => Promise<UserBook>
   loading: boolean
   error: string | null
 }
@@ -43,7 +43,7 @@ export function useBookProgress(): UseBookProgressReturn {
   const { updateProgress: updateProgressStore, loading, error } = useBooksStore()
   const [localError, setLocalError] = useState<string | null>(null)
 
-  const updateProgress = async (bookId: number, updates: UpdateProgressParams) => {
+  const updateProgress = async (userBookId: number, updates: UpdateProgressParams) => {
     setLocalError(null)
     try {
       return await updateProgressStore(bookId, updates)
