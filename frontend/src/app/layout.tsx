@@ -16,7 +16,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-slate-50">
+      <body className="min-h-screen bg-background-app">
         {/* Initialize auth and handle token refresh */}
         <AuthInitializer />
         {/* Navigation is always visible, even during onboarding */}

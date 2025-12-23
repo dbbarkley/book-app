@@ -7,6 +7,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth, apiClient } from '@book-app/shared'
+import { LogOut } from 'lucide-react'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import InputField from '@/components/InputField'
 import Button from '@/components/Button'
@@ -43,7 +44,7 @@ interface PreferencesFormData {
  */
 function SettingsContent() {
   const router = useRouter()
-  const { user, refreshUser } = useAuth()
+  const { user, refreshUser, logout } = useAuth()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [savingPreferences, setSavingPreferences] = useState(false)
@@ -480,7 +481,19 @@ function SettingsContent() {
 
         {/* Account Section */}
         <div className="mt-6 bg-white rounded-lg border border-slate-200 p-6 sm:p-8 shadow-sm">
-          <h2 className="text-xl font-bold text-slate-900 mb-4">Account</h2>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-bold text-slate-900">Account</h2>
+            <button
+              onClick={() => {
+                logout()
+                router.push('/login')
+              }}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+              Logout
+            </button>
+          </div>
           <div className="space-y-4">
             <div>
               <p className="text-sm font-medium text-slate-700 mb-1">Email</p>

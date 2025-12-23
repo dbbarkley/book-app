@@ -4,171 +4,146 @@
 // Responsive design with mobile menu
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 import { useAuth } from '@book-app/shared'
+import { 
+  LayoutDashboard, 
+  BookOpen, 
+  Search, 
+  User, 
+  Menu, 
+  X 
+} from 'lucide-react'
 
 export default function Navigation() {
   const pathname = usePathname()
-  const { isAuthenticated, user, logout } = useAuth()
+  const { isAuthenticated, user } = useAuth()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const navLinks = [
-    { href: '/feed', label: 'Feed' },
-    { href: '/books', label: 'Library' },
-    { href: '/events', label: 'Events' },
-    { href: '/authors', label: 'Authors' },
-    { href: '/search', label: 'Search' },
-    { href: '/testing', label: 'Testing' },
+    { href: '/feed', label: 'Feed', icon: LayoutDashboard },
+    { href: '/books', label: 'Library', icon: BookOpen },
+    { href: '/search', label: 'Discover', icon: Search },
+    ...(isAuthenticated ? [{ href: `/users/${user?.id}`, label: 'Profile', icon: User }] : []),
   ]
 
   const isActive = (href: string) => pathname === href
 
   return (
-    <nav className="sticky top-0 z-50 bg-background-app border-b border-border-default shadow-sm">
+    <nav className="sticky top-0 z-50 bg-background-app/80 backdrop-blur-md border-b border-border-default/50">
       <div className="container-mobile">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center justify-between h-20">
           {/* Logo */}
-          <Link href="/" className="flex items-center space-x-2">
-            <span className="text-2xl font-bold text-brand-indigo">📚</span>
-            <span className="hidden sm:inline-block text-xl font-semibold text-text-primary">
-              Book Social
-            </span>
+          <Link href="/" className="flex items-center h-full transition-opacity hover:opacity-80">
+            <div className="relative h-28 w-[200px]">
+              <Image
+                src="/logo.png"
+                alt="WellRead"
+                fill
+                className="object-contain object-left"
+                style={{ filter: 'brightness(0)' }}
+                priority
+              />
+            </div>
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-1">
-              {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  isActive(link.href)
-                      ? 'bg-brand-indigo/10 text-brand-indigo'
+          <div className="hidden md:flex items-center space-x-1" style={{ marginRight: '200px' }}>
+            {navLinks.map((link) => {
+              const Icon = link.icon
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
+                    isActive(link.href)
+                      ? 'bg-brand-indigo text-white shadow-sm'
                       : 'text-text-secondary hover:bg-background-muted hover:text-text-primary'
-                }`}
-              >
-                {link.label}
-              </Link>
-            ))}
+                  }`}
+                >
+                  <Icon size={18} />
+                  <span>{link.label}</span>
+                </Link>
+              )
+            })}
           </div>
 
-          {/* Auth Section */}
-          <div className="hidden md:flex items-center space-x-4">
-            {isAuthenticated ? (
-              <>
-            <Link
-              href={`/users/${user?.id}`}
-              className="text-sm text-text-secondary hover:text-text-primary"
-            >
-                  {user?.username || 'Profile'}
-                </Link>
-                <button
-                  onClick={logout}
-              className="px-4 py-2 text-sm font-medium text-text-secondary hover:text-text-primary"
+          {/* Right Section */}
+          <div className="flex items-center space-x-2">
+            {!isAuthenticated ? (
+              <div className="hidden md:flex items-center space-x-2">
+                <Link
+                  href="/login"
+                  className="px-4 py-2 text-sm font-medium text-text-secondary hover:text-text-primary transition-colors"
                 >
-                  Logout
-                </button>
-              </>
-            ) : (
-              <>
-            <Link
-              href="/login"
-              className="px-4 py-2 text-sm font-medium text-text-secondary hover:text-text-primary"
-            >
                   Login
                 </Link>
                 <Link
                   href="/signup"
-              className="px-4 py-2 text-sm font-medium text-white bg-brand-indigo rounded-lg hover:bg-brand-indigo-dark"
+                  className="px-4 py-2 text-sm font-medium text-white bg-brand-indigo rounded-xl hover:bg-brand-indigo-dark transition-all shadow-sm"
                 >
                   Sign Up
                 </Link>
-              </>
+              </div>
+            ) : (
+              <div></div>
             )}
-          </div>
 
-          {/* Mobile Menu Button */}
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 rounded-lg text-text-secondary hover:bg-background-muted"
-            aria-label="Toggle menu"
-          >
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+            {/* Mobile Menu Button */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden p-2 rounded-xl text-text-secondary hover:bg-background-muted transition-colors"
+              aria-label="Toggle menu"
             >
-              {mobileMenuOpen ? (
-                <path d="M6 18L18 6M6 6l12 12" />
-              ) : (
-                <path d="M4 6h16M4 12h16M4 18h16" />
-              )}
-            </svg>
-          </button>
+              {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+          </div>
         </div>
 
         {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden py-4 border-t border-border-default">
-            <div className="flex flex-col space-y-2">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                    isActive(link.href)
-                      ? 'bg-brand-indigo/10 text-brand-indigo'
-                      : 'text-text-secondary hover:bg-background-muted'
-                  }`}
-                >
-                  {link.label}
-                </Link>
-              ))}
-              <div className="pt-4 border-t border-slate-200">
-                {isAuthenticated ? (
-                  <>
-                    <Link
-                      href={`/users/${user?.id}`}
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="block px-4 py-2 text-sm text-text-secondary hover:bg-background-muted rounded-lg"
-                    >
-                      Profile
-                    </Link>
-                    <button
-                      onClick={() => {
-                        logout()
-                        setMobileMenuOpen(false)
-                      }}
-                      className="w-full text-left px-4 py-2 text-sm text-text-secondary hover:bg-background-muted rounded-lg"
-                    >
-                      Logout
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <Link
-                      href="/login"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="block px-4 py-2 text-sm font-medium text-text-secondary hover:bg-background-muted rounded-lg"
-                    >
-                      Login
-                    </Link>
-                    <Link
-                      href="/signup"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="block px-4 py-2 text-sm font-medium text-white bg-brand-indigo rounded-lg hover:bg-brand-indigo-dark mt-2"
-                    >
-                      Sign Up
-                    </Link>
-                  </>
-                )}
-              </div>
+          <div className="md:hidden py-4 border-t border-border-default/50 animate-in fade-in slide-in-from-top-5 duration-200">
+            <div className="flex flex-col space-y-1">
+              {navLinks.map((link) => {
+                const Icon = link.icon
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+                      isActive(link.href)
+                        ? 'bg-brand-indigo/10 text-brand-indigo'
+                        : 'text-text-secondary hover:bg-background-muted'
+                    }`}
+                  >
+                    <Icon size={20} />
+                    <span>{link.label}</span>
+                  </Link>
+                )
+              })}
+              
+              {!isAuthenticated && (
+                <div className="pt-4 mt-2 border-t border-border-default/50 flex flex-col space-y-2">
+                  <Link
+                    href="/login"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex justify-center px-4 py-3 rounded-xl text-sm font-medium text-text-secondary hover:bg-background-muted"
+                  >
+                    Login
+                  </Link>
+                  <Link
+                    href="/signup"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex justify-center px-4 py-3 rounded-xl text-sm font-medium text-white bg-brand-indigo hover:bg-brand-indigo-dark shadow-sm"
+                  >
+                    Sign Up
+                  </Link>
+                </div>
+              )}
+
             </div>
           </div>
         )}
