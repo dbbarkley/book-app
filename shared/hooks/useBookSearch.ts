@@ -87,6 +87,7 @@ export function useBookSearch(options: UseBookSearchOptions = {}): UseBookSearch
           cover_image_url: gb.cover_image_url,
           release_date: gb.published_date || new Date().toISOString().split('T')[0],
           author_name: gb.authors.join(', '),
+          page_count: gb.page_count,
           // Note: Google Books IDs are strings, not numbers
           // When user adds to shelf, we'll create the book in our DB
           google_books_id: gb.id,

@@ -39,12 +39,17 @@ class FeedGenerationService < BaseService
   def find_followers(feedable)
     case feedable
     when Book
-      # Followers of book + followers of author
+      # Followers of book + followers of author + users who have the book on their shelf
       book_followers = User.joins(:follows)
                           .where(follows: { followable: feedable })
+      
+      shelf_users = User.joins(:user_books)
+                        .where(user_books: { book_id: feedable.id })
+      
       author_followers = User.joins(:follows)
                             .where(follows: { followable: feedable.author })
-      (book_followers + author_followers).uniq
+      
+      (book_followers + shelf_users + author_followers).uniq
     when Event
       # Followers of author
       User.joins(:follows)

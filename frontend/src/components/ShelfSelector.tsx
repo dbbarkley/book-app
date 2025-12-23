@@ -90,6 +90,7 @@ export default function ShelfSelector({
           visibility: payload.visibility as Visibility,
           dnf_reason: payload.dnf_reason,
           dnf_page: payload.dnf_page,
+          total_pages: bookData?.page_count, // Pass total pages from book data
         })
       }
       setSelectedShelf(status)

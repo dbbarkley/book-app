@@ -1,11 +1,12 @@
 'use client'
 
-import React, { useRef } from 'react'
+import React, { useRef, useState } from 'react'
 import Link from 'next/link'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Edit2 } from 'lucide-react'
 import type { UserBook } from '@book-app/shared'
 import BookCard from './BookCard'
 import Button from './Button'
+import QuickUpdateModal from './QuickUpdateModal'
 
 interface ShelfProps {
   title: string
@@ -14,6 +15,7 @@ interface ShelfProps {
   books: UserBook[]
   viewAllHref?: string
   shelfId: string
+  onUpdate?: () => void
 }
 
 export default function Shelf({
@@ -23,8 +25,11 @@ export default function Shelf({
   books,
   viewAllHref,
   shelfId,
+  onUpdate,
 }: ShelfProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [selectedBook, setSelectedBook] = useState<UserBook | null>(null)
 
   const scroll = (direction: 'left' | 'right') => {
     if (scrollContainerRef.current) {
@@ -36,11 +41,16 @@ export default function Shelf({
     }
   }
 
+  const handleOpenModal = (ub: UserBook) => {
+    setSelectedBook(ub)
+    setIsModalOpen(true)
+  }
+
   if (books.length === 0) return null
 
   return (
     <section id={shelfId} className="mb-12 relative group scroll-mt-40">
-      {/* Shelf Header */}
+      {/* Shelf Header ... */}
       <div className="flex items-end justify-between mb-6 px-1">
         <div>
           <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
@@ -70,14 +80,14 @@ export default function Shelf({
         {/* Scroll Buttons - Desktop Only */}
         <button
           onClick={() => scroll('left')}
-          className="absolute left-[-20px] top-1/2 -translate-y-1/2 z-10 bg-white/90 shadow-lg rounded-full p-2 text-slate-700 opacity-0 group-hover:opacity-100 transition-opacity hidden md:block hover:bg-white"
+          className="absolute left-[-20px] top-[40%] -translate-y-1/2 z-10 bg-white/90 shadow-lg rounded-full p-2 text-slate-700 opacity-0 group-hover:opacity-100 transition-opacity hidden md:block hover:bg-white"
           aria-label="Scroll left"
         >
           <ChevronLeft className="w-6 h-6" />
         </button>
         <button
           onClick={() => scroll('right')}
-          className="absolute right-[-20px] top-1/2 -translate-y-1/2 z-10 bg-white/90 shadow-lg rounded-full p-2 text-slate-700 opacity-0 group-hover:opacity-100 transition-opacity hidden md:block hover:bg-white"
+          className="absolute right-[-20px] top-[40%] -translate-y-1/2 z-10 bg-white/90 shadow-lg rounded-full p-2 text-slate-700 opacity-0 group-hover:opacity-100 transition-opacity hidden md:block hover:bg-white"
           aria-label="Scroll right"
         >
           <ChevronRight className="w-6 h-6" />
@@ -94,20 +104,39 @@ export default function Shelf({
           {books.map((userBook) => (
             <div
               key={userBook.id}
-              className="flex-none w-[160px] sm:w-[200px] snap-start"
+              className="flex-none w-[160px] sm:w-[200px] snap-start relative group/item"
             >
               {userBook.book && (
-                <BookCard
-                  book={userBook.book}
-                  showDescription={false}
-                  userBook={userBook}
-                  coverSize="medium"
-                />
+                <>
+                  <BookCard
+                    book={userBook.book}
+                    showDescription={false}
+                    userBook={userBook}
+                    coverSize="medium"
+                  />
+                  {/* Quick Edit Overlay */}
+                  <button
+                    onClick={() => handleOpenModal(userBook)}
+                    className="absolute top-2 right-2 p-2 bg-white/90 hover:bg-white shadow-md rounded-full text-slate-700 opacity-0 group-hover/item:opacity-100 transition-all scale-75 hover:scale-100"
+                    title="Quick Update"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                </>
               )}
             </div>
           ))}
         </div>
       </div>
+
+      {selectedBook && (
+        <QuickUpdateModal
+          userBook={selectedBook}
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onUpdate={onUpdate}
+        />
+      )}
     </section>
   )
 }

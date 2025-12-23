@@ -48,7 +48,9 @@ export {
   useRecommendedEvents,
   useUserLibrary,
   usePrivateLibrary,
+  useBookFriends,
 } from './hooks'
+
 
 // Utils
 export * from './utils'

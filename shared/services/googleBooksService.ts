@@ -24,6 +24,7 @@ export interface GoogleBooksBook {
   cover_image_url?: string
   published_date?: string
   isbn?: string
+  page_count?: number
 }
 
 export interface GoogleBooksSearchResult {
@@ -76,6 +77,7 @@ function transformBook(book: any): GoogleBooksBook {
     published_date: volumeInfo.publishedDate,
     isbn: volumeInfo.industryIdentifiers?.find((id: any) => id.type === 'ISBN_13')?.identifier ||
           volumeInfo.industryIdentifiers?.find((id: any) => id.type === 'ISBN_10')?.identifier,
+    page_count: volumeInfo.pageCount,
   }
 }
 
@@ -98,7 +100,7 @@ export async function searchAuthors(
   try {
     // Search for books by author
     const searchQuery = `inauthor:"${query}"`
-    const url = `${GOOGLE_BOOKS_API_BASE}/volumes?q=${encodeURIComponent(searchQuery)}&maxResults=${Math.min(maxResults * 2, 40)}&fields=items(id,volumeInfo(title,authors,description,imageLinks,publishedDate,industryIdentifiers))`
+    const url = `${GOOGLE_BOOKS_API_BASE}/volumes?q=${encodeURIComponent(searchQuery)}&maxResults=${Math.min(maxResults * 2, 40)}&fields=items(id,volumeInfo(title,authors,description,imageLinks,publishedDate,industryIdentifiers,pageCount))`
 
     const response = await fetch(url)
     
@@ -136,7 +138,7 @@ export async function searchBooks(
   }
 
   try {
-    const url = `${GOOGLE_BOOKS_API_BASE}/volumes?q=${encodeURIComponent(query)}&maxResults=${Math.min(maxResults, 40)}&fields=items(id,volumeInfo(title,authors,description,imageLinks,publishedDate,industryIdentifiers))`
+    const url = `${GOOGLE_BOOKS_API_BASE}/volumes?q=${encodeURIComponent(query)}&maxResults=${Math.min(maxResults, 40)}&fields=items(id,volumeInfo(title,authors,description,imageLinks,publishedDate,industryIdentifiers,pageCount))`
 
     const response = await fetch(url)
     

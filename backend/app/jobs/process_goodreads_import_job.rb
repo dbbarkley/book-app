@@ -100,6 +100,7 @@ class ProcessGoodreadsImportJob < ApplicationJob
     my_rating = row['My Rating']&.to_i || 0
     avg_rating = row['Average Rating']&.to_f || 0.0
     publisher = row['Publisher']&.strip
+    page_count = row['Number of Pages']&.to_i
     
     # Parse year - handle both "Year Published" and "Original Publication Year"
     year_str = row['Year Published'] || row['Original Publication Year']
@@ -123,7 +124,8 @@ class ProcessGoodreadsImportJob < ApplicationJob
       isbn13: isbn13,
       publisher: publisher,
       year: year,
-      avg_rating: avg_rating
+      avg_rating: avg_rating,
+      page_count: page_count
     )
 
     # Convert Goodreads shelf to our shelf status
@@ -135,6 +137,7 @@ class ProcessGoodreadsImportJob < ApplicationJob
       status: status,
       shelf: status,
       rating: my_rating > 0 ? my_rating : nil,
+      total_pages: page_count || (book.respond_to?(:page_count) ? book.page_count : nil),
       started_at: date_added,
       finished_at: date_read
     )
@@ -152,16 +155,22 @@ class ProcessGoodreadsImportJob < ApplicationJob
     Author.create!(name: name)
   end
 
-  def find_or_create_book(title:, author:, isbn: nil, isbn13: nil, publisher: nil, year: nil, avg_rating: 0.0)
+  def find_or_create_book(title:, author:, isbn: nil, isbn13: nil, publisher: nil, year: nil, avg_rating: 0.0, page_count: nil)
     # Try to find by ISBN13 first (most reliable)
     if isbn13.present? && isbn13.length == 13
       book = Book.find_by(isbn: isbn13)
+      if book && page_count.present? && (!book.respond_to?(:page_count) || book.page_count.blank?)
+        book.update(page_count: page_count) if book.respond_to?(:page_count=)
+      end
       return book if book
     end
 
     # Try ISBN10
     if isbn.present? && (isbn.length == 10 || isbn.length == 13)
       book = Book.find_by(isbn: isbn)
+      if book && page_count.present? && (!book.respond_to?(:page_count) || book.page_count.blank?)
+        book.update(page_count: page_count) if book.respond_to?(:page_count=)
+      end
       return book if book
     end
 
@@ -171,10 +180,13 @@ class ProcessGoodreadsImportJob < ApplicationJob
       title.downcase, 
       author.id
     ).first
+    if book && page_count.present? && (!book.respond_to?(:page_count) || book.page_count.blank?)
+      book.update(page_count: page_count) if book.respond_to?(:page_count=)
+    end
     return book if book
 
     # Create new book
-    # Note: Publisher and page_count aren't in the schema, can be added later
+    # Note: Publisher isn't in the schema, can be added later
     # Using release_date (not published_date) as per schema
     # If no year, use a placeholder date (Jan 1, 1900) to satisfy NOT NULL constraint
     release_date = if year && year > 1000
@@ -183,14 +195,19 @@ class ProcessGoodreadsImportJob < ApplicationJob
                      Date.new(1900, 1, 1) # Placeholder for unknown release dates
                    end
     
-    Book.create!(
+    create_params = {
       title: title,
       author: author,
       isbn: isbn13 || isbn,
       release_date: release_date,
       description: nil, # Can be enriched later via Google Books API
       cover_image_url: nil
-    )
+    }
+    
+    # Add page_count if the model supports it
+    create_params[:page_count] = page_count if Book.column_names.include?('page_count')
+    
+    Book.create!(create_params)
   end
 
   def convert_shelf_to_status(shelf, row = nil)

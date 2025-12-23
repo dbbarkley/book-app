@@ -250,6 +250,19 @@ export class ApiClient {
     return response.data.book
   }
 
+  async getBookFriends(id: number) {
+    const response = await this.client.get<{ 
+      friends: Array<{ 
+        id: number; 
+        username: string; 
+        display_name?: string; 
+        avatar_url?: string;
+        status: ShelfStatus;
+      }> 
+    }>(`/books/${id}/friends`)
+    return response.data.friends
+  }
+
   // User Book endpoints (for shelves and reading progress)
   // These endpoints need to be implemented in the Rails backend
   async getUserBook(bookId: number) {
@@ -289,6 +302,7 @@ export class ApiClient {
       payload.cover_image_url = bookData.cover_image_url
       payload.release_date = bookData.release_date
       payload.google_books_id = bookData.google_books_id
+      payload.page_count = bookData.page_count
     }
     
     const response = await this.client.post<{ user_book: UserBook }>('/user/books', payload)

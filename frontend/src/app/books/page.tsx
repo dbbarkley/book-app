@@ -25,12 +25,18 @@ export default function BooksLibraryPage() {
     groupedLibrary,
     loading: libraryLoading,
     error: libraryError,
+    refresh: refreshLibrary,
   } = useUserLibrary(user?.id)
 
-  const { privateBooks, loading: privateLoading, error: privateError } =
+  const { privateBooks, loading: privateLoading, error: privateError, refreshPrivateLibrary } =
     usePrivateLibrary()
 
   const [activeTab, setActiveTab] = useState('reading')
+
+  const handleUpdate = () => {
+    refreshLibrary()
+    refreshPrivateLibrary()
+  }
 
   // Grouped books from library
   const readingBooks = groupedLibrary?.reading || []
@@ -90,12 +96,12 @@ export default function BooksLibraryPage() {
           <div className="flex gap-4 justify-center">
             <Link href="/login">
               <Button variant="primary" size="lg" className="px-8">
-                Sign In
+              Sign In
               </Button>
             </Link>
             <Link href="/signup">
               <Button variant="outline" size="lg" className="px-8">
-                Sign Up
+              Sign Up
               </Button>
             </Link>
           </div>
@@ -205,7 +211,7 @@ export default function BooksLibraryPage() {
         )}
 
         {/* Currently Reading - Hero Section */}
-        <ReadingHero books={readingBooks} />
+        <ReadingHero books={readingBooks} onUpdate={handleUpdate} />
 
         {/* To Read Shelf */}
         <Shelf 
@@ -214,6 +220,7 @@ export default function BooksLibraryPage() {
           icon={<BookIcon className="w-6 h-6 text-amber-600" />} 
           books={toReadBooks} 
           subtitle="Your future adventures"
+          onUpdate={handleUpdate}
         />
 
         {/* Read Shelf */}
@@ -223,6 +230,7 @@ export default function BooksLibraryPage() {
           icon={<CheckCircle className="w-6 h-6 text-green-600" />} 
           books={readBooks} 
           subtitle="Books you've finished"
+          onUpdate={handleUpdate}
         />
 
         {/* DNF Shelf */}
@@ -232,6 +240,7 @@ export default function BooksLibraryPage() {
           icon={<XCircle className="w-6 h-6 text-rose-600" />} 
           books={dnfBooks} 
           subtitle="On hold or stopped"
+          onUpdate={handleUpdate}
         />
 
         {/* Private Section */}
@@ -242,6 +251,7 @@ export default function BooksLibraryPage() {
             icon={<Lock className="w-6 h-6 text-slate-600" />} 
             books={privateBooks} 
             subtitle="Only visible to you"
+            onUpdate={handleUpdate}
           />
           
           {privateBooks.length === 0 && !privateLoading && (
@@ -252,8 +262,8 @@ export default function BooksLibraryPage() {
               <p className="font-medium">No private books yet</p>
               <p className="text-sm text-slate-400 mt-1">Books you mark as private will appear here.</p>
             </div>
-          )}
-          
+        )}
+
           {privateError && (
             <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mt-4 text-sm text-amber-800">
               {privateError}

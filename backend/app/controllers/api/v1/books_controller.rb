@@ -49,6 +49,31 @@ module Api
         render json: { book: serialize_book_detail(book) }, status: :ok
       end
 
+      # GET /api/v1/books/:id/friends
+      def friends
+        book = Book.find(params[:id])
+        
+        # Get users that the current user follows who also have this book
+        # Note: In a real app, you might want to filter by shelf status or visibility
+        friend_ids = current_user.followed_users.pluck(:id)
+        
+        user_books = UserBook.includes(:user)
+                             .where(book_id: book.id, user_id: friend_ids, visibility: 'public')
+                             .limit(10)
+
+        render json: {
+          friends: user_books.map { |ub| 
+            {
+              id: ub.user.id,
+              username: ub.user.username,
+              display_name: ub.user.display_name,
+              avatar_url: ub.user.avatar_url,
+              status: ub.status
+            }
+          }
+        }, status: :ok
+      end
+
       private
 
       def serialize_books(books)
@@ -61,7 +86,8 @@ module Api
           title: book.title,
           author_name: book.author.name,
           cover_image_url: book.cover_image_url,
-          release_date: book.release_date
+          release_date: book.release_date,
+          page_count: book.respond_to?(:page_count) ? book.page_count : nil
         }
       end
 
@@ -73,6 +99,7 @@ module Api
           description: book.description,
           cover_image_url: book.cover_image_url,
           release_date: book.release_date,
+          page_count: book.respond_to?(:page_count) ? book.page_count : nil,
           author: {
             id: book.author.id,
             name: book.author.name,

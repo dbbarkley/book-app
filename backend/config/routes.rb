@@ -40,7 +40,9 @@ Rails.application.routes.draw do
       end
       
       # Books
-      resources :books, only: [:index, :show]
+      resources :books, only: [:index, :show] do
+        get 'friends', on: :member
+      end
       
       # User Books (shelves, reading progress)
       resources :user_books, only: [:index, :create, :show, :update], path: 'user/books' do

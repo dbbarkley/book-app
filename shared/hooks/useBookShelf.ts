@@ -10,7 +10,7 @@ interface UseBookShelfReturn {
     bookId: number,
     shelf: BookShelf,
     bookData?: Book,
-    options?: { visibility?: Visibility; dnf_reason?: string; dnf_page?: number }
+    options?: { visibility?: Visibility; dnf_reason?: string; dnf_page?: number; total_pages?: number }
   ) => Promise<UserBook>
   loading: boolean
   error: string | null

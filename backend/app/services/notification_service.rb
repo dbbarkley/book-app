@@ -35,9 +35,14 @@ class NotificationService < BaseService
   def find_followers
     case @notifiable
     when Book
-      User.joins(:follows)
-          .where(follows: { followable: @notifiable })
-          .distinct
+      # Followers of book + users who have the book on their shelf
+      book_followers = User.joins(:follows)
+                          .where(follows: { followable: @notifiable })
+      
+      shelf_users = User.joins(:user_books)
+                        .where(user_books: { book_id: @notifiable.id })
+      
+      (book_followers + shelf_users).uniq
     when Author
       User.joins(:follows)
           .where(follows: { followable: @notifiable })

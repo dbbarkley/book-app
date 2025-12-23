@@ -46,7 +46,7 @@ export function useBookProgress(): UseBookProgressReturn {
   const updateProgress = async (userBookId: number, updates: UpdateProgressParams) => {
     setLocalError(null)
     try {
-      return await updateProgressStore(bookId, updates)
+      return await updateProgressStore(userBookId, updates)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update progress'
       setLocalError(errorMessage)

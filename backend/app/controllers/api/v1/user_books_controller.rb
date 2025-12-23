@@ -68,7 +68,7 @@ module Api
           status: status,
           shelf: status,
           visibility: visibility,
-          total_pages: params[:total_pages],
+          total_pages: params[:total_pages] || (user_book.book.respond_to?(:page_count) ? user_book.book.page_count : nil),
           dnf_reason: params[:dnf_reason],
           dnf_page: params[:dnf_page]
         )
@@ -171,7 +171,8 @@ module Api
           cover_image_url: google_books_data[:cover_image_url],
           release_date: parse_release_date(google_books_data[:release_date]),
           author: author,
-          google_books_id: google_books_id
+          google_books_id: google_books_id,
+          page_count: google_books_data[:page_count]
         )
       end
 
@@ -234,7 +235,8 @@ module Api
           cover_image_url: book.cover_image_url,
           release_date: book.release_date,
           author_name: book.author.name,
-          google_books_id: book.google_books_id
+          google_books_id: book.google_books_id,
+          page_count: book.respond_to?(:page_count) ? book.page_count : nil
         }
       end
 

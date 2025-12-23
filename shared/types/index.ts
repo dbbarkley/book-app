@@ -33,6 +33,7 @@ export interface Book {
   author?: Author
   author_name?: string
   followers_count?: number
+  page_count?: number
   google_books_id?: string // Google Books API ID (if from Google Books)
 }
 

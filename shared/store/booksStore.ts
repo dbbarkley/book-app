@@ -24,7 +24,7 @@ interface BooksState {
     bookId: number,
     status: ShelfStatus,
     bookData?: Book,
-    options?: { visibility?: Visibility; dnf_reason?: string; dnf_page?: number }
+    options?: { visibility?: Visibility; dnf_reason?: string; dnf_page?: number; total_pages?: number }
   ) => Promise<UserBook>
   updateProgress: (
     userBookId: number,
@@ -134,7 +134,7 @@ export const useBooksStore = create<BooksState>((set, get) => ({
     bookId: number,
     status: ShelfStatus,
     bookData?: Book,
-    options?: { visibility?: Visibility; dnf_reason?: string; dnf_page?: number }
+    options?: { visibility?: Visibility; dnf_reason?: string; dnf_page?: number; total_pages?: number }
   ) => {
     set({ loading: true, error: null })
     try {
