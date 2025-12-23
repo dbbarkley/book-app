@@ -19,6 +19,7 @@ export default function Navigation() {
     { href: '/events', label: 'Events' },
     { href: '/authors', label: 'Authors' },
     { href: '/search', label: 'Search' },
+    { href: '/testing', label: 'Testing' },
   ]
 
   const isActive = (href: string) => pathname === href

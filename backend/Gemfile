@@ -11,6 +11,10 @@ gem 'sidekiq', '~> 7.0'
 gem 'jwt'
 gem 'bcrypt', '~> 3.1.7'
 gem 'rack-cors'
+gem 'httparty'
+gem 'nokogiri'
+gem 'chronic'
+gem 'geocoder'
 
 group :development, :test do
   gem 'byebug', platforms: [:mri, :mingw, :x64_mingw]

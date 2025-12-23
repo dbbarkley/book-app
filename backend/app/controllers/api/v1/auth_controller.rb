@@ -77,6 +77,7 @@ module Api
           display_name: user.display_name,
           bio: user.bio,
           avatar_url: user.avatar_url,
+          zipcode: user.zipcode,
           created_at: user.created_at,
           onboarding_completed: user.onboarding_completed || false
         }

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2025_12_17_103000) do
+ActiveRecord::Schema[7.2].define(version: 2025_12_22_000004) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -46,6 +46,16 @@ ActiveRecord::Schema[7.2].define(version: 2025_12_17_103000) do
     t.index ["title", "author_id"], name: "index_books_on_title_and_author_id"
   end
 
+  create_table "event_authors", force: :cascade do |t|
+    t.bigint "event_id", null: false
+    t.bigint "author_id", null: false
+    t.float "confidence_score", default: 1.0
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["author_id"], name: "index_event_authors_on_author_id"
+    t.index ["event_id"], name: "index_event_authors_on_event_id"
+  end
+
   create_table "events", force: :cascade do |t|
     t.string "title", null: false
     t.text "description"
@@ -53,7 +63,7 @@ ActiveRecord::Schema[7.2].define(version: 2025_12_17_103000) do
     t.datetime "starts_at", null: false
     t.datetime "ends_at"
     t.string "location"
-    t.bigint "author_id", null: false
+    t.bigint "author_id"
     t.bigint "book_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
@@ -63,14 +73,23 @@ ActiveRecord::Schema[7.2].define(version: 2025_12_17_103000) do
     t.string "external_source"
     t.string "timezone"
     t.datetime "last_refreshed_at"
+    t.bigint "venue_id"
+    t.string "external_id"
+    t.string "status", default: "upcoming"
+    t.string "image_url"
+    t.string "audience_type"
+    t.index ["audience_type"], name: "index_events_on_audience_type"
     t.index ["author_id"], name: "index_events_on_author_id"
     t.index ["book_id"], name: "index_events_on_book_id"
     t.index ["event_type", "starts_at"], name: "index_events_on_event_type_and_starts_at"
+    t.index ["external_source", "external_id"], name: "index_events_on_external_source_and_external_id", unique: true
     t.index ["external_source"], name: "index_events_on_external_source"
     t.index ["is_virtual"], name: "index_events_on_is_virtual"
     t.index ["last_refreshed_at"], name: "index_events_on_last_refreshed_at"
     t.index ["starts_at", "ends_at"], name: "index_events_on_starts_at_and_ends_at"
     t.index ["starts_at"], name: "index_events_on_starts_at"
+    t.index ["status"], name: "index_events_on_status"
+    t.index ["venue_id"], name: "index_events_on_venue_id"
   end
 
   create_table "feed_items", force: :cascade do |t|
@@ -134,6 +153,18 @@ ActiveRecord::Schema[7.2].define(version: 2025_12_17_103000) do
     t.index ["user_id"], name: "index_notifications_on_user_id"
   end
 
+  create_table "processed_locations", force: :cascade do |t|
+    t.string "city"
+    t.string "state"
+    t.string "zipcode"
+    t.datetime "last_searched_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["city", "state"], name: "index_processed_locations_on_city_and_state"
+    t.index ["last_searched_at"], name: "index_processed_locations_on_last_searched_at"
+    t.index ["zipcode"], name: "index_processed_locations_on_zipcode"
+  end
+
   create_table "user_books", force: :cascade do |t|
     t.bigint "user_id", null: false
     t.bigint "book_id", null: false
@@ -170,15 +201,41 @@ ActiveRecord::Schema[7.2].define(version: 2025_12_17_103000) do
     t.datetime "updated_at", null: false
     t.boolean "onboarding_completed", default: false, null: false
     t.jsonb "preferences", default: {}, null: false
+    t.string "zipcode"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["onboarding_completed"], name: "index_users_on_onboarding_completed"
     t.index ["preferences"], name: "index_users_on_preferences", using: :gin
     t.index ["username"], name: "index_users_on_username", unique: true
   end
 
+  create_table "venues", force: :cascade do |t|
+    t.string "name", null: false
+    t.string "venue_type", default: "other"
+    t.string "address"
+    t.string "city"
+    t.string "state"
+    t.string "zipcode"
+    t.decimal "latitude", precision: 10, scale: 6
+    t.decimal "longitude", precision: 10, scale: 6
+    t.string "website_url"
+    t.string "source"
+    t.string "external_id"
+    t.boolean "active", default: true
+    t.datetime "last_fetched_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["active"], name: "index_venues_on_active"
+    t.index ["city", "state"], name: "index_venues_on_city_and_state"
+    t.index ["source", "external_id"], name: "index_venues_on_source_and_external_id", unique: true
+    t.index ["zipcode"], name: "index_venues_on_zipcode"
+  end
+
   add_foreign_key "books", "authors"
+  add_foreign_key "event_authors", "authors"
+  add_foreign_key "event_authors", "events"
   add_foreign_key "events", "authors"
   add_foreign_key "events", "books"
+  add_foreign_key "events", "venues"
   add_foreign_key "feed_items", "users"
   add_foreign_key "follows", "users", column: "follower_id"
   add_foreign_key "imports", "users"

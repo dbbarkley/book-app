@@ -24,8 +24,15 @@ class User < ApplicationRecord
 
   # Ensure preferences is always a hash
   before_save :ensure_preferences_hash
+  after_save :process_location, if: :saved_change_to_zipcode?
 
   private
+
+  def process_location
+    return unless zipcode.present?
+    Rails.logger.info "[User] Zipcode changed to #{zipcode}. Triggering location discovery..."
+    ProcessUserLocationJob.perform_later(id)
+  end
 
   def ensure_preferences_hash
     self.preferences = {} if preferences.nil?

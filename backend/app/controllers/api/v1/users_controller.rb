@@ -3,10 +3,22 @@ module Api
     class UsersController < BaseController
       include Authenticable
       before_action :authenticate_user!, except: [:show]
-      before_action :set_user, only: [:show, :update, :profile, :following, :followers]
+      before_action :set_user, only: [:show, :update, :profile, :following, :followers, :library]
 
       def show
         render json: serialize_user(@user), status: :ok
+      end
+
+      # GET /api/v1/users/:id/library
+      def library
+        user_books = @user.user_books
+                          .includes(book: :author)
+                          .where(visibility: 'public')
+                          .order(updated_at: :desc)
+
+        render json: {
+          user_books: user_books.map { |ub| serialize_user_book(ub) }
+        }, status: :ok
       end
 
       def update
@@ -89,7 +101,8 @@ module Api
           preferences: {
             genres: user.preferences['genres'] || [],
             author_ids: user.preferences['author_ids'] || [],
-            onboarding_completed: user.onboarding_completed
+            onboarding_completed: user.onboarding_completed,
+            zipcode: user.zipcode
           }
         }, status: :ok
       end
@@ -97,11 +110,16 @@ module Api
       # Update current user's preferences
       def update_preferences
         user = current_user
-        preferences_params = params.require(:preferences).permit(:onboarding_completed, genres: [], author_ids: [])
+        preferences_params = params.require(:preferences).permit(:onboarding_completed, :zipcode, genres: [], author_ids: [])
 
         # Update onboarding_completed if provided
         if preferences_params.key?(:onboarding_completed)
           user.onboarding_completed = preferences_params[:onboarding_completed]
+        end
+
+        # Update zipcode if provided
+        if preferences_params.key?(:zipcode)
+          user.zipcode = preferences_params[:zipcode]
         end
 
         # Update preferences JSONB
@@ -115,7 +133,8 @@ module Api
             preferences: {
               genres: user.preferences['genres'] || [],
               author_ids: user.preferences['author_ids'] || [],
-              onboarding_completed: user.onboarding_completed
+              onboarding_completed: user.onboarding_completed,
+              zipcode: user.zipcode
             }
           }, status: :ok
         else
@@ -130,7 +149,7 @@ module Api
       end
 
       def user_params
-        params.require(:user).permit(:display_name, :bio, :avatar_url)
+        params.require(:user).permit(:display_name, :bio, :avatar_url, :zipcode)
       end
 
       def serialize_user(user)
@@ -140,6 +159,7 @@ module Api
           display_name: user.display_name,
           bio: user.bio,
           avatar_url: user.avatar_url,
+          zipcode: user.zipcode,
           created_at: user.created_at
         }
       end
@@ -184,8 +204,34 @@ module Api
         {
           id: book.id,
           title: book.title,
+          isbn: book.isbn,
+          description: book.description,
+          cover_image_url: book.cover_image_url,
+          release_date: book.release_date,
           author_name: book.author.name,
-          cover_image_url: book.cover_image_url
+          google_books_id: book.google_books_id
+        }
+      end
+
+      def serialize_user_book(user_book)
+        {
+          id: user_book.id,
+          book_id: user_book.book_id,
+          book: serialize_book(user_book.book),
+          status: user_book.status,
+          shelf: user_book.shelf,
+          visibility: user_book.visibility,
+          pages_read: user_book.pages_read,
+          total_pages: user_book.total_pages,
+          completion_percentage: user_book.completion_percentage,
+          rating: user_book.rating,
+          review: user_book.review,
+          dnf_reason: user_book.dnf_reason,
+          dnf_page: user_book.dnf_page,
+          started_at: user_book.started_at,
+          finished_at: user_book.finished_at,
+          created_at: user_book.created_at,
+          updated_at: user_book.updated_at
         }
       end
     end

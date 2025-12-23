@@ -35,6 +35,7 @@ export function useOnboarding() {
     totalSteps,
     selectedGenres,
     selectedAuthorIds,
+    zipcode,
     isLoading,
     error,
     nextStep,
@@ -42,6 +43,7 @@ export function useOnboarding() {
     setCurrentStep,
     toggleGenre,
     toggleAuthor,
+    setZipcode,
     setSelectedGenres,
     setSelectedAuthorIds,
     setLoading,
@@ -62,6 +64,7 @@ export function useOnboarding() {
       await apiClient.savePreferences({
         genres: selectedGenres,
         author_ids: selectedAuthorIds,
+        zipcode: zipcode,
         onboarding_completed: true,
       })
 
@@ -76,7 +79,7 @@ export function useOnboarding() {
       setLoading(false)
       return { success: false, error: errorMessage }
     }
-  }, [selectedGenres, selectedAuthorIds, setLoading, setError])
+  }, [selectedGenres, selectedAuthorIds, zipcode, setLoading, setError])
 
   /**
    * Skip onboarding - mark as completed without preferences
@@ -141,6 +144,7 @@ export function useOnboarding() {
     totalSteps,
     selectedGenres,
     selectedAuthorIds,
+    zipcode,
     isLoading,
     error,
 
@@ -150,6 +154,7 @@ export function useOnboarding() {
     setCurrentStep,
     toggleGenre,
     toggleAuthor,
+    setZipcode,
     setSelectedGenres,
     setSelectedAuthorIds,
     submitPreferences,

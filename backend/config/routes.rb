@@ -18,6 +18,7 @@ Rails.application.routes.draw do
         get 'profile', on: :member
         get 'following', on: :member
         get 'followers', on: :member
+        get 'library', on: :member
       end
       
       # Follows
@@ -47,8 +48,9 @@ Rails.application.routes.draw do
         post 'review', on: :member
       end
       
-      # Events
+      # Events & Venues
       resources :events, only: [:index, :show]
+      resources :venues, only: [:index, :show]
       
       # Notifications
       resources :notifications, only: [:index] do

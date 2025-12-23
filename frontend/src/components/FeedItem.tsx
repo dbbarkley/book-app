@@ -73,13 +73,20 @@ const EventRecommendation = (item: FeedItem) => {
   if (!event) return null
   const reason = formatContext(item, 'Event that matches your tastes.')
 
+  const eventLink = event.external_url || `/events/${event.id}`
+  const isExternal = !!event.external_url
+
   return (
     <div className="flex flex-col gap-4">
       <div>
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-text-muted mb-1">
           Event Recommendation
         </p>
-        <Link href={`/events/${event.id}`}>
+        <Link 
+          href={eventLink}
+          target={isExternal ? "_blank" : undefined}
+          rel={isExternal ? "noopener noreferrer" : undefined}
+        >
           <h3 className="text-lg font-semibold text-text-primary hover:text-brand-indigo mb-1">
             {event.title}
           </h3>
@@ -102,10 +109,12 @@ const EventRecommendation = (item: FeedItem) => {
       </div>
       <div className="flex flex-wrap gap-2">
         <Link
-          href={`/events/${event.id}`}
+          href={eventLink}
+          target={isExternal ? "_blank" : undefined}
+          rel={isExternal ? "noopener noreferrer" : undefined}
           className="inline-flex items-center justify-center rounded-full border border-border-default bg-background-muted px-3 py-1.5 text-sm font-semibold text-text-secondary transition hover:border-brand-indigo hover:text-brand-indigo"
         >
-          View Event
+          {isExternal ? 'View on Website' : 'View Event'}
         </Link>
         <span className="text-xs text-text-muted">
           Score: {item.metadata?.score ?? 'N/A'}
@@ -251,11 +260,20 @@ const LegacyContent = (item: FeedItem) => {
       ) : null
     case 'author_event':
       const event = item.feedable as Event
-      return event ? (
+      if (!event) return null
+      
+      const eventLink = event.external_url || `/events/${event.id}`
+      const isExternal = !!event.external_url
+
+      return (
         <div className="flex gap-4">
           <div className="flex-1">
           <div className="text-xs text-text-muted mb-1">Upcoming Event</div>
-          <Link href={`/events/${event.id}`}>
+          <Link 
+            href={eventLink}
+            target={isExternal ? "_blank" : undefined}
+            rel={isExternal ? "noopener noreferrer" : undefined}
+          >
             <h3 className="text-lg font-semibold text-text-primary hover:text-brand-indigo mb-1">
               {event.title}
             </h3>
@@ -283,7 +301,7 @@ const LegacyContent = (item: FeedItem) => {
             </div>
           </div>
         </div>
-      ) : null
+      )
     case 'author_announcement':
       const author = item.feedable as Author
       return author ? (

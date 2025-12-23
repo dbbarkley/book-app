@@ -39,6 +39,8 @@ export { ImportProgress } from './ImportProgress'
 // Book cover components
 export { BookCoverImage } from './BookCoverImage'
 export { ModernPlaceholder } from './ModernPlaceholder'
+export { default as UserLibrary } from './UserLibrary'
+export { default as UserLibraryShelf } from './UserLibraryShelf'
 export { SkeletonLoader } from './SkeletonLoader'
 
 // Export types

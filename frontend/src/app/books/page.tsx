@@ -67,7 +67,7 @@ export default function BooksLibraryPage() {
   }
 
   const totalPublicBooks =
-    toReadBooks.length + readingBooks.length + readBooks.length + dnfBooks.length
+    toReadBooks?.length + readingBooks?.length + readBooks?.length + dnfBooks?.length
 
   return (
     <div className="container-mobile py-6 sm:py-8">
@@ -128,17 +128,17 @@ export default function BooksLibraryPage() {
         )}
 
         {/* Reading Section */}
-        {readingBooks.length > 0 && (
+        {(
           <section className="mb-8">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-2xl font-semibold text-slate-900 flex items-center gap-2">
                 <span className="text-2xl">📖</span>
                 Currently Reading
               </h2>
-              <span className="text-sm text-slate-500">{readingBooks.length}</span>
+              <span className="text-sm text-slate-500">{readingBooks?.length}</span>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-              {readingBooks.map((userBook) => (
+              {readingBooks?.map((userBook) => (
                 <div key={userBook.id} className="relative">
                   {userBook.book && (
                     <BookCard book={userBook.book} showDescription={false} userBook={userBook} />
@@ -168,10 +168,10 @@ export default function BooksLibraryPage() {
                   These books stay out of your read total.
                 </p>
               </div>
-              <span className="text-sm text-slate-500">{dnfBooks.length}</span>
+              <span className="text-sm text-slate-500">{dnfBooks?.length}</span>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-              {dnfBooks.map((userBook) => (
+              {dnfBooks?.map((userBook) => (
                 userBook.book && (
                   <BookCard
                     key={userBook.id}
@@ -186,17 +186,17 @@ export default function BooksLibraryPage() {
         )}
 
         {/* To Read Section */}
-        {toReadBooks.length > 0 && (
+        {(
           <section className="mb-8">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-2xl font-semibold text-slate-900 flex items-center gap-2">
                 <span className="text-2xl">📚</span>
                 To Read
               </h2>
-              <span className="text-sm text-slate-500">{toReadBooks.length}</span>
+              <span className="text-sm text-slate-500">{toReadBooks?.length}</span>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-              {toReadBooks.map((userBook) => (
+              {toReadBooks?.map((userBook) => (
                 userBook.book && (
                   <BookCard
                     key={userBook.id}
@@ -211,17 +211,17 @@ export default function BooksLibraryPage() {
         )}
 
         {/* Read Section */}
-        {readBooks.length > 0 && (
+        {(
           <section className="mb-8">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-2xl font-semibold text-slate-900 flex items-center gap-2">
                 <span className="text-2xl">✓</span>
                 Read
               </h2>
-              <span className="text-sm text-slate-500">{readBooks.length}</span>
+              <span className="text-sm text-slate-500">{readBooks?.length}</span>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-              {readBooks.map((userBook) => (
+              {readBooks?.map((userBook) => (
                 <div key={userBook.id} className="relative">
                   {userBook.book && (
                     <BookCard book={userBook.book} showDescription={false} userBook={userBook} />

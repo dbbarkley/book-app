@@ -1,19 +1,19 @@
 /**
  * useEvents Hook
  * 
- * Fetches and manages events from followed authors.
- * Returns upcoming events sorted by start date.
+ * Fetches and manages events from venues and followed authors.
+ * 
+ * ARCHITECTURE CONTEXT:
+ * - Venues are the source of truth for event discovery.
+ * - Events belong to venues (bookstores, libraries, universities) which are globally cached.
+ * - This system scales as more cities/venues are added via background jobs.
+ * - Events may appear without followed authors because they are discovered via local venues.
  * 
  * Features:
  * - Automatic caching via Zustand store
+ * - Geographic filtering (zipcode, radius)
  * - Pagination support
  * - Loading/error states
- * - Automatic refetch on mount (if stale)
- * 
- * Usage:
- * ```tsx
- * const { events, isLoading, error, loadMore, hasMore } = useEvents({ upcoming: true })
- * ```
  */
 
 import { useEffect, useCallback } from 'react'
@@ -103,12 +103,23 @@ export const useEvents = (options: UseEventsOptions = {}) => {
     fetchEvents(1)
   }, [fetchEvents])
 
-  // Auto-fetch on mount (if enabled and data is stale)
+  // Auto-fetch on mount or when search params change
   useEffect(() => {
-    if (autoFetch && shouldRefreshEvents()) {
+    // We fetch if it's the first time OR if search params have changed
+    // (except for autoFetch being false)
+    if (autoFetch) {
       fetchEvents(1)
     }
-  }, [autoFetch]) // Only run on mount
+  }, [
+    autoFetch, 
+    searchParams.zipcode, 
+    searchParams.radius, 
+    searchParams.author_id, 
+    searchParams.event_type,
+    searchParams.audience_type,
+    searchParams.upcoming,
+    searchParams.start_date
+  ])
 
   return {
     events,

@@ -19,6 +19,7 @@ interface ProfileFormData {
   display_name: string
   bio: string
   avatar_url: string
+  zipcode: string
 }
 
 interface PreferencesFormData {
@@ -54,6 +55,7 @@ function SettingsContent() {
     display_name: '',
     bio: '',
     avatar_url: '',
+    zipcode: '',
   })
 
   const [preferencesData, setPreferencesData] = useState<PreferencesFormData>({
@@ -70,6 +72,7 @@ function SettingsContent() {
         display_name: user.display_name || '',
         bio: user.bio || '',
         avatar_url: user.avatar_url || '',
+        zipcode: user.zipcode || '',
       })
       fetchPreferences()
       fetchAuthors()
@@ -122,6 +125,7 @@ function SettingsContent() {
         display_name: formData.display_name || undefined,
         bio: formData.bio || undefined,
         avatar_url: formData.avatar_url || undefined,
+        zipcode: formData.zipcode || undefined,
       })
 
       // Refresh user data in auth store
@@ -288,6 +292,16 @@ function SettingsContent() {
               onChange={(e) => handleChange('avatar_url', e.target.value)}
               placeholder="https://example.com/avatar.jpg"
               helperText="URL to your profile picture"
+            />
+
+            {/* Zipcode */}
+            <InputField
+              label="Zipcode"
+              type="text"
+              value={formData.zipcode}
+              onChange={(e) => handleChange('zipcode', e.target.value)}
+              placeholder="e.g. 90210"
+              helperText="Used to search for author events in your area"
             />
 
             {/* Avatar Preview */}

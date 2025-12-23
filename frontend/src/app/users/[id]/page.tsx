@@ -15,6 +15,7 @@ import AuthorCard from '@/components/AuthorCard'
 import BookCard from '@/components/BookCard'
 import FollowButton from '@/components/FollowButton'
 import Button from '@/components/Button'
+import UserLibrary from '@/components/UserLibrary'
 
 interface UserProfileData {
   user: User | null
@@ -229,6 +230,11 @@ function UserProfileContent() {
               )}
             </div>
           </div>
+        </div>
+
+        {/* User Library Section */}
+        <div className="bg-white rounded-lg border border-slate-200 p-6 sm:p-8 shadow-sm mb-6">
+          <UserLibrary userId={userId} username={user.display_name || user.username} />
         </div>
 
         {/* Tabs */}

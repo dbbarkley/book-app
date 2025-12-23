@@ -148,6 +148,9 @@ export default function EnhancedFeedItem({
 
       case 'author_event': {
         const event = item.feedable as Event
+        const eventLink = event.external_url || `/events`
+        const isExternal = !!event.external_url
+
         return (
           <div>
             <div className="flex items-start justify-between gap-3 mb-2">
@@ -155,7 +158,11 @@ export default function EnhancedFeedItem({
                 <div className="text-xs text-purple-600 font-medium mb-1">
                   📅 Upcoming Event
                 </div>
-                <Link href={`/events`}>
+                <Link 
+                  href={eventLink}
+                  target={isExternal ? "_blank" : undefined}
+                  rel={isExternal ? "noopener noreferrer" : undefined}
+                >
                   <h3 className="text-lg font-semibold text-slate-900 hover:text-primary-600 mb-1">
                     {event.title}
                   </h3>

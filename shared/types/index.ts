@@ -7,6 +7,7 @@ export interface User {
   display_name?: string
   bio?: string
   avatar_url?: string
+  zipcode?: string
   created_at?: string
   onboarding_completed?: boolean
 }
@@ -79,14 +80,18 @@ export interface Event {
   id: number
   title: string
   description?: string
-  event_type: 'book_release' | 'author_announcement' | 'signing' | 'reading' | 'interview' | 'tour' | 'virtual_event'
+  event_type: 'book_release' | 'author_announcement' | 'signing' | 'reading' | 'storytime' | 'interview' | 'tour' | 'virtual_event'
+  audience_type?: 'kids' | 'young_adult' | 'adult'
   starts_at: string
   ends_at?: string
   location?: string // Physical location or null for virtual events
   is_virtual: boolean // True for online/virtual events
-  venue_name?: string // Venue, bookstore, or platform name
+  image_url?: string
+  venue_id?: number
+  venue?: Venue
+  venue_name?: string // Venue name (legacy or fallback)
   external_url?: string // Link to Eventbrite, Ticketmaster, Zoom, etc.
-  external_source?: 'eventbrite' | 'ticketmaster' | 'manual' | 'other' // Where event was fetched from
+  external_source?: 'eventbrite' | 'ticketmaster' | 'manual' | 'other' | 'venue_site' // Where event was fetched from
   timezone?: string // e.g. "America/New_York"
   author?: Author
   author_id?: number
@@ -208,15 +213,34 @@ export interface BookSearchResponse {
 }
 
 // Events Types
+export interface Venue {
+  id: number
+  name: string
+  venue_type: 'bookstore' | 'library' | 'university' | 'theater' | string
+  address?: string
+  city: string
+  state: string
+  zipcode: string
+  latitude?: number
+  longitude?: number
+  website_url?: string
+  source?: string
+  external_id?: string
+  last_fetched_at?: string
+}
+
 export interface EventSearchParams {
   page?: number
   per_page?: number
   author_id?: number
   upcoming?: boolean // Filter for future events only
   event_type?: string
+  audience_type?: 'kids' | 'young_adult' | 'adult'
   is_virtual?: boolean
   start_date?: string // Filter events after this date
   end_date?: string // Filter events before this date
+  zipcode?: string // Filter by distance from this zipcode
+  radius?: number // Distance in miles
 }
 
 export interface EventsResponse {

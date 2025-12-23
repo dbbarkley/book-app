@@ -11,6 +11,7 @@ interface OnboardingState {
   totalSteps: number
   selectedGenres: string[]
   selectedAuthorIds: number[]
+  zipcode: string
   isLoading: boolean
   error: string | null
   
@@ -20,6 +21,7 @@ interface OnboardingState {
   prevStep: () => void
   toggleGenre: (genreId: string) => void
   toggleAuthor: (authorId: number) => void
+  setZipcode: (zipcode: string) => void
   setSelectedGenres: (genres: string[]) => void
   setSelectedAuthorIds: (authorIds: number[]) => void
   reset: () => void
@@ -29,9 +31,10 @@ interface OnboardingState {
 
 const initialState = {
   currentStep: 0,
-  totalSteps: 4, // Welcome, Genres, Authors, Import
+  totalSteps: 5, // Welcome, Zipcode, Genres, Authors, Import
   selectedGenres: [],
   selectedAuthorIds: [],
+  zipcode: '',
   isLoading: false,
   error: null,
 }
@@ -76,6 +79,10 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
         ? selectedAuthorIds.filter((id) => id !== authorId)
         : [...selectedAuthorIds, authorId],
     })
+  },
+
+  setZipcode: (zipcode: string) => {
+    set({ zipcode })
   },
 
   setSelectedGenres: (genres: string[]) => {

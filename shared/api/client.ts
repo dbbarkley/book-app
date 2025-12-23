@@ -439,7 +439,12 @@ export class ApiClient {
     return response.data
   }
 
-  async updateUser(userId: number, updates: { display_name?: string; bio?: string; avatar_url?: string }) {
+  async getUserLibrary(userId: number) {
+    const response = await this.client.get<{ user_books: UserBook[] }>(`/users/${userId}/library`)
+    return response.data.user_books
+  }
+
+  async updateUser(userId: number, updates: { display_name?: string; bio?: string; avatar_url?: string; zipcode?: string }) {
     const response = await this.client.patch<{ user: User }>(`/users/${userId}`, {
       user: updates,
     })
@@ -468,6 +473,7 @@ export class ApiClient {
     genres?: string[]
     author_ids?: number[]
     onboarding_completed?: boolean
+    zipcode?: string
   }) {
     const response = await this.client.post<{
       message: string
@@ -475,6 +481,7 @@ export class ApiClient {
         genres?: string[]
         author_ids?: number[]
         onboarding_completed?: boolean
+        zipcode?: string
       }
     }>('/users/preferences', {
       preferences,
@@ -488,6 +495,7 @@ export class ApiClient {
         genres?: string[]
         author_ids?: number[]
         onboarding_completed?: boolean
+        zipcode?: string
       }
     }>('/users/preferences')
     return response.data.preferences

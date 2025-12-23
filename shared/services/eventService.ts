@@ -30,8 +30,20 @@ import type {
   Event, 
   EventSearchParams, 
   EventsResponse, 
-  RefreshEventsResponse 
+  RefreshEventsResponse,
+  Venue 
 } from '../types'
+
+/**
+ * Fetch all known literary venues
+ * 
+ * @param params - Optional filters (city, state, zipcode)
+ * @returns Promise<{ venues: Venue[] }>
+ */
+export const getVenues = async (params?: { city?: string; state?: string; zipcode?: string }): Promise<{ venues: Venue[] }> => {
+  const response = await (apiClient as any).client.get('/venues', { params })
+  return response.data
+}
 
 /**
  * Fetch events for followed authors
@@ -50,9 +62,12 @@ export const getEvents = async (params?: EventSearchParams): Promise<EventsRespo
       per_page: params?.per_page,
       upcoming: params?.upcoming,
       event_type: params?.event_type,
+      audience_type: params?.audience_type,
       is_virtual: params?.is_virtual,
       start_date: params?.start_date,
       end_date: params?.end_date,
+      zipcode: params?.zipcode,
+      radius: params?.radius,
     }
   })
   
@@ -104,6 +119,7 @@ export const getAuthorEvents = async (
         per_page: params?.per_page,
         upcoming: params?.upcoming,
         event_type: params?.event_type,
+        audience_type: params?.audience_type,
         is_virtual: params?.is_virtual,
       }
     }

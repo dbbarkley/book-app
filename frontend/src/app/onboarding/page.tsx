@@ -14,6 +14,7 @@ import OnboardingStep from '@/components/OnboardingStep'
 import ProgressIndicator from '@/components/ProgressIndicator'
 import GenreSelector from '@/components/GenreSelector'
 import AuthorSelector from '@/components/AuthorSelector'
+import InputField from '@/components/InputField'
 import OnboardingButtons from '@/components/OnboardingButtons'
 import { mockGenres, mockAuthors } from '@/utils/onboardingData'
 
@@ -42,12 +43,14 @@ export default function OnboardingPage() {
     totalSteps,
     selectedGenres,
     selectedAuthorIds,
+    zipcode,
     isLoading,
     error,
     nextStep,
     prevStep,
     toggleGenre,
     toggleAuthor,
+    setZipcode,
     submitPreferences,
     skipOnboarding,
     reset,
@@ -105,8 +108,10 @@ export default function OnboardingPage() {
     const fetchAuthors = async () => {
       try {
         const fetchedAuthors = await apiClient.getAuthors()
-        if (fetchedAuthors && fetchedAuthors.length > 0) {
-          setAuthors(fetchedAuthors)
+        // If fetchedAuthors is an object with authors property, use that
+        const authorsList = Array.isArray(fetchedAuthors) ? fetchedAuthors : (fetchedAuthors as any).authors
+        if (authorsList && authorsList.length > 0) {
+          setAuthors(authorsList)
         }
       } catch (error) {
         // Use mock data if API fails
@@ -209,6 +214,22 @@ export default function OnboardingPage() {
                       d="M5 13l4 4L19 7"
                     />
                   </svg>
+                  <span>Your local area for events</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <svg
+                    className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
                   <span>Your favorite genres</span>
                 </li>
                 <li className="flex items-start gap-2">
@@ -227,28 +248,58 @@ export default function OnboardingPage() {
                   </svg>
                   <span>Authors you follow</span>
                 </li>
-                <li className="flex items-start gap-2">
-                  <svg
-                    className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                  <span>Option to import your existing reading data</span>
-                </li>
               </ul>
             </div>
           </div>
         )
 
-      case 1: // Genres
+      case 1: // Zipcode
+        return (
+          <div className="space-y-6">
+            <div className="text-center py-8">
+              <div className="w-20 h-20 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <svg
+                  className="w-10 h-10 text-primary-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold text-slate-900 mb-3">
+                Where are you located?
+              </h3>
+              <p className="text-slate-600 max-w-md mx-auto">
+                We use your zipcode to search author events in your area.
+              </p>
+            </div>
+
+            <div className="max-w-xs mx-auto">
+              <InputField
+                label="Zipcode"
+                type="text"
+                value={zipcode}
+                onChange={(e) => setZipcode(e.target.value)}
+                placeholder="e.g. 90210"
+                helperText="Optional, but helps find local events"
+              />
+            </div>
+          </div>
+        )
+
+      case 2: // Genres
         return (
           <GenreSelector
             genres={genres}
@@ -257,7 +308,7 @@ export default function OnboardingPage() {
           />
         )
 
-      case 2: // Authors
+      case 3: // Authors
         return (
           <AuthorSelector
             authors={authors}
@@ -266,7 +317,7 @@ export default function OnboardingPage() {
           />
         )
 
-      case 3: // Import
+      case 4: // Import
         return (
           <div className="space-y-6">
             <div className="text-center">
@@ -395,6 +446,10 @@ export default function OnboardingPage() {
       description: "Let's get you started",
     },
     {
+      title: 'Your Location',
+      description: 'Help us find author events near you',
+    },
+    {
       title: 'Choose Your Genres',
       description: 'Select the genres you love to read',
     },
@@ -446,8 +501,8 @@ export default function OnboardingPage() {
             showSkip={currentStep < totalSteps - 1}
             isLoading={isLoading}
             nextDisabled={
-              (currentStep === 1 && selectedGenres.length === 0) ||
-              (currentStep === 2 && selectedAuthorIds.length === 0)
+              (currentStep === 2 && selectedGenres.length === 0) ||
+              (currentStep === 3 && selectedAuthorIds.length === 0)
             }
           />
 
