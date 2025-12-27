@@ -17,8 +17,39 @@ class Venue < ApplicationRecord
   validates :external_id, presence: true, uniqueness: { scope: :source }
 
   scope :active, -> { where(active: true) }
-  scope :by_location, ->(city, state) { where(city: city, state: state) }
-  scope :by_zipcode, ->(zipcode) { where(zipcode: zipcode) }
+  scope :by_location, ->(city, state = nil) { 
+    if state.present?
+      where(city: city, state: state)
+    else
+      where(city: city)
+    end
+  }
+  scope :by_zipcode, ->(zipcode, radius = nil) { 
+    if radius.present?
+      # Try to find a venue with this zipcode to use its coordinates as center
+      # to avoid hitting external geocoding APIs frequently
+      center_venue = Venue.find_by(zipcode: zipcode)
+      coords = if center_venue && center_venue.latitude && center_venue.longitude
+                 [center_venue.latitude, center_venue.longitude]
+               elsif Rails.env.development?
+                 # Development fallback for common testing zipcodes
+                 {
+                   "78701" => [30.2716, -97.7437],
+                   "78704" => [30.2444, -97.7637],
+                   "78205" => [29.4241, -98.4936],
+                   "78260" => [29.7400, -98.4500]
+                 }[zipcode.to_s]
+               end
+
+      if coords
+        near(coords, radius.to_i)
+      else
+        near(zipcode, radius.to_i) rescue where(zipcode: zipcode)
+      end
+    else
+      where(zipcode: zipcode)
+    end
+  }
 
   # Venues are the anchor for event discovery.
   # They are globally cached and shared across users to prevent redundant API calls.

@@ -113,6 +113,8 @@ export const useEvents = (options: UseEventsOptions = {}) => {
   }, [
     autoFetch, 
     searchParams.zipcode, 
+    searchParams.city,
+    searchParams.state,
     searchParams.radius, 
     searchParams.author_id, 
     searchParams.event_type,

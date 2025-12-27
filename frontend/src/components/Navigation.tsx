@@ -24,7 +24,7 @@ export default function Navigation() {
 
   const navLinks = [
     { href: '/feed', label: 'Feed', icon: LayoutDashboard },
-    { href: '/books', label: 'Library', icon: BookOpen },
+    { href: '/library', label: 'Library', icon: BookOpen },
     { href: '/search', label: 'Discover', icon: Search },
     ...(isAuthenticated ? [{ href: `/users/${user?.id}`, label: 'Profile', icon: User }] : []),
   ]

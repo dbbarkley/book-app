@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { getVenues } from '../services/eventService'
 import type { Venue } from '../types'
 
-export const useVenues = (params?: { city?: string; state?: string; zipcode?: string }) => {
+export const useVenues = (params?: { city?: string; state?: string; zipcode?: string; radius?: number }) => {
   const [venues, setVenues] = useState<Venue[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -18,7 +18,7 @@ export const useVenues = (params?: { city?: string; state?: string; zipcode?: st
     } finally {
       setIsLoading(false)
     }
-  }, [params])
+  }, [params?.city, params?.state, params?.zipcode, params?.radius])
 
   useEffect(() => {
     fetchVenues()

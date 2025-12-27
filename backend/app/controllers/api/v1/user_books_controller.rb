@@ -172,7 +172,8 @@ module Api
           release_date: parse_release_date(google_books_data[:release_date]),
           author: author,
           google_books_id: google_books_id,
-          page_count: google_books_data[:page_count]
+          page_count: google_books_data[:page_count],
+          categories: google_books_data[:categories] || []
         )
       end
 
@@ -236,7 +237,8 @@ module Api
           release_date: book.release_date,
           author_name: book.author.name,
           google_books_id: book.google_books_id,
-          page_count: book.respond_to?(:page_count) ? book.page_count : nil
+          page_count: book.respond_to?(:page_count) ? book.page_count : nil,
+          categories: book.respond_to?(:categories) ? (book.categories || []) : []
         }
       end
 

@@ -43,24 +43,32 @@ class BookCoverService
     { url: nil, quality: NO_COVER, source: 'none' }
   end
 
-  # Update book with the best cover found
+  # Update book with the best cover and metadata found
   def enrich_cover!
-    cover_data = find_best_cover
+    best_data = find_best_cover
     
-    @book.update!(
-      cover_image_url: cover_data[:url],
-      cover_image_quality: cover_data[:quality],
-      cover_image_source: cover_data[:source],
+    update_attrs = {
+      cover_image_url: best_data[:url],
+      cover_image_quality: best_data[:quality],
+      cover_image_source: best_data[:source],
       cover_last_enriched_at: Time.current
-    )
+    }
+
+    # Also update categories if they were found in Google Books
+    if best_data[:categories].present? && @book.respond_to?(:categories) && @book.categories.blank?
+      update_attrs[:categories] = best_data[:categories]
+    end
+
+    @book.update!(update_attrs)
     
-    cover_data
+    best_data
   end
 
-  # Check if book needs cover enrichment
+  # Check if book needs enrichment
   def needs_enrichment?
-    # No cover at all
+    # No cover at all or no categories
     return true if @book.cover_image_url.blank?
+    return true if @book.respond_to?(:categories) && @book.categories.blank?
     
     # Low quality cover
     return true if @book.cover_image_quality.to_i < MEDIUM_QUALITY
@@ -138,10 +146,14 @@ class BookCoverService
                 LOW_QUALITY
               end
 
+    # Google Books provides categories/genres
+    categories = volume&.dig('volumeInfo', 'categories') || []
+
     {
       url: cover_url,
       quality: quality,
-      source: 'google_books'
+      source: 'google_books',
+      categories: categories
     }
   rescue StandardError => e
     Rails.logger.error("Google Books cover fetch failed for book #{@book.id}: #{e.message}")

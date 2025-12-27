@@ -69,7 +69,13 @@ class Event < ApplicationRecord
       joins(:venue).where(venues: { zipcode: zipcode }) 
     end
   }
-  scope :by_city, ->(city, state) { joins(:venue).where(venues: { city: city, state: state }) }
+  scope :by_city, ->(city, state = nil) { 
+    if state.present?
+      joins(:venue).where(venues: { city: city, state: state })
+    else
+      joins(:venue).where(venues: { city: city })
+    end
+  }
   scope :starts_after, ->(datetime) { where('starts_at > ?', datetime) }
 
   # Events belong to venues and may optionally be linked to authors.

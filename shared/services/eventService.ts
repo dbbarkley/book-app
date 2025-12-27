@@ -67,6 +67,8 @@ export const getEvents = async (params?: EventSearchParams): Promise<EventsRespo
       start_date: params?.start_date,
       end_date: params?.end_date,
       zipcode: params?.zipcode,
+      city: params?.city,
+      state: params?.state,
       radius: params?.radius,
     }
   })

@@ -179,7 +179,7 @@ export function ImportProgress({
       {isComplete && (
         <div className="flex gap-3">
           <button
-            onClick={() => router.push('/books')}
+            onClick={() => router.push('/library')}
             className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
           >
             View My Books

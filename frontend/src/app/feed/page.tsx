@@ -127,7 +127,7 @@ export default function FeedPage() {
                   Explore recommendations
                 </Link>
                 <Link
-                  href="/books"
+                  href="/library"
                   className="inline-flex items-center justify-center rounded-full border border-border-default bg-background-card px-5 py-2 text-sm font-semibold text-text-primary transition hover:border-brand-indigo hover:text-brand-indigo"
                 >
                   Open library

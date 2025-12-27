@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2025_12_22_000004) do
+ActiveRecord::Schema[7.2].define(version: 2025_12_26_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -37,7 +37,9 @@ ActiveRecord::Schema[7.2].define(version: 2025_12_22_000004) do
     t.integer "cover_image_quality", default: 0
     t.string "cover_image_source"
     t.datetime "cover_last_enriched_at"
+    t.jsonb "categories", default: []
     t.index ["author_id"], name: "index_books_on_author_id"
+    t.index ["categories"], name: "index_books_on_categories", using: :gin
     t.index ["cover_image_quality"], name: "index_books_on_cover_image_quality"
     t.index ["cover_last_enriched_at"], name: "index_books_on_cover_last_enriched_at"
     t.index ["google_books_id"], name: "index_books_on_google_books_id", unique: true, where: "(google_books_id IS NOT NULL)"

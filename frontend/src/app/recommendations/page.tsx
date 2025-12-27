@@ -85,7 +85,7 @@ export default function RecommendationsPage() {
               </div>
             </div>
             <div className="flex gap-2 text-xs text-slate-500">
-              <Link href="/books" className="underline">
+              <Link href="/library" className="underline">
                 Library
               </Link>
               <span>·</span>

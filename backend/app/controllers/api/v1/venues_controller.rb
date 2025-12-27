@@ -8,8 +8,8 @@ module Api
         venues = Venue.active
         
         if params[:zipcode].present?
-          venues = venues.by_zipcode(params[:zipcode])
-        elsif params[:city].present? && params[:state].present?
+          venues = venues.by_zipcode(params[:zipcode], params[:radius])
+        elsif params[:city].present?
           venues = venues.by_location(params[:city], params[:state])
         end
 

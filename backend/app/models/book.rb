@@ -14,5 +14,8 @@ class Book < ApplicationRecord
   has_many :followers, through: :follows, source: :follower
   has_many :events, dependent: :destroy
   has_many :user_books, dependent: :destroy
+
+  # Categories are stored as a JSONB array of strings
+  # Example: ["Fiction", "Fantasy", "Young Adult"]
 end
 

@@ -458,6 +458,14 @@ export class ApiClient {
     return response.data.user_books
   }
 
+  async getUserStats(userId: number) {
+    const response = await this.client.get<{
+      genres: Array<{ name: string; count: number }>
+      top_authors: Array<{ name: string; count: number }>
+    }>(`/users/${userId}/stats`)
+    return response.data
+  }
+
   async updateUser(userId: number, updates: { display_name?: string; bio?: string; avatar_url?: string; zipcode?: string }) {
     const response = await this.client.patch<{ user: User }>(`/users/${userId}`, {
       user: updates,

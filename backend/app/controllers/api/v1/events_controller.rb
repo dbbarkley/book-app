@@ -13,7 +13,7 @@ module Api
         
         if zipcode.present?
           events = events.by_zipcode(zipcode, params[:radius])
-        elsif params[:city].present? && params[:state].present?
+        elsif params[:city].present?
           events = events.by_city(params[:city], params[:state])
         end
 

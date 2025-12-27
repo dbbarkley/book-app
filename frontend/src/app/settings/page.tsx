@@ -236,65 +236,100 @@ function SettingsContent() {
         )}
 
         {/* Profile Form */}
-        <form onSubmit={handleSubmit} className="bg-white rounded-lg border border-slate-200 p-6 sm:p-8 shadow-sm">
-          <div className="space-y-6">
-            {/* Display Name */}
-            <InputField
-              label="Display Name"
-              type="text"
-              value={formData.display_name}
-              onChange={(e) => handleChange('display_name', e.target.value)}
-              placeholder="Your display name"
-              helperText="This is how your name appears to other users"
-            />
-
-            {/* Username (read-only) */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Username
-              </label>
-              <input
+        <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden mb-6">
+          <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+            <h2 className="text-lg font-bold text-slate-900">Public Profile</h2>
+            <p className="text-sm text-slate-500">This information will be shown on your public profile</p>
+          </div>
+          <form onSubmit={handleSubmit} className="p-6 sm:p-8">
+            <div className="space-y-6">
+              {/* Display Name */}
+              <InputField
+                label="Display Name"
                 type="text"
-                value={user.username}
-                disabled
-                className="block w-full rounded-lg border-gray-300 bg-gray-100 text-gray-500 px-3 py-2 text-base sm:text-sm cursor-not-allowed"
+                value={formData.display_name}
+                onChange={(e) => handleChange('display_name', e.target.value)}
+                placeholder="Your display name"
+                helperText="How you want to be known on the platform"
               />
-              <p className="mt-1.5 text-sm text-gray-500">
-                Username cannot be changed
-              </p>
+
+              {/* Bio */}
+              <div>
+                <label
+                  htmlFor="bio"
+                  className="block text-sm font-medium text-gray-700 mb-1.5"
+                >
+                  Bio
+                </label>
+                <textarea
+                  id="bio"
+                  value={formData.bio}
+                  onChange={(e) => handleChange('bio', e.target.value)}
+                  placeholder="Tell us about your favorite books, authors, or anything else!"
+                  rows={4}
+                  className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed text-gray-900 bg-white placeholder:text-gray-400 px-3 py-2 text-base sm:text-sm"
+                />
+                <div className="mt-1.5 flex justify-between text-sm">
+                  <span className="text-slate-500">A brief description about yourself</span>
+                  <span className={formData.bio.length > 450 ? 'text-amber-600 font-medium' : 'text-slate-400'}>
+                    {formData.bio.length}/500
+                  </span>
+                </div>
+              </div>
+
+              {/* Avatar URL */}
+              <div className="grid grid-cols-1 sm:grid-cols-[1fr,auto] gap-6 items-start">
+                <InputField
+                  label="Avatar URL"
+                  type="url"
+                  value={formData.avatar_url}
+                  onChange={(e) => handleChange('avatar_url', e.target.value)}
+                  placeholder="https://example.com/avatar.jpg"
+                  helperText="Link to your profile picture"
+                />
+                
+                {/* Avatar Preview */}
+                <div className="flex flex-col items-center">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Preview
+                  </label>
+                  <div className="relative">
+                    <img
+                      src={formData.avatar_url || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y'}
+                      alt="Avatar preview"
+                      className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-md"
+                      onError={(e) => {
+                        e.currentTarget.src = 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y'
+                      }}
+                    />
+                    <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-1 shadow-sm border border-slate-100">
+                      <div className="w-4 h-4 bg-emerald-500 rounded-full border-2 border-white"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row gap-4">
+                <Button
+                  type="submit"
+                  variant="primary"
+                  isLoading={saving}
+                  disabled={saving}
+                >
+                  Update Public Profile
+                </Button>
+              </div>
             </div>
+          </form>
+        </div>
 
-            {/* Bio */}
-            <div>
-              <label
-                htmlFor="bio"
-                className="block text-sm font-medium text-gray-700 mb-1.5"
-              >
-                Bio
-              </label>
-              <textarea
-                id="bio"
-                value={formData.bio}
-                onChange={(e) => handleChange('bio', e.target.value)}
-                placeholder="Tell us about yourself..."
-                rows={4}
-                className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed text-gray-900 bg-white placeholder:text-gray-400 px-3 py-2 text-base sm:text-sm"
-              />
-              <p className="mt-1.5 text-sm text-gray-500">
-                {formData.bio.length}/500 characters
-              </p>
-            </div>
-
-            {/* Avatar URL */}
-            <InputField
-              label="Avatar URL"
-              type="url"
-              value={formData.avatar_url}
-              onChange={(e) => handleChange('avatar_url', e.target.value)}
-              placeholder="https://example.com/avatar.jpg"
-              helperText="URL to your profile picture"
-            />
-
+        {/* Private Information Section */}
+        <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden mb-6">
+          <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+            <h2 className="text-lg font-bold text-slate-900">Private Information</h2>
+            <p className="text-sm text-slate-500">This information is only visible to you</p>
+          </div>
+          <div className="p-6 sm:p-8 space-y-6">
             {/* Zipcode */}
             <InputField
               label="Zipcode"
@@ -302,54 +337,36 @@ function SettingsContent() {
               value={formData.zipcode}
               onChange={(e) => handleChange('zipcode', e.target.value)}
               placeholder="e.g. 90210"
-              helperText="Used to search for author events in your area"
+              helperText="Used to find literary events near you"
             />
 
-            {/* Avatar Preview */}
-            {formData.avatar_url && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Avatar Preview
-                </label>
-                <div className="flex items-center gap-4">
-                  <img
-                    src={formData.avatar_url}
-                    alt="Avatar preview"
-                    className="w-20 h-20 rounded-full object-cover border-2 border-slate-200"
-                    onError={(e) => {
-                      e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="80" height="80"%3E%3Crect fill="%23e5e7eb" width="80" height="80"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%239ca3af" font-size="24"%3E?%3C/text%3E%3C/svg%3E'
-                    }}
-                  />
-                  <p className="text-sm text-slate-600">
-                    Preview of your avatar
-                  </p>
-                </div>
+            {/* Username (read-only) */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                Username
+              </label>
+              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-500 cursor-not-allowed">
+                <span className="text-slate-400">@</span>
+                <span className="text-sm font-medium">{user.username}</span>
+                <span className="ml-auto text-[10px] uppercase font-bold tracking-wider text-slate-400">Fixed</span>
               </div>
-            )}
-
-            {/* Form Actions */}
-            <div className="flex flex-col sm:flex-row gap-4 pt-4">
+              <p className="mt-1.5 text-xs text-slate-500 italic">
+                Contact support to change your username
+              </p>
+            </div>
+            
+            <div className="pt-4 border-t border-slate-100">
               <Button
-                type="submit"
-                variant="primary"
+                onClick={handleSubmit}
+                variant="outline"
                 isLoading={saving}
                 disabled={saving}
-                fullWidth
               >
-                Save Changes
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => router.back()}
-                disabled={saving}
-                fullWidth
-              >
-                Cancel
+                Save Private Details
               </Button>
             </div>
           </div>
-        </form>
+        </div>
 
         {/* Preferences Section */}
         <div className="mt-6 bg-white rounded-lg border border-slate-200 p-6 sm:p-8 shadow-sm">

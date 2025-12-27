@@ -19,6 +19,7 @@ Rails.application.routes.draw do
         get 'following', on: :member
         get 'followers', on: :member
         get 'library', on: :member
+        get 'stats', on: :member
       end
       
       # Follows

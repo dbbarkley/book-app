@@ -241,6 +241,8 @@ export interface EventSearchParams {
   start_date?: string // Filter events after this date
   end_date?: string // Filter events before this date
   zipcode?: string // Filter by distance from this zipcode
+  city?: string // Filter by city
+  state?: string // Filter by state
   radius?: number // Distance in miles
 }
 

@@ -16,6 +16,8 @@ import BookCard from '@/components/BookCard'
 import FollowButton from '@/components/FollowButton'
 import Button from '@/components/Button'
 import UserLibrary from '@/components/UserLibrary'
+import GenreChart from '@/components/charts/GenreChart'
+import TopAuthorsChart from '@/components/charts/TopAuthorsChart'
 
 interface UserProfileData {
   user: User | null
@@ -29,6 +31,11 @@ interface UserProfileData {
     following: boolean
     follow_id?: number | null
   } | null
+}
+
+interface ReadingStats {
+  genres: Array<{ name: string; count: number }>
+  top_authors: Array<{ name: string; count: number }>
 }
 
 /**
@@ -60,6 +67,7 @@ function UserProfileContent() {
     followers: [],
     currentUserFollow: null,
   })
+  const [readingStats, setReadingStats] = useState<ReadingStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'following' | 'followers'>('following')
@@ -71,6 +79,7 @@ function UserProfileContent() {
   useEffect(() => {
     if (!isNaN(userId)) {
       fetchProfile()
+      fetchReadingStats()
     } else {
       setError('Invalid user ID')
       setLoading(false)
@@ -103,6 +112,15 @@ function UserProfileContent() {
       setError(err instanceof Error ? err.message : 'Failed to load user profile')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchReadingStats = async () => {
+    try {
+      const stats = await apiClient.getUserStats(userId)
+      setReadingStats(stats)
+    } catch (err) {
+      console.error('Failed to fetch reading stats:', err)
     }
   }
 
@@ -186,49 +204,69 @@ function UserProfileContent() {
                 {user.display_name || user.username}
               </h1>
               {user.display_name && (
-                <p className="text-slate-600 mb-2">@{user.username}</p>
+                <p className="text-slate-600 mb-4">@{user.username}</p>
               )}
-              {user.bio && (
-                <p className="text-slate-700 leading-relaxed mb-4">{user.bio}</p>
-              )}
+              
               {stats && (
-                <div className="flex flex-wrap justify-center sm:justify-start gap-4 mb-4 text-sm text-slate-600">
-                  <span>{formatNumber(stats.followers_count)} followers</span>
-                  <span>{formatNumber(stats.following_count)} following</span>
+                <div className="flex flex-wrap justify-center sm:justify-start gap-4 mb-6 text-sm text-slate-600">
+                  <div className="bg-slate-50 px-3 py-1.5 rounded-full border border-slate-100">
+                    <span className="font-bold text-slate-900">{formatNumber(stats.followers_count)}</span> followers
+                  </div>
+                  <div className="bg-slate-50 px-3 py-1.5 rounded-full border border-slate-100">
+                    <span className="font-bold text-slate-900">{formatNumber(stats.following_count)}</span> following
+                  </div>
                   {user.created_at && (
-                    <span>Joined {formatDate(user.created_at)}</span>
-                  )}
-                </div>
-              )}
-              {!isOwnProfile && (
-                <div className="flex justify-center sm:justify-start">
-                  {profileData.currentUserFollow ? (
-                    <Button
-                      variant={alreadyFollowing ? 'secondary' : 'primary'}
-                      onClick={handleFollowToggle}
-                      isLoading={followLoading}
-                      disabled={followLoading}
-                    >
-                      {alreadyFollowing ? '✓ Following' : '+ Follow'}
-                    </Button>
-                  ) : (
-                    <div className="px-6 py-3 text-sm text-text-muted border border-border-default rounded-lg">
-                      Checking follow status...
+                    <div className="bg-slate-50 px-3 py-1.5 rounded-full border border-slate-100">
+                      Joined {formatDate(user.created_at)}
                     </div>
                   )}
                 </div>
               )}
-              {isOwnProfile && (
-                <div className="flex justify-center sm:justify-start">
+
+              <div className="flex flex-wrap justify-center sm:justify-start gap-3">
+                {!isOwnProfile && (
+                  <>
+                    {profileData.currentUserFollow ? (
+                      <Button
+                        variant={alreadyFollowing ? 'secondary' : 'primary'}
+                        onClick={handleFollowToggle}
+                        isLoading={followLoading}
+                        disabled={followLoading}
+                      >
+                        {alreadyFollowing ? '✓ Following' : '+ Follow'}
+                      </Button>
+                    ) : (
+                      <div className="px-6 py-3 text-sm text-text-muted border border-border-default rounded-lg">
+                        Checking follow status...
+                      </div>
+                    )}
+                  </>
+                )}
+                {isOwnProfile && (
                   <Button
                     variant="outline"
                     onClick={() => router.push('/settings')}
+                    className="flex items-center gap-2"
                   >
-                    Edit Profile
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    Settings
                   </Button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
+          </div>
+        </div>
+
+        {/* Stats Section - Visual Charts */}
+        <div className="flex flex-col gap-6 mb-6">
+          <div className="bg-white rounded-lg border border-slate-200 p-6 sm:p-8 shadow-sm">
+            <GenreChart data={readingStats?.genres || []} />
+          </div>
+          <div className="bg-white rounded-lg border border-slate-200 p-6 sm:p-8 shadow-sm">
+            <TopAuthorsChart data={readingStats?.top_authors || []} />
           </div>
         </div>
 

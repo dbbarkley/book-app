@@ -2,8 +2,8 @@ module Api
   module V1
     class UsersController < BaseController
       include Authenticable
-      before_action :authenticate_user!, except: [:show]
-      before_action :set_user, only: [:show, :update, :profile, :following, :followers, :library]
+      before_action :authenticate_user!, except: [:show, :stats]
+      before_action :set_user, only: [:show, :update, :profile, :following, :followers, :library, :stats]
 
       def show
         render json: serialize_user(@user), status: :ok
@@ -58,6 +58,75 @@ module Api
       def followers
         followers = @user.followers
         render json: serialize_users(followers), status: :ok
+      end
+
+      # GET /api/v1/users/:id/stats
+      def stats
+        # Only include public books in stats
+        public_books = @user.user_books.where(visibility: 'public').includes(book: :author)
+        
+        # Genre stats
+        genre_counts = Hash.new(0)
+        total_genre_entries = 0
+        
+        public_books.each do |ub|
+          categories = ub.book.respond_to?(:categories) ? (ub.book.categories || []) : []
+          categories.each do |cat|
+            # # Roll up specific categories to "Non-fiction"
+            # non_fiction_categories = [
+            #   'Biography & Autobiography', 'History', 'Social Science', 
+            #   'Science', 'Self-Help', 'Business & Economics', 
+            #   'Philosophy', 'Religion', 'True Crime', 'Cooking',
+            #   'Art', 'Travel', 'Education', 'Nature'
+            # ]
+            # display_cat = if non_fiction_categories.any? { |nf| nf.downcase == cat.strip.downcase }
+            #                 'non-fiction'
+            #               else
+            #                 cat
+            #               end
+            genre_counts[cat] += 1
+            total_genre_entries += 1
+          end
+        end
+        
+        sorted_genres = genre_counts.sort_by { |_, count| -count }
+        top_6_genres = sorted_genres.first(6).map do |name, count|
+          {
+            name: name,
+            count: count,
+            percentage: total_genre_entries > 0 ? (count.to_f / total_genre_entries * 100).round(1) : 0
+          }
+        end
+        
+        other_count = sorted_genres.drop(6).sum { |_, count| count }
+        if other_count > 0
+          top_6_genres << {
+            name: 'Other',
+            count: other_count,
+            percentage: total_genre_entries > 0 ? (other_count.to_f / total_genre_entries * 100).round(1) : 0
+          }
+        end
+
+        # Top Author stats
+        author_counts = Hash.new(0)
+        total_books = public_books.count
+        
+        public_books.each do |ub|
+          author_counts[ub.book.author.name] += 1
+        end
+        
+        top_authors = author_counts.sort_by { |_, count| -count }.first(10).map do |name, count|
+          {
+            name: name,
+            count: count,
+            percentage: total_books > 0 ? (count.to_f / total_books * 100).round(1) : 0
+          }
+        end
+
+        render json: {
+          genres: top_6_genres,
+          top_authors: top_authors
+        }, status: :ok
       end
 
       # Search users
@@ -209,7 +278,8 @@ module Api
           cover_image_url: book.cover_image_url,
           release_date: book.release_date,
           author_name: book.author.name,
-          google_books_id: book.google_books_id
+          google_books_id: book.google_books_id,
+          categories: book.respond_to?(:categories) ? (book.categories || []) : []
         }
       end
 
