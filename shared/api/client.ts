@@ -18,6 +18,9 @@ import type {
   RecommendedBook,
   RecommendedAuthor,
   RecommendedEventGroup,
+  Forum,
+  ForumPost,
+  ForumComment,
 } from '../types'
 
 // Get API base URL from environment
@@ -533,6 +536,95 @@ export class ApiClient {
       // If preferences endpoint doesn't exist or user has no preferences, return false
       return false
     }
+  }
+
+  // Forum endpoints
+  async getForums() {
+    const response = await this.client.get<{ forums: Forum[] }>('/forums')
+    return response.data.forums
+  }
+
+  async createForum(forumData: { title: string; description?: string; visibility?: string }) {
+    const response = await this.client.post<{ forum: Forum }>('/forums', { forum: forumData })
+    return response.data.forum
+  }
+
+  async getForum(id: number) {
+    const response = await this.client.get<{ forum: Forum; posts: ForumPost[]; pagination: PaginationMeta }>(`/forums/${id}`)
+    return response.data
+  }
+
+  async followForum(id: number) {
+    const response = await this.client.post<{ forum: Forum }>(`/forums/${id}/follow`)
+    return response.data.forum
+  }
+
+  async unfollowForum(id: number) {
+    const response = await this.client.delete(`/forums/${id}/follow`)
+    return response.data
+  }
+
+  async getForumPosts(forumId: number, page: number = 1) {
+    const response = await this.client.get<{ posts: ForumPost[]; pagination: PaginationMeta }>(
+      `/forums/${forumId}/posts`,
+      { params: { page } }
+    )
+    return response.data
+  }
+
+  async createForumPost(forumId: number, postData: { body: string }) {
+    const response = await this.client.post<ForumPost>(`/forums/${forumId}/posts`, {
+      post: postData,
+    })
+    return response.data
+  }
+
+  async getForumPost(id: number) {
+    const response = await this.client.get<{ post: ForumPost; replies: ForumComment[]; pagination: PaginationMeta }>(`/forum_posts/${id}`)
+    return response.data
+  }
+
+  async getPostComments(postId: number) {
+    const response = await this.client.get<{ replies: ForumComment[] }>(`/forum_posts/${postId}/replies`)
+    return response.data.replies
+  }
+
+  async createPostComment(postId: number, body: string) {
+    const response = await this.client.post<{ reply: ForumComment } | ForumComment>(`/forum_posts/${postId}/replies`, {
+      reply: { body },
+    })
+    // Support both { reply: comment } and direct comment response
+    return 'reply' in response.data ? response.data.reply : response.data
+  }
+
+  async updatePost(postId: number, body: string) {
+    const response = await this.client.patch<ForumPost>(`/forum_posts/${postId}`, {
+      post: { body },
+    })
+    return response.data
+  }
+
+  async deletePost(postId: number) {
+    await this.client.delete(`/forum_posts/${postId}`)
+  }
+
+  async reportPost(postId: number, reason: string) {
+    await this.client.post(`/forum_posts/${postId}/report`, { reason })
+  }
+
+  async updateReply(replyId: number, body: string) {
+    const response = await this.client.patch<{ reply: ForumComment } | ForumComment>(`/forum_replies/${replyId}`, {
+      reply: { body },
+    })
+    return 'reply' in response.data ? response.data.reply : response.data
+  }
+
+  async deleteReply(replyId: number) {
+    await this.client.delete(`/forum_replies/${replyId}`)
+  }
+
+  async reportReply(replyId: number, reason: string) {
+    await this.client.post(`/forum_replies/${replyId}/report`, { reason })
   }
 
   // Import data endpoints

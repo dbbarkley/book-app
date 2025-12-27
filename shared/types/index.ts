@@ -257,3 +257,45 @@ export interface RefreshEventsResponse {
   last_refreshed_at: string
 }
 
+// Forum Types
+export interface Forum {
+  id: number
+  slug: string
+  title: string
+  description?: string
+  visibility: 'public_access' | 'private_access'
+  followers_count: number
+  posts_count: number
+  is_following?: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface ForumPost {
+  id: number
+  forum_id: number
+  forum?: Forum
+  user_id: number
+  user: User
+  body: string
+  reply_count: number
+  heart_count: number
+  is_hearted?: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface ForumComment {
+  id: number
+  forum_post_id: number
+  parent_id?: number // For thread replies
+  user_id: number
+  user: User
+  body: string
+  heart_count: number
+  reply_count: number
+  is_hearted?: boolean
+  created_at: string
+  updated_at: string
+}
+

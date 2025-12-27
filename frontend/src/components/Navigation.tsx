@@ -14,7 +14,8 @@ import {
   Search, 
   User, 
   Menu, 
-  X 
+  X,
+  MessageSquare
 } from 'lucide-react'
 
 export default function Navigation() {
@@ -25,6 +26,7 @@ export default function Navigation() {
   const navLinks = [
     { href: '/feed', label: 'Feed', icon: LayoutDashboard },
     { href: '/library', label: 'Library', icon: BookOpen },
+    { href: '/forums', label: 'Forums', icon: MessageSquare },
     { href: '/search', label: 'Discover', icon: Search },
     ...(isAuthenticated ? [{ href: `/users/${user?.id}`, label: 'Profile', icon: User }] : []),
   ]

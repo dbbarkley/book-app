@@ -68,6 +68,33 @@ Rails.application.routes.draw do
           post 'goodreads', to: 'imports#create', defaults: { source: 'goodreads' }
         end
       end
+
+      # Forums & Discussions
+      resources :forums do
+        member do
+          post 'follow'
+          delete 'unfollow'
+        end
+        resources :forum_posts, path: 'posts', only: [:index, :create]
+      end
+
+      resources :forum_posts, only: [:show, :update, :destroy] do
+        member do
+          post 'heart'
+          delete 'unheart'
+          post 'report'
+        end
+        resources :forum_replies, path: 'replies', only: [:index, :create]
+      end
+
+      resources :forum_replies, only: [:update, :destroy] do
+        member do
+          get 'thread'
+          post 'heart'
+          delete 'unheart'
+          post 'report'
+        end
+      end
     end
   end
 end

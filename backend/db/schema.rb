@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2025_12_26_000000) do
+ActiveRecord::Schema[7.2].define(version: 2025_12_27_000007) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -119,6 +119,77 @@ ActiveRecord::Schema[7.2].define(version: 2025_12_26_000000) do
     t.index ["followable_type", "followable_id"], name: "index_follows_on_followable_type_and_followable_id"
     t.index ["follower_id", "followable_type", "followable_id"], name: "index_follows_unique", unique: true
     t.index ["follower_id"], name: "index_follows_on_follower_id"
+  end
+
+  create_table "forum_follows", force: :cascade do |t|
+    t.bigint "forum_id", null: false
+    t.bigint "user_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["forum_id", "user_id"], name: "index_forum_follows_on_forum_id_and_user_id", unique: true
+    t.index ["forum_id"], name: "index_forum_follows_on_forum_id"
+    t.index ["user_id"], name: "index_forum_follows_on_user_id"
+  end
+
+  create_table "forum_hearts", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "heartable_type", null: false
+    t.bigint "heartable_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["heartable_type", "heartable_id"], name: "index_forum_hearts_on_heartable"
+    t.index ["user_id", "heartable_type", "heartable_id"], name: "index_forum_hearts_on_user_and_heartable", unique: true
+    t.index ["user_id"], name: "index_forum_hearts_on_user_id"
+  end
+
+  create_table "forum_posts", force: :cascade do |t|
+    t.bigint "forum_id", null: false
+    t.bigint "user_id", null: false
+    t.text "body", null: false
+    t.datetime "edited_at"
+    t.datetime "deleted_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["deleted_at"], name: "index_forum_posts_on_deleted_at"
+    t.index ["forum_id"], name: "index_forum_posts_on_forum_id"
+    t.index ["user_id"], name: "index_forum_posts_on_user_id"
+  end
+
+  create_table "forum_replies", force: :cascade do |t|
+    t.bigint "forum_post_id", null: false
+    t.bigint "user_id", null: false
+    t.text "body", null: false
+    t.datetime "edited_at"
+    t.datetime "deleted_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "parent_id"
+    t.index ["deleted_at"], name: "index_forum_replies_on_deleted_at"
+    t.index ["forum_post_id"], name: "index_forum_replies_on_forum_post_id"
+    t.index ["parent_id"], name: "index_forum_replies_on_parent_id"
+    t.index ["user_id"], name: "index_forum_replies_on_user_id"
+  end
+
+  create_table "forum_reports", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "reportable_type", null: false
+    t.bigint "reportable_id", null: false
+    t.string "reason", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["reportable_type", "reportable_id"], name: "index_forum_reports_on_reportable"
+    t.index ["user_id", "reportable_type", "reportable_id"], name: "index_forum_reports_on_user_and_reportable", unique: true
+    t.index ["user_id"], name: "index_forum_reports_on_user_id"
+  end
+
+  create_table "forums", force: :cascade do |t|
+    t.string "title", null: false
+    t.text "description"
+    t.integer "visibility", default: 0
+    t.bigint "owner_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["owner_id"], name: "index_forums_on_owner_id"
   end
 
   create_table "imports", force: :cascade do |t|
@@ -240,6 +311,15 @@ ActiveRecord::Schema[7.2].define(version: 2025_12_26_000000) do
   add_foreign_key "events", "venues"
   add_foreign_key "feed_items", "users"
   add_foreign_key "follows", "users", column: "follower_id"
+  add_foreign_key "forum_follows", "forums"
+  add_foreign_key "forum_follows", "users"
+  add_foreign_key "forum_hearts", "users"
+  add_foreign_key "forum_posts", "forums"
+  add_foreign_key "forum_posts", "users"
+  add_foreign_key "forum_replies", "forum_posts"
+  add_foreign_key "forum_replies", "users"
+  add_foreign_key "forum_reports", "users"
+  add_foreign_key "forums", "users", column: "owner_id"
   add_foreign_key "imports", "users"
   add_foreign_key "user_books", "books"
   add_foreign_key "user_books", "users"
