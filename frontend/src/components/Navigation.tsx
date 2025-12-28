@@ -7,6 +7,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '@book-app/shared'
 import { 
   LayoutDashboard, 
@@ -55,18 +56,28 @@ export default function Navigation() {
           <div className="hidden md:flex items-center space-x-1" style={{ marginRight: '200px' }}>
             {navLinks.map((link) => {
               const Icon = link.icon
+              const active = isActive(link.href)
               return (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
-                    isActive(link.href)
-                      ? 'bg-brand-indigo text-white shadow-sm'
+                  className={`relative flex items-center space-x-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors duration-200 ${
+                    active
+                      ? 'text-white'
                       : 'text-text-secondary hover:bg-background-muted hover:text-text-primary'
                   }`}
                 >
-                  <Icon size={18} />
-                  <span>{link.label}</span>
+                  {active && (
+                    <motion.div
+                      layoutId="nav-pill"
+                      className="absolute inset-0 bg-brand-indigo rounded-xl shadow-sm"
+                      transition={{ type: 'spring', stiffness: 350, damping: 30 }}
+                    />
+                  )}
+                  <span className="relative z-10 flex items-center gap-2">
+                    <Icon size={18} />
+                    <span>{link.label}</span>
+                  </span>
                 </Link>
               )
             })}

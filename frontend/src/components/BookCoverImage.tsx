@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
+import { motion } from 'framer-motion'
 import { SkeletonLoader } from './SkeletonLoader'
 import { ModernPlaceholder } from './ModernPlaceholder'
 
@@ -14,6 +15,7 @@ import { ModernPlaceholder } from './ModernPlaceholder'
  * - Modern placeholder fallback for missing covers
  * - Smooth fade-in animation
  * - Error handling
+ * - Framer Motion support for shared layout transitions
  * 
  * Features:
  * - Uses Next.js Image for optimization
@@ -32,6 +34,7 @@ interface BookCoverImageProps {
   priority?: boolean // For above-the-fold images
   onLoad?: () => void
   onError?: () => void
+  layoutId?: string // For shared layout transitions
 }
 
 const SIZE_MAP = {
@@ -50,6 +53,7 @@ export function BookCoverImage({
   priority = false,
   onLoad,
   onError,
+  layoutId,
 }: BookCoverImageProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [hasError, setHasError] = useState(false)
@@ -96,7 +100,11 @@ export function BookCoverImage({
   }
 
   return (
-    <div className={`relative ${className}`} style={{ width: dimensions.width, height: dimensions.height }}>
+    <motion.div 
+      layoutId={layoutId}
+      className={`relative ${className}`} 
+      style={{ width: dimensions.width, height: dimensions.height }}
+    >
       {/* Loading skeleton */}
       {isLoading && (
         <div className="absolute inset-0 z-10">
@@ -126,7 +134,7 @@ export function BookCoverImage({
         loading={priority ? undefined : 'lazy'}
         unoptimized={imageSrc.includes('covers.openlibrary.org') || imageSrc.includes('googleapis.com')}
       />
-    </div>
+    </motion.div>
   )
 }
 

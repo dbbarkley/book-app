@@ -2,14 +2,12 @@
 
 import React, { useState, useEffect } from 'react'
 import { 
-  X, 
   CheckCircle, 
   BookOpen, 
   Clock, 
   XCircle, 
   Lock, 
   Globe,
-  Star
 } from 'lucide-react'
 import { 
   useBookProgress, 
@@ -24,6 +22,7 @@ import type {
 } from '@book-app/shared/types'
 import Button from './Button'
 import { BookCoverImage } from './BookCoverImage'
+import SlideOver from './SlideOver'
 
 interface QuickUpdateModalProps {
   userBook: UserBook
@@ -43,20 +42,20 @@ export default function QuickUpdateModal({
   const { addToShelf, loading: addShelfLoading } = useBookShelf()
   const { setVisibility, loading: visibilityLoading } = useUpdateBookVisibility()
 
-  const [status, setStatus] = useState<ShelfStatus>(userBook.status)
-  const [visibility, setVisibilityState] = useState<Visibility>(userBook.visibility || 'public')
-  const [pagesRead, setPagesRead] = useState(userBook.pages_read?.toString() || '0')
+  const [status, setStatus] = useState<ShelfStatus>(userBook?.status || 'to_read')
+  const [visibility, setVisibilityState] = useState<Visibility>(userBook?.visibility || 'public')
+  const [pagesRead, setPagesRead] = useState(userBook?.pages_read?.toString() || '0')
   const [totalPages, setTotalPages] = useState(
-    userBook.total_pages?.toString() || userBook.book?.page_count?.toString() || '0'
+    userBook?.total_pages?.toString() || userBook?.book?.page_count?.toString() || '0'
   )
-  const [percentage, setPercentage] = useState(userBook.completion_percentage || 0)
-  const [dnfPage, setDnfPage] = useState(userBook.dnf_page?.toString() || '')
-  const [dnfReason, setDnfReason] = useState(userBook.dnf_reason || '')
+  const [percentage, setPercentage] = useState(userBook?.completion_percentage || 0)
+  const [dnfPage, setDnfPage] = useState(userBook?.dnf_page?.toString() || '')
+  const [dnfReason, setDnfReason] = useState(userBook?.dnf_reason || '')
 
   const isBusy = progressLoading || updateShelfLoading || addShelfLoading || visibilityLoading
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && userBook) {
       setStatus(userBook.status)
       setVisibilityState(userBook.visibility || 'public')
       setPagesRead(userBook.pages_read?.toString() || '0')
@@ -135,183 +134,171 @@ export default function QuickUpdateModal({
   ]
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
-        {/* Header */}
-        <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-white sticky top-0 z-10">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-16 flex-none">
-              {userBook.book && (
-                <BookCoverImage 
-                  src={userBook.book.cover_image_url} 
-                  title={userBook.book.title} 
-                  size="small"
-                  className="rounded shadow-sm"
-                />
-              )}
-            </div>
-            <div>
-              <h3 className="font-bold text-slate-900 line-clamp-1">{userBook.book?.title}</h3>
-              <p className="text-sm text-slate-500">Update your progress</p>
-            </div>
+    <SlideOver 
+      isOpen={isOpen} 
+      onClose={onClose}
+      title="Update Progress"
+    >
+      <div className="space-y-5">
+        {/* Book Summary Card */}
+        <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-100">
+          <div className="w-12 h-18 flex-none shadow-md rounded overflow-hidden bg-white">
+            {userBook.book && (
+              <BookCoverImage 
+                src={userBook.book.cover_image_url} 
+                title={userBook.book.title} 
+                size="small"
+                className="w-full h-full object-cover"
+                layoutId={`book-cover-${userBook.book.id}-modal`}
+              />
+            )}
           </div>
-          <button 
-            onClick={onClose}
-            className="p-2 hover:bg-slate-100 rounded-full transition-colors"
-          >
-            <X className="w-6 h-6 text-slate-400" />
-          </button>
+          <div className="min-w-0">
+            <h3 className="font-bold text-slate-900 leading-tight mb-0.5 truncate">{userBook.book?.title}</h3>
+            <p className="text-xs text-slate-500 truncate">by {userBook.book?.author_name}</p>
+          </div>
         </div>
 
-        {/* Content */}
-        <div className="p-6 overflow-y-auto space-y-8">
-          {/* Status Selection */}
-          <div className="space-y-3">
-            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Status</label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {statusOptions.map((opt) => (
-                <button
-                  key={opt.id}
-                  onClick={() => setStatus(opt.id)}
-                  className={`flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all ${
-                    status === opt.id 
-                      ? `border-primary-600 bg-primary-50 ${opt.color}` 
-                      : 'border-slate-100 bg-white text-slate-400 hover:border-slate-200 hover:bg-slate-50'
-                  }`}
-                >
-                  <opt.icon className="w-5 h-5 mb-1" />
-                  <span className="text-xs font-bold">{opt.label}</span>
-                </button>
-              ))}
-            </div>
+        {/* Status Selection */}
+        <div className="space-y-2">
+          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Shelf Status</label>
+          <div className="grid grid-cols-2 gap-2">
+            {statusOptions.map((opt) => (
+              <button
+                key={opt.id}
+                onClick={() => setStatus(opt.id)}
+                className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${
+                  status === opt.id 
+                    ? `border-primary-600 bg-primary-50 ${opt.color}` 
+                    : 'border-slate-100 bg-white text-slate-400 hover:border-slate-200'
+                }`}
+              >
+                <opt.icon className="w-4 h-4 flex-none" />
+                <span className="text-xs font-bold">{opt.label}</span>
+              </button>
+            ))}
           </div>
+        </div>
 
-          {/* Progress (Only if Reading) */}
-          {status === 'reading' && (
-            <div className="space-y-6 bg-slate-50 p-5 rounded-2xl border border-slate-100">
-              <div className="space-y-4">
-                <div className="flex justify-between items-end">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Reading Progress</label>
-                  <span className="text-2xl font-black text-primary-600">{percentage}%</span>
-                </div>
-                
-                <input 
-                  type="range" 
-                  min="0" 
-                  max="100" 
-                  value={percentage}
-                  onChange={handlePercentageChange}
-                  className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-primary-600"
-                />
+        {/* Progress (Only if Reading) */}
+        {status === 'reading' && (
+          <div className="space-y-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+            <div className="space-y-3">
+              <div className="flex justify-between items-end">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Progress</label>
+                <span className="text-xl font-black text-primary-600">{percentage}%</span>
               </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pages Read</label>
-                  <input 
-                    type="number"
-                    value={pagesRead}
-                    onChange={(e) => {
-                      setPagesRead(e.target.value)
-                      const p = parseInt(e.target.value)
-                      const t = parseInt(totalPages)
-                      if (t > 0) setPercentage(Math.min(100, Math.round((p / t) * 100)))
-                    }}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-primary-500 outline-none transition-all"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Pages</label>
-                  <input 
-                    type="number"
-                    value={totalPages}
-                    onChange={(e) => {
-                      setTotalPages(e.target.value)
-                      const p = parseInt(pagesRead)
-                      const t = parseInt(e.target.value)
-                      if (t > 0) setPercentage(Math.min(100, Math.round((p / t) * 100)))
-                    }}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-primary-500 outline-none transition-all"
-                  />
-                </div>
-              </div>
+              
+              <input 
+                type="range" 
+                min="0" 
+                max="100" 
+                value={percentage}
+                onChange={handlePercentageChange}
+                className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-primary-600"
+              />
             </div>
-          )}
 
-          {/* DNF Details */}
-          {status === 'dnf' && (
-            <div className="space-y-4 bg-rose-50/50 p-5 rounded-2xl border border-rose-100">
+            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-rose-400 uppercase tracking-wider">Stopped at Page</label>
+                <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Pages Read</label>
                 <input 
                   type="number"
-                  value={dnfPage}
-                  onChange={(e) => setDnfPage(e.target.value)}
-                  placeholder="Optional"
-                  className="w-full bg-white border border-rose-100 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-rose-500 outline-none transition-all"
+                  value={pagesRead}
+                  onChange={(e) => {
+                    setPagesRead(e.target.value)
+                    const p = parseInt(e.target.value)
+                    const t = parseInt(totalPages)
+                    if (t > 0) setPercentage(Math.min(100, Math.round((p / t) * 100)))
+                  }}
+                  className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-primary-500 outline-none"
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-rose-400 uppercase tracking-wider">Why did you stop?</label>
-                <textarea 
-                  value={dnfReason}
-                  onChange={(e) => setDnfReason(e.target.value)}
-                  placeholder="Optional notes..."
-                  className="w-full bg-white border border-rose-100 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-rose-500 outline-none transition-all min-h-[80px]"
+                <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Total Pages</label>
+                <input 
+                  type="number"
+                  value={totalPages}
+                  onChange={(e) => {
+                    setTotalPages(e.target.value)
+                    const p = parseInt(pagesRead)
+                    const t = parseInt(e.target.value)
+                    if (t > 0) setPercentage(Math.min(100, Math.round((p / t) * 100)))
+                  }}
+                  className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-primary-500 outline-none"
                 />
               </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Visibility & Privacy */}
-          <div className="space-y-3">
-            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Privacy</label>
-            <div className="flex p-1 bg-slate-100 rounded-2xl">
-              <button
-                onClick={() => setVisibilityState('public')}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all ${
-                  visibility === 'public' 
-                    ? 'bg-white text-slate-900 shadow-sm' 
-                    : 'text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                <Globe className="w-4 h-4" />
-                Public
-              </button>
-              <button
-                onClick={() => setVisibilityState('private')}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all ${
-                  visibility === 'private' 
-                    ? 'bg-white text-slate-900 shadow-sm' 
-                    : 'text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                <Lock className="w-4 h-4" />
-                Private
-              </button>
+        {/* DNF Details */}
+        {status === 'dnf' && (
+          <div className="space-y-3 bg-rose-50/50 p-4 rounded-2xl border border-rose-100">
+            <div className="space-y-1">
+              <label className="text-[9px] font-bold text-rose-400 uppercase tracking-wider">Stopped at Page</label>
+              <input 
+                type="number"
+                value={dnfPage}
+                onChange={(e) => setDnfPage(e.target.value)}
+                placeholder="Optional"
+                className="w-full bg-white border border-rose-100 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-rose-500 outline-none"
+              />
             </div>
-            <p className="text-[10px] text-slate-400 text-center italic">
-              {visibility === 'private' 
-                ? 'Only you can see this book in your library.' 
-                : 'Your followers can see this book and your progress.'}
-            </p>
+            <div className="space-y-1">
+              <label className="text-[9px] font-bold text-rose-400 uppercase tracking-wider">Reason (Optional)</label>
+              <textarea 
+                value={dnfReason}
+                onChange={(e) => setDnfReason(e.target.value)}
+                placeholder="Why did you stop?"
+                className="w-full bg-white border border-rose-100 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-rose-500 outline-none min-h-[60px]"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Visibility & Privacy */}
+        <div className="space-y-2">
+          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Privacy</label>
+          <div className="flex p-1 bg-slate-100 rounded-xl">
+            <button
+              onClick={() => setVisibilityState('public')}
+              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all ${
+                visibility === 'public' 
+                  ? 'bg-white text-slate-900 shadow-sm' 
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              <Globe className="w-3.5 h-3.5" />
+              Public
+            </button>
+            <button
+              onClick={() => setVisibilityState('private')}
+              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all ${
+                visibility === 'private' 
+                  ? 'bg-white text-slate-900 shadow-sm' 
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              <Lock className="w-3.5 h-3.5" />
+              Private
+            </button>
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="p-6 border-t border-slate-100 bg-white">
+        <div className="pt-2 pb-4">
           <Button 
             onClick={handleSave} 
             isLoading={isBusy} 
             fullWidth 
-            size="lg"
-            className="rounded-2xl shadow-xl shadow-primary-600/20 py-4"
+            size="md"
+            className="rounded-xl shadow-lg shadow-primary-600/20 py-3 font-bold"
           >
             Save Updates
           </Button>
         </div>
       </div>
-    </div>
+    </SlideOver>
   )
 }
 

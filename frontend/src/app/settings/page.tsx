@@ -6,7 +6,31 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { motion, Variants } from 'framer-motion'
 import { useAuth, apiClient } from '@book-app/shared'
+
+const containerVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+}
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { 
+    opacity: 1, 
+    y: 0,
+    transition: {
+      type: 'spring',
+      stiffness: 260,
+      damping: 20,
+    }
+  },
+}
 import { LogOut } from 'lucide-react'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import InputField from '@/components/InputField'
@@ -195,9 +219,14 @@ function SettingsContent() {
 
   return (
     <div className="container-mobile py-6 sm:py-8">
-      <div className="max-w-2xl mx-auto">
+      <motion.div 
+        className="max-w-2xl mx-auto"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
         {/* Header */}
-        <div className="mb-6">
+        <motion.div variants={itemVariants} className="mb-6">
           <button
             onClick={() => router.back()}
             className="text-slate-600 hover:text-slate-900 mb-4 flex items-center gap-2"
@@ -219,24 +248,24 @@ function SettingsContent() {
           </button>
           <h1 className="text-3xl font-bold text-slate-900 mb-2">Settings</h1>
           <p className="text-slate-600">Edit your profile information</p>
-        </div>
+        </motion.div>
 
         {/* Success Message */}
         {success && (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+          <motion.div variants={itemVariants} className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
             <p className="text-sm text-green-800">Profile updated successfully!</p>
-          </div>
+          </motion.div>
         )}
 
         {/* Error Message */}
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+          <motion.div variants={itemVariants} className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
             <p className="text-sm text-red-800">{error}</p>
-          </div>
+          </motion.div>
         )}
 
         {/* Profile Form */}
-        <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden mb-6">
+        <motion.div variants={itemVariants} className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden mb-6">
           <div className="p-6 border-b border-slate-100 bg-slate-50/50">
             <h2 className="text-lg font-bold text-slate-900">Public Profile</h2>
             <p className="text-sm text-slate-500">This information will be shown on your public profile</p>
@@ -321,10 +350,10 @@ function SettingsContent() {
               </div>
             </div>
           </form>
-        </div>
+        </motion.div>
 
         {/* Private Information Section */}
-        <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden mb-6">
+        <motion.div variants={itemVariants} className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden mb-6">
           <div className="p-6 border-b border-slate-100 bg-slate-50/50">
             <h2 className="text-lg font-bold text-slate-900">Private Information</h2>
             <p className="text-sm text-slate-500">This information is only visible to you</p>
@@ -366,10 +395,10 @@ function SettingsContent() {
               </Button>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Preferences Section */}
-        <div className="mt-6 bg-white rounded-lg border border-slate-200 p-6 sm:p-8 shadow-sm">
+        <motion.div variants={itemVariants} className="mt-6 bg-white rounded-lg border border-slate-200 p-6 sm:p-8 shadow-sm">
           <h2 className="text-xl font-bold text-slate-900 mb-2">Preferences</h2>
           <p className="text-sm text-slate-600 mb-6">
             Update your favorite genres and authors to personalize your feed
@@ -422,10 +451,10 @@ function SettingsContent() {
               </Button>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Import Library Section */}
-        <div className="mt-6 bg-white rounded-lg border border-slate-200 p-6 sm:p-8 shadow-sm">
+        <motion.div variants={itemVariants} className="mt-6 bg-white rounded-lg border border-slate-200 p-6 sm:p-8 shadow-sm">
           <h2 className="text-xl font-bold text-slate-900 mb-2">Import Reading History</h2>
           <p className="text-sm text-slate-600 mb-6">
             Import your books, ratings, and shelves from other platforms to quickly populate your library
@@ -494,10 +523,10 @@ function SettingsContent() {
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Account Section */}
-        <div className="mt-6 bg-white rounded-lg border border-slate-200 p-6 sm:p-8 shadow-sm">
+        <motion.div variants={itemVariants} className="mt-6 bg-white rounded-lg border border-slate-200 p-6 sm:p-8 shadow-sm">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold text-slate-900">Account</h2>
             <button
@@ -529,8 +558,8 @@ function SettingsContent() {
               </p>
             </div>
           </div>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
     </div>
   )
 }

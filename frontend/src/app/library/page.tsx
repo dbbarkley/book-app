@@ -1,8 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { BookOpen, Book as BookIcon, CheckCircle, XCircle, Lock } from 'lucide-react'
+import { Book as BookIcon, CheckCircle, XCircle, Lock } from 'lucide-react'
 import { useAuth, usePrivateLibrary, useUserLibrary } from '@book-app/shared'
 import Button from '@/components/Button'
 import Shelf from '@/components/Shelf'
@@ -31,8 +30,6 @@ export default function BooksLibraryPage() {
   const { privateBooks, loading: privateLoading, error: privateError, refreshPrivateLibrary } =
     usePrivateLibrary()
 
-  const [activeTab, setActiveTab] = useState('reading')
-
   const handleUpdate = () => {
     refreshLibrary()
     refreshPrivateLibrary()
@@ -57,28 +54,6 @@ export default function BooksLibraryPage() {
     dnf: dnfBooks.length,
     private: privateBooks.length
   }
-
-  // Handle sticky nav scroll effect
-  useEffect(() => {
-    const handleScroll = () => {
-      const sections = ['reading', 'to-read', 'read', 'dnf', 'private']
-      const offset = 160 // Updated offset for h-20 navbar
-      
-      for (const section of sections) {
-        const element = document.getElementById(section)
-        if (element) {
-          const rect = element.getBoundingClientRect()
-          // If the top of the section is near the bottom of our sticky header
-          if (rect.top <= offset && rect.bottom > offset) {
-            setActiveTab(section)
-            break
-          }
-        }
-      }
-    }
-    window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [])
 
   if (!isAuthenticated) {
     return (
@@ -112,63 +87,22 @@ export default function BooksLibraryPage() {
 
   return (
     <div className="min-h-screen bg-slate-50/50">
-      {/* Sticky Sub-navigation - Stays below main navbar (top-20) */}
-      <div className="sticky top-20 z-20 bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm">
-        <div className="container-mobile max-w-6xl">
-          <div className="flex items-center overflow-x-auto scrollbar-hide py-1">
-            {[
-              { id: 'reading', label: 'Reading', icon: BookOpen },
-              { id: 'to-read', label: 'To Read', icon: BookIcon },
-              { id: 'read', label: 'Read', icon: CheckCircle },
-              { id: 'dnf', label: 'DNF', icon: XCircle },
-              { id: 'private', label: 'Private', icon: Lock },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  setActiveTab(tab.id)
-                  const element = document.getElementById(tab.id)
-                  if (element) {
-                    element.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                  }
-                }}
-                className={`flex-none px-4 py-3 text-sm font-semibold transition-all border-b-2 whitespace-nowrap flex items-center gap-2 ${
-                  activeTab === tab.id
-                    ? 'border-primary-600 text-primary-600'
-                    : 'border-transparent text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                <tab.icon className="w-4 h-4" />
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
       <div className="container-mobile py-8 sm:py-12 max-w-6xl">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+        <div className="flex items-start justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-4xl font-extrabold text-slate-900 mb-3 tracking-tight">My Library</h1>
-            <p className="text-slate-600 text-lg">
+            <h1 className="text-4xl font-extrabold text-slate-900 mb-2 tracking-tight">Library</h1>
+            <p className="text-slate-600 text-base">
               {totalPublicBooks === 0
                 ? 'Start building your reading collection today'
                 : `You have ${totalPublicBooks} books in your public collection.`}
             </p>
           </div>
-          <div className="flex gap-3">
-            <Link href="/recommendations">
-              <Button variant="outline" size="md" className="bg-white">
-                Recommendations
-              </Button>
-            </Link>
-            <Link href="/books/search">
-              <Button variant="primary" size="md" className="shadow-md">
-                + Add Books
-              </Button>
-            </Link>
-          </div>
+          <Link href="/search?type=books" className="flex-none pt-1">
+            <Button variant="primary" size="sm" className="shadow-md rounded-xl px-4 py-2 text-sm font-bold">
+              + Add Books
+            </Button>
+          </Link>
         </div>
 
         {/* Stats Dashboard */}

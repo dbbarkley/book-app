@@ -6,6 +6,7 @@
 
 import { useState, useEffect, useRef, Suspense, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { motion, Variants } from 'framer-motion'
 import { 
   useAuth, 
   useUserSearch, 
@@ -14,6 +15,29 @@ import {
   useEvents,
   useVenues
 } from '@book-app/shared'
+
+const containerVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.05,
+    },
+  },
+}
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { 
+    opacity: 1, 
+    y: 0,
+    transition: {
+      type: 'spring',
+      stiffness: 260,
+      damping: 20,
+    }
+  },
+}
 import AuthorCard from '@/components/AuthorCard'
 import BookCard from '@/components/BookCard'
 import EventCard from '@/components/EventCard'
@@ -307,12 +331,6 @@ function SearchContent() {
               Powered by Google Books API
             </p>
           )}
-          {activeTab === 'books' && (
-            <p className="mt-4 text-xs text-text-muted flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-brand-indigo animate-pulse"></span>
-              Search millions of books via Google Books
-            </p>
-          )}
 
           {(activeTab === 'events' || activeTab === 'bookstores') && zipcodeInput && (
             <p className="mt-4 text-xs text-text-muted flex items-center gap-1">
@@ -386,9 +404,16 @@ function SearchContent() {
             <div className="animate-in fade-in duration-500">
               {/* Books */}
               {activeTab === 'books' && books.length > 0 && (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
+                <motion.div 
+                  className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6"
+                  variants={containerVariants}
+                  initial="hidden"
+                  animate="visible"
+                >
                   {books.map((book) => (
-                    <BookCard key={book.google_books_id || book.id} book={book} />
+                    <motion.div key={book.google_books_id || book.id} variants={itemVariants}>
+                      <BookCard book={book} />
+                    </motion.div>
                   ))}
                   {hasMoreBooks && (
                     <div className="col-span-full pt-8 text-center">
@@ -397,18 +422,24 @@ function SearchContent() {
                       </Button>
                     </div>
                   )}
-                </div>
+                </motion.div>
               )}
 
               {/* Authors */}
               {activeTab === 'authors' && authors.length > 0 && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <motion.div 
+                  className="grid grid-cols-1 sm:grid-cols-2 gap-6"
+                  variants={containerVariants}
+                  initial="hidden"
+                  animate="visible"
+                >
                   {authors.map((author) => (
-                    <AuthorCard 
-                      key={author.id || `ext-${author.name}`} 
-                      author={author} 
-                      showFollowButton={author.id > 0}
-                    />
+                    <motion.div key={author.id || `ext-${author.name}`} variants={itemVariants}>
+                      <AuthorCard 
+                        author={author} 
+                        showFollowButton={author.id > 0}
+                      />
+                    </motion.div>
                   ))}
                   {hasMoreAuthors && (
                     <div className="col-span-full pt-8 text-center">
@@ -417,35 +448,41 @@ function SearchContent() {
                       </Button>
                     </div>
                   )}
-                </div>
+                </motion.div>
               )}
 
               {/* People */}
               {activeTab === 'people' && filteredUsers.length > 0 && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <motion.div 
+                  className="grid grid-cols-1 sm:grid-cols-2 gap-6"
+                  variants={containerVariants}
+                  initial="hidden"
+                  animate="visible"
+                >
                   {filteredUsers.map((user) => (
-                    <Link
-                      key={user.id}
-                      href={`/users/${user.id}`}
-                      className="flex items-center gap-4 bg-background-card p-5 rounded-3xl border border-border-default hover:shadow-xl transition-all duration-300 group"
-                    >
-                      <div className="w-16 h-16 rounded-2xl overflow-hidden bg-background-muted flex-shrink-0 group-hover:scale-105 transition-transform duration-300">
-                        {user.avatar_url ? (
-                          <img src={user.avatar_url} alt={user.username} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-brand-indigo font-bold text-2xl">
-                            {user.username[0].toUpperCase()}
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-bold text-text-primary text-lg truncate group-hover:text-brand-indigo transition-colors">
-                          {user.display_name || user.username}
-                        </h4>
-                        <p className="text-text-secondary text-sm">@{user.username}</p>
-                        {user.bio && <p className="text-text-muted text-xs mt-1 line-clamp-1 italic">{user.bio}</p>}
-                      </div>
-                    </Link>
+                    <motion.div key={user.id} variants={itemVariants}>
+                      <Link
+                        href={`/users/${user.id}`}
+                        className="flex items-center gap-4 bg-background-card p-5 rounded-3xl border border-border-default hover:shadow-xl transition-all duration-300 group h-full"
+                      >
+                        <div className="w-16 h-16 rounded-2xl overflow-hidden bg-background-muted flex-shrink-0 group-hover:scale-105 transition-transform duration-300">
+                          {user.avatar_url ? (
+                            <img src={user.avatar_url} alt={user.username} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-brand-indigo font-bold text-2xl">
+                              {user.username[0].toUpperCase()}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-bold text-text-primary text-lg truncate group-hover:text-brand-indigo transition-colors">
+                            {user.display_name || user.username}
+                          </h4>
+                          <p className="text-text-secondary text-sm">@{user.username}</p>
+                          {user.bio && <p className="text-text-muted text-xs mt-1 line-clamp-1 italic">{user.bio}</p>}
+                        </div>
+                      </Link>
+                    </motion.div>
                   ))}
                   {hasMoreUsers && (
                     <div className="col-span-full pt-8 text-center">
@@ -454,14 +491,21 @@ function SearchContent() {
                       </Button>
                     </div>
                   )}
-                </div>
+                </motion.div>
               )}
 
               {/* Events */}
               {activeTab === 'events' && events.length > 0 && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <motion.div 
+                  className="grid grid-cols-1 md:grid-cols-2 gap-6"
+                  variants={containerVariants}
+                  initial="hidden"
+                  animate="visible"
+                >
                   {events.map((event) => (
-                    <EventCard key={event.id} event={event} />
+                    <motion.div key={event.id} variants={itemVariants}>
+                      <EventCard event={event} />
+                    </motion.div>
                   ))}
                   {hasMoreEvents && (
                     <div className="col-span-full pt-8 text-center">
@@ -470,16 +514,23 @@ function SearchContent() {
                       </Button>
                     </div>
                   )}
-                </div>
+                </motion.div>
               )}
 
               {/* Bookstores */}
               {activeTab === 'bookstores' && bookstores.length > 0 && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <motion.div 
+                  className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                  variants={containerVariants}
+                  initial="hidden"
+                  animate="visible"
+                >
                   {bookstores.map((venue: Venue) => (
-                    <VenueCard key={venue.id} venue={venue} />
+                    <motion.div key={venue.id} variants={itemVariants}>
+                      <VenueCard venue={venue} />
+                    </motion.div>
                   ))}
-                </div>
+                </motion.div>
               )}
             </div>
           )}

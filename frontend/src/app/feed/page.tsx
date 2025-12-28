@@ -10,8 +10,32 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import { motion, Variants } from 'framer-motion'
 import { useFeed, useFollows } from '@book-app/shared'
 import { FeedItem, SkeletonLoader, Button } from '@/components'
+
+const containerVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+}
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { 
+    opacity: 1, 
+    y: 0,
+    transition: {
+      type: 'spring',
+      stiffness: 260,
+      damping: 20,
+    }
+  },
+}
 
 export default function FeedPage() {
   const { items, loading, error, pagination, fetchFeed, refreshFeed } = useFeed()
@@ -65,22 +89,9 @@ export default function FeedPage() {
 
   return (
     <div className="min-h-screen bg-background-app">
-      <div className="bg-background-app border-b border-border-default sticky top-0 z-10">
+      {/* <div className="bg-background-app border-b border-border-default sticky top-0 z-10">
         <div className="container-mobile py-4">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-text-muted mb-1">
-                Feed
-              </p>
-              <h1 className="text-3xl font-bold text-text-primary">Personalized Stream</h1>
-              <p className="text-sm text-text-secondary">
-                Powered by{' '}
-                <code className="rounded bg-background-muted px-2 py-0.5 text-text-secondary">
-                  GET /api/v1/feed
-                </code>
-                .
-              </p>
-            </div>
             <div className="flex gap-2">
               <Button
                 onClick={handleRefresh}
@@ -99,7 +110,7 @@ export default function FeedPage() {
             </div>
           </div>
         </div>
-      </div>
+      </div> */}
 
       <div className="container-mobile py-8 sm:py-10">
         <div className="max-w-3xl mx-auto space-y-4">
@@ -120,12 +131,12 @@ export default function FeedPage() {
                 Follow authors, add books, or refresh to see activity tailored to your interests.
               </p>
               <div className="flex flex-wrap justify-center gap-3">
-                <Link
+                {/* <Link
                   href="/recommendations"
                   className="inline-flex items-center justify-center rounded-full bg-brand-indigo px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-indigo-dark"
                 >
                   Explore recommendations
-                </Link>
+                </Link> */}
                 <Link
                   href="/library"
                   className="inline-flex items-center justify-center rounded-full border border-border-default bg-background-card px-5 py-2 text-sm font-semibold text-text-primary transition hover:border-brand-indigo hover:text-brand-indigo"
@@ -137,11 +148,18 @@ export default function FeedPage() {
           )}
 
           {hasItems && (
-            <div className="space-y-4">
+            <motion.div 
+              className="space-y-4"
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+            >
               {items.map((item) => (
-                <FeedItem key={item.id} item={item} />
+                <motion.div key={item.id} variants={itemVariants}>
+                  <FeedItem item={item} />
+                </motion.div>
               ))}
-            </div>
+            </motion.div>
           )}
 
           {pagination && pagination.page < pagination.total_pages && (

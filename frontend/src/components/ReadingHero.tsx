@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react'
 import Link from 'next/link'
+import { motion } from 'framer-motion'
 import { BookOpen } from 'lucide-react'
 import type { UserBook } from '@book-app/shared'
 import { BookCoverImage } from './BookCoverImage'
@@ -31,7 +32,13 @@ export default function ReadingHero({ books, onUpdate }: ReadingHeroProps) {
         Currently Reading
       </h2>
       
-      <div className="space-y-6">
+      <motion.div 
+        className="space-y-6"
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.5 }}
+      >
         {books.map((currentBook) => {
           const { book, completion_percentage = 0, pages_read, total_pages } = currentBook
           if (!book) return null
@@ -43,7 +50,11 @@ export default function ReadingHero({ books, onUpdate }: ReadingHeroProps) {
             >
               <div className="flex flex-col md:flex-row gap-8 items-center md:items-start">
                 {/* Book Cover */}
-                <div className="w-40 sm:w-48 flex-none shadow-2xl rounded-lg overflow-hidden transition-transform hover:scale-105 duration-300">
+                <motion.div 
+                  className="w-40 sm:w-48 flex-none shadow-2xl rounded-lg overflow-hidden"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
                   <Link href={`/books/${book.id}`}>
                     <BookCoverImage
                       src={book.cover_image_url}
@@ -51,9 +62,10 @@ export default function ReadingHero({ books, onUpdate }: ReadingHeroProps) {
                       author={book.author_name}
                       size="large"
                       className="w-full aspect-[2/3] object-cover"
+                      layoutId={`book-cover-${book.id}`}
                     />
                   </Link>
-                </div>
+                </motion.div>
 
                 {/* Book Info & Progress */}
                 <div className="flex-1 text-center md:text-left">
@@ -75,9 +87,12 @@ export default function ReadingHero({ books, onUpdate }: ReadingHeroProps) {
                     </div>
                     
                     <div className="w-full h-3 bg-slate-200 rounded-full overflow-hidden mb-4">
-                      <div 
-                        className="h-full bg-primary-600 rounded-full transition-all duration-1000 ease-out"
-                        style={{ width: `${completion_percentage}%` }}
+                      <motion.div 
+                        className="h-full bg-primary-600 rounded-full"
+                        initial={{ width: 0 }}
+                        whileInView={{ width: `${completion_percentage}%` }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 1, ease: "easeOut", delay: 0.2 }}
                       />
                     </div>
 
@@ -107,16 +122,14 @@ export default function ReadingHero({ books, onUpdate }: ReadingHeroProps) {
             </div>
           )
         })}
-      </div>
+      </motion.div>
 
-      {selectedBook && (
-        <QuickUpdateModal
-          userBook={selectedBook}
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          onUpdate={onUpdate}
-        />
-      )}
+      <QuickUpdateModal
+        userBook={selectedBook || { id: 0, book_id: 0, status: 'to_read' } as any}
+        isOpen={isModalOpen && !!selectedBook}
+        onClose={() => setIsModalOpen(false)}
+        onUpdate={onUpdate}
+      />
     </section>
   )
 }

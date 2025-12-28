@@ -2,11 +2,35 @@
 
 import React, { useRef, useState } from 'react'
 import Link from 'next/link'
+import { motion } from 'framer-motion'
 import { ChevronLeft, ChevronRight, Edit2 } from 'lucide-react'
 import type { UserBook } from '@book-app/shared'
 import BookCard from './BookCard'
 import Button from './Button'
 import QuickUpdateModal from './QuickUpdateModal'
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { 
+    opacity: 1, 
+    y: 0,
+    transition: {
+      type: 'spring',
+      stiffness: 300,
+      damping: 24,
+    }
+  },
+}
 
 interface ShelfProps {
   title: string
@@ -96,14 +120,19 @@ export default function Shelf({
         {/* The "Shelf" visual effect */}
         <div className="absolute bottom-0 left-0 right-0 h-1 bg-slate-200/50 rounded-full -mb-2" />
 
-        <div
+        <motion.div
           ref={scrollContainerRef}
+          variants={containerVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-100px" }}
           className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x snap-mandatory"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           {books.map((userBook) => (
-            <div
+            <motion.div
               key={userBook.id}
+              variants={itemVariants}
               className="flex-none w-[160px] sm:w-[200px] snap-start relative group/item"
             >
               {userBook.book && (
@@ -124,19 +153,17 @@ export default function Shelf({
                   </button>
                 </>
               )}
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       </div>
 
-      {selectedBook && (
-        <QuickUpdateModal
-          userBook={selectedBook}
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          onUpdate={onUpdate}
-        />
-      )}
+      <QuickUpdateModal
+        userBook={selectedBook || { id: 0, book_id: 0, status: 'to_read' } as any}
+        isOpen={isModalOpen && !!selectedBook}
+        onClose={() => setIsModalOpen(false)}
+        onUpdate={onUpdate}
+      />
     </section>
   )
 }

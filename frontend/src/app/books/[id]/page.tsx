@@ -172,6 +172,7 @@ export default function BookPage() {
                 author={book.author_name}
                 size="large"
                 className="w-full aspect-[2/3] object-cover"
+                layoutId={`book-cover-${book.id}`}
               />
             </div>
 
@@ -385,14 +386,12 @@ export default function BookPage() {
       </div>
 
       {/* Quick Update Modal */}
-      {isUpdateModalOpen && (
-        <QuickUpdateModal
-          userBook={userBook || { id: 0, book_id: book.id, book: book, status: 'to_read' } as any}
-          isOpen={isUpdateModalOpen}
-          onClose={() => setIsUpdateModalOpen(false)}
-          onUpdate={refetch}
-        />
-      )}
+      <QuickUpdateModal
+        userBook={userBook || { id: 0, book_id: book.id, book: book, status: 'to_read' } as any}
+        isOpen={isUpdateModalOpen}
+        onClose={() => setIsUpdateModalOpen(false)}
+        onUpdate={refetch}
+      />
     </div>
   )
 }

@@ -2,7 +2,31 @@
 
 import React from 'react'
 import Link from 'next/link'
+import { motion, Variants } from 'framer-motion'
 import { useForums } from '@/shared/hooks/useForums'
+
+const containerVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+}
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { 
+    opacity: 1, 
+    y: 0,
+    transition: {
+      type: 'spring',
+      stiffness: 260,
+      damping: 20,
+    }
+  },
+}
 
 /**
  * Forum list page showing all available forums.
@@ -31,30 +55,36 @@ export default function ForumsPage() {
             <p className="text-gray-500">No forums found.</p>
           </div>
         ) : (
-          <div className="grid gap-6">
+          <motion.div 
+            className="grid gap-6"
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+          >
             {forums.map((forum) => (
-              <Link 
-                key={forum.id} 
-                href={`/forums/${forum.id}`}
-                className="group block p-6 border border-gray-100 rounded-xl hover:border-gray-200 hover:shadow-sm transition-all"
-              >
-                <div className="flex justify-between items-start mb-2">
-                  <h2 className="text-xl font-semibold text-gray-900 group-hover:text-black">
-                    {forum.title}
-                  </h2>
-                  <span className="text-xs font-medium px-2.5 py-1 bg-gray-100 text-gray-600 rounded-full">
-                    {forum.posts_count} posts
-                  </span>
-                </div>
-                <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-                  {forum.description}
-                </p>
-                <div className="text-xs text-gray-400 font-medium">
-                  {forum.followers_count.toLocaleString()} followers
-                </div>
-              </Link>
+              <motion.div key={forum.id} variants={itemVariants}>
+                <Link 
+                  href={`/forums/${forum.id}`}
+                  className="group block p-6 border border-gray-100 rounded-xl hover:border-gray-200 hover:shadow-sm transition-all"
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <h2 className="text-xl font-semibold text-gray-900 group-hover:text-black">
+                      {forum.title}
+                    </h2>
+                    <span className="text-xs font-medium px-2.5 py-1 bg-gray-100 text-gray-600 rounded-full">
+                      {forum.posts_count} posts
+                    </span>
+                  </div>
+                  <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+                    {forum.description}
+                  </p>
+                  <div className="text-xs text-gray-400 font-medium">
+                    {forum.followers_count.toLocaleString()} followers
+                  </div>
+                </Link>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         )}
       </div>
     </div>
