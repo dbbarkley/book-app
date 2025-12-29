@@ -9,6 +9,7 @@ import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '@book-app/shared'
+import Avatar from './Avatar'
 import { 
   LayoutDashboard, 
   BookOpen, 
@@ -16,7 +17,8 @@ import {
   User, 
   Menu, 
   X,
-  MessageSquare
+  MessageSquare,
+  Settings
 } from 'lucide-react'
 
 export default function Navigation() {
@@ -101,7 +103,28 @@ export default function Navigation() {
                 </Link>
               </div>
             ) : (
-              <div></div>
+              <div className="flex items-center space-x-3">
+                <Link
+                  href="/settings"
+                  className="p-2 rounded-xl text-text-secondary hover:bg-background-muted transition-colors hidden sm:block"
+                  aria-label="Settings"
+                >
+                  <Settings size={20} />
+                </Link>
+                <Link 
+                  href={`/users/${user?.id}`}
+                  className="flex items-center gap-2 p-1 pr-3 rounded-full hover:bg-background-muted transition-colors border border-transparent hover:border-border-default"
+                >
+                  <Avatar 
+                    src={user?.avatar_url} 
+                    name={user?.display_name || user?.username} 
+                    size="sm" 
+                  />
+                  <span className="hidden lg:block text-sm font-medium text-text-primary">
+                    {user?.display_name || user?.username}
+                  </span>
+                </Link>
+              </div>
             )}
 
             {/* Mobile Menu Button */}
@@ -118,6 +141,30 @@ export default function Navigation() {
         {/* Mobile Menu */}
         {mobileMenuOpen && (
           <div className="md:hidden py-4 border-t border-border-default/50 animate-in fade-in slide-in-from-top-5 duration-200">
+            {isAuthenticated && user && (
+              <div className="flex items-center gap-3 px-4 py-4 mb-2 border-b border-border-default/30">
+                <Avatar 
+                  src={user.avatar_url} 
+                  name={user.display_name || user.username} 
+                  size="md" 
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-text-primary truncate">
+                    {user.display_name || user.username}
+                  </p>
+                  <p className="text-xs text-text-muted truncate">
+                    @{user.username}
+                  </p>
+                </div>
+                <Link 
+                  href="/settings" 
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="p-2 text-text-secondary hover:text-text-primary"
+                >
+                  <Settings size={20} />
+                </Link>
+              </div>
+            )}
             <div className="flex flex-col space-y-1">
               {navLinks.map((link) => {
                 const Icon = link.icon

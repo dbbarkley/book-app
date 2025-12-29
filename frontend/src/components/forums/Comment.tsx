@@ -12,6 +12,7 @@ import {
 import { formatDate } from '../../utils/format'
 import ModerationMenu from './ModerationMenu'
 import EditCommentModal from './EditCommentModal'
+import Avatar from '../Avatar'
 
 interface CommentProps {
   comment: ForumComment
@@ -60,13 +61,11 @@ export default function Comment({
     <div className={`group ${isReply ? 'pl-4 border-l-2 border-primary-100 dark:border-primary-900/30' : 'pb-6'}`}>
       <div className="flex items-start gap-3">
         {/* User Avatar */}
-        <div className={`flex-shrink-0 rounded-full bg-background-muted flex items-center justify-center font-bold text-xs uppercase overflow-hidden ${isReply ? 'w-6 h-6' : 'w-10 h-10'}`}>
-          {comment.user.avatar_url ? (
-            <img src={comment.user.avatar_url} alt={comment.user.username} className="w-full h-full object-cover" />
-          ) : (
-            comment.user.username.charAt(0)
-          )}
-        </div>
+        <Avatar
+          src={comment.user.avatar_url}
+          name={comment.user.display_name || comment.user.username}
+          size={isReply ? "xs" : "md"}
+        />
 
         <div className="flex-1 min-w-0">
           {/* Header */}

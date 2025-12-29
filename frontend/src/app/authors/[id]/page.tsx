@@ -6,7 +6,7 @@
 
 import { useParams } from 'next/navigation'
 import { useAuthorProfile, useAuthorEvents, useRefreshEvents } from '@book-app/shared'
-import { BookList, FollowButton } from '@/components'
+import { BookList, FollowButton, Avatar } from '@/components'
 import EventCard from '@/components/EventCard'
 import { formatNumber } from '@/utils/format'
 
@@ -88,15 +88,13 @@ export default function AuthorProfilePage() {
         {/* Author Header Card */}
         <div className="bg-white rounded-lg border border-slate-200 p-6 sm:p-8 shadow-sm mb-6">
           <div className="flex flex-col sm:flex-row gap-6">
-            {author.avatar_url && (
-              <div className="flex-shrink-0 mx-auto sm:mx-0">
-                <img
-                  src={author.avatar_url}
-                  alt={author.name}
-                  className="w-32 h-32 sm:w-40 sm:h-40 rounded-full object-cover shadow-md"
-                />
-              </div>
-            )}
+            <div className="flex-shrink-0 mx-auto sm:mx-0">
+              <Avatar
+                src={author.avatar_url}
+                name={author.name}
+                size="2xl"
+              />
+            </div>
             <div className="flex-1 text-center sm:text-left">
               <h1 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-2">
                 {author.name}

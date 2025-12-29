@@ -39,6 +39,7 @@ import AuthorCard from '@/components/AuthorCard'
 import BookCard from '@/components/BookCard'
 import FollowButton from '@/components/FollowButton'
 import Button from '@/components/Button'
+import Avatar from '@/components/Avatar'
 import UserLibrary from '@/components/UserLibrary'
 import GenreChart from '@/components/charts/GenreChart'
 import TopAuthorsChart from '@/components/charts/TopAuthorsChart'
@@ -219,15 +220,13 @@ function UserProfileContent() {
         {/* User Header Card */}
         <motion.div variants={itemVariants} className="bg-white rounded-lg border border-slate-200 p-6 sm:p-8 shadow-sm mb-6">
           <div className="flex flex-col sm:flex-row gap-6">
-            {user.avatar_url && (
-              <div className="flex-shrink-0 mx-auto sm:mx-0">
-                <img
-                  src={user.avatar_url}
-                  alt={user.display_name || user.username}
-                  className="w-32 h-32 sm:w-40 sm:h-40 rounded-full object-cover shadow-md"
-                />
-              </div>
-            )}
+            <div className="flex-shrink-0 mx-auto sm:mx-0">
+              <Avatar
+                src={user.avatar_url}
+                name={user.display_name || user.username}
+                size="2xl"
+              />
+            </div>
             <div className="flex-1 text-center sm:text-left">
               <h1 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-2">
                 {user.display_name || user.username}
@@ -368,13 +367,11 @@ function UserProfileContent() {
                           className="bg-white rounded-lg border border-slate-200 p-4 hover:shadow-lg transition-shadow"
                         >
                           <div className="flex items-center gap-4">
-                            {followedUser.avatar_url && (
-                              <img
-                                src={followedUser.avatar_url}
-                                alt={followedUser.username}
-                                className="w-12 h-12 rounded-full object-cover"
-                              />
-                            )}
+                            <Avatar
+                              src={followedUser.avatar_url}
+                              name={followedUser.display_name || followedUser.username}
+                              size="sm"
+                            />
                             <div className="flex-1">
                               <h3 className="font-semibold text-slate-900">
                                 {followedUser.display_name || followedUser.username}
@@ -416,13 +413,11 @@ function UserProfileContent() {
                       className="bg-white rounded-lg border border-slate-200 p-4 hover:shadow-lg transition-shadow"
                     >
                       <div className="flex items-center gap-4">
-                        {follower.avatar_url && (
-                          <img
-                            src={follower.avatar_url}
-                            alt={follower.username}
-                            className="w-12 h-12 rounded-full object-cover"
-                          />
-                        )}
+                        <Avatar
+                          src={follower.avatar_url}
+                          name={follower.display_name || follower.username}
+                          size="sm"
+                        />
                         <div className="flex-1">
                           <h3 className="font-semibold text-slate-900">
                             {follower.display_name || follower.username}

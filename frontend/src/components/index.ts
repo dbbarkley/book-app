@@ -1,7 +1,9 @@
 // Components exports - Central export point for all UI components
 
 export { default as Navigation } from './Navigation'
+export { default as Avatar } from './Avatar'
 export { default as FeedItem } from './FeedItem'
+export { default as FeedEmptyState } from './FeedEmptyState'
 export { default as EnhancedFeedItem } from './EnhancedFeedItem'
 export { default as BookCard } from './BookCard'
 export { default as AuthorCard } from './AuthorCard'

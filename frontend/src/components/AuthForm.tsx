@@ -210,6 +210,30 @@ export default function AuthForm({
         {mode === 'login' ? 'Sign In' : 'Create Account'}
       </Button>
 
+      <div className="relative my-6">
+        <div className="absolute inset-0 flex items-center" aria-hidden="true">
+          <div className="w-full border-t border-slate-200"></div>
+        </div>
+        <div className="relative flex justify-center text-sm">
+          <span className="bg-white px-4 text-slate-500 font-medium">Or continue with</span>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => {
+          const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
+          // Now pointing to the namespaced /api/v1/auth/facebook
+          window.location.href = `${backendUrl}/auth/facebook`;
+        }}
+        className="flex w-full items-center justify-center gap-3 rounded-xl bg-[#1877F2] px-4 py-3 text-sm font-bold text-white transition-all hover:bg-[#166fe5] shadow-sm active:scale-[0.98]"
+      >
+        <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.37-4.669 1.235 0 2.528.22 2.528.22v2.78h-1.423c-1.49 0-1.95.925-1.95 1.874v2.25h3.134l-.501 3.47h-2.633V23.93C19.612 23.029 24 18.065 24 12.073z" />
+        </svg>
+        <span>Facebook</span>
+      </button>
+
       {mode === 'login' && (
         <div className="text-center mt-4">
           <a

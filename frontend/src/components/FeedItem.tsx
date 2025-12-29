@@ -12,6 +12,9 @@
 import Link from 'next/link'
 import { formatRelativeTime } from '../utils/format'
 import type { FeedItem, Book, Event, Author, User, UserBook } from '@book-app/shared'
+import { useAuth } from '@book-app/shared'
+import { UserCircle, BookOpen, Calendar, Star, CheckCircle2, UserPlus } from 'lucide-react'
+import Avatar from './Avatar'
 
 interface FeedItemProps {
   item: FeedItem
@@ -19,6 +22,20 @@ interface FeedItemProps {
 
 const formatContext = (item: FeedItem, defaultText: string) => {
   return item.metadata?.reason || item.metadata?.context || defaultText
+}
+
+const UserAvatar = ({ user, size = "md" }: { user?: User, size?: "sm" | "md" }) => {
+  if (!user) return <div className={`${size === "sm" ? "w-8 h-8" : "w-10 h-10"} rounded-full bg-slate-100 flex items-center justify-center text-slate-400`}><UserCircle size={size === "sm" ? 16 : 20} /></div>
+
+  return (
+    <Link href={`/users/${user.id}`} className="flex-shrink-0">
+      <Avatar 
+        src={user.avatar_url} 
+        name={user.display_name || user.username} 
+        size={size} 
+      />
+    </Link>
+  )
 }
 
 const BookRecommendation = (item: FeedItem) => {
@@ -30,39 +47,42 @@ const BookRecommendation = (item: FeedItem) => {
     <div className="flex flex-col gap-4">
       <div className="flex gap-4">
         {book.cover_image_url && (
-          <Link href={`/books/${book.id}`} className="flex-shrink-0">
+          <Link href={`/books/${book.id}`} className="flex-shrink-0 group">
             <img
               src={book.cover_image_url}
               alt={book.title}
-              className="w-20 h-28 sm:w-24 sm:h-32 object-cover rounded-lg border border-border-default shadow-sm"
+              className="w-20 h-28 sm:w-24 sm:h-32 object-cover rounded-xl border border-border-default shadow-sm group-hover:shadow-md transition-shadow"
             />
           </Link>
         )}
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-text-muted mb-1">
-            Book Recommendation
-          </p>
+          <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-brand-indigo mb-2">
+            <Star size={14} className="fill-current" />
+            <span>Book Recommendation</span>
+          </div>
           <Link href={`/books/${book.id}`}>
-            <h3 className="text-lg font-semibold text-text-primary hover:text-brand-indigo mb-1">
+            <h3 className="text-xl font-bold text-text-primary hover:text-brand-indigo mb-1 leading-tight">
               {book.title}
             </h3>
           </Link>
-          <p className="text-sm text-text-secondary mb-1">
+          <p className="text-sm text-text-secondary mb-2">
             {book.author_name || book.author?.name || 'Unknown author'}
           </p>
-          <p className="text-sm text-text-muted line-clamp-2">{reason}</p>
+          <p className="text-sm text-text-muted italic leading-relaxed line-clamp-2">"{reason}"</p>
         </div>
       </div>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-50">
         <Link
           href={`/books/${book.id}`}
-          className="inline-flex items-center justify-center rounded-full border border-border-default bg-background-muted px-3 py-1.5 text-sm font-semibold text-text-secondary transition hover:border-brand-indigo hover:text-brand-indigo"
+          className="text-sm font-bold text-brand-indigo hover:underline"
         >
-          View Book
+          View Book details →
         </Link>
-        <span className="text-xs text-text-muted">
-          Score: {item.metadata?.score ?? 'N/A'}
-        </span>
+        {item.metadata?.score && (
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 uppercase tracking-tighter">
+            Match Score: {Math.round(item.metadata.score * 100)}%
+          </span>
+        )}
       </div>
     </div>
   )
@@ -78,141 +98,190 @@ const EventRecommendation = (item: FeedItem) => {
 
   return (
     <div className="flex flex-col gap-4">
+      <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-purple-600 mb-1">
+        <Calendar size={14} />
+        <span>Event for you</span>
+      </div>
       <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-text-muted mb-1">
-          Event Recommendation
-        </p>
         <Link 
           href={eventLink}
           target={isExternal ? "_blank" : undefined}
           rel={isExternal ? "noopener noreferrer" : undefined}
         >
-          <h3 className="text-lg font-semibold text-text-primary hover:text-brand-indigo mb-1">
+          <h3 className="text-xl font-bold text-text-primary hover:text-brand-indigo mb-1">
             {event.title}
           </h3>
         </Link>
-        <p className="text-sm text-text-secondary mb-1">
+        <p className="text-sm font-medium text-text-secondary mb-2">
           {event.author_name || event.author?.name}
         </p>
-        <p className="text-sm text-text-muted line-clamp-2">{reason}</p>
-        <div className="flex flex-wrap gap-3 text-xs text-text-muted mt-2">
-          <span>
-            📅 {new Date(event.starts_at).toLocaleDateString()} at{' '}
-            {new Date(event.starts_at).toLocaleTimeString([], {
-              hour: 'numeric',
-              minute: '2-digit',
-            })}
-          </span>
-          {event.location && <span>📍 {event.location}</span>}
-          {event.is_virtual && <span>🌐 Virtual</span>}
+        <p className="text-sm text-text-muted mb-4">{reason}</p>
+        
+        <div className="bg-slate-50 rounded-2xl p-4 space-y-2">
+          <div className="flex items-center gap-2 text-sm text-text-secondary">
+            <span className="text-base">📅</span>
+            <span>
+              {new Date(event.starts_at).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })} at{' '}
+              {new Date(event.starts_at).toLocaleTimeString([], {
+                hour: 'numeric',
+                minute: '2-digit',
+              })}
+            </span>
+          </div>
+          {event.location && (
+            <div className="flex items-center gap-2 text-sm text-text-secondary">
+              <span className="text-base">📍</span>
+              <span className="truncate">{event.location}</span>
+            </div>
+          )}
+          {event.is_virtual && (
+            <div className="flex items-center gap-2 text-sm text-text-secondary">
+              <span className="text-base">🌐</span>
+              <span>Online Event</span>
+            </div>
+          )}
         </div>
       </div>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex items-center justify-between">
         <Link
           href={eventLink}
           target={isExternal ? "_blank" : undefined}
           rel={isExternal ? "noopener noreferrer" : undefined}
-          className="inline-flex items-center justify-center rounded-full border border-border-default bg-background-muted px-3 py-1.5 text-sm font-semibold text-text-secondary transition hover:border-brand-indigo hover:text-brand-indigo"
+          className="inline-flex items-center justify-center rounded-xl bg-brand-indigo px-4 py-2 text-sm font-bold text-white transition hover:bg-brand-indigo-dark shadow-sm"
         >
-          {isExternal ? 'View on Website' : 'View Event'}
+          {isExternal ? 'Get Tickets' : 'View Event'}
         </Link>
-        <span className="text-xs text-text-muted">
-          Score: {item.metadata?.score ?? 'N/A'}
-        </span>
       </div>
     </div>
   )
 }
 
-const FollowActivity = (item: FeedItem) => {
-  const actor = item.metadata?.actor as User | undefined
-  const targetUser = item.feedable as User | undefined
-  const reason = formatContext(item, 'Follow activity')
-  const actorDisplay = actor?.display_name || actor?.username || 'Someone'
-  const targetDisplay = targetUser?.display_name || targetUser?.username || 'someone'
+const FollowActivity = (item: FeedItem, currentUser: User | null) => {
+  const actor = (item.user || item.metadata?.actor) as User | undefined
+  const feedable = item.feedable as any
+  const isAuthor = 
+    item.activity_type === 'user_followed_author' || 
+    feedable?.type === 'Author' || 
+    !!item.metadata?.target_author
+  
+  const isActorMe = actor?.id === currentUser?.id
+  const actorDisplay = isActorMe ? 'You' : (actor?.display_name || actor?.username || 'Someone')
+  
+  const targetId = feedable?.id || item.metadata?.target_author?.id || item.metadata?.target_user?.id
+  const isTargetMe = !isAuthor && targetId === currentUser?.id
+  
+  const targetDisplay = isTargetMe 
+    ? 'you'
+    : isAuthor 
+      ? (feedable?.name || item.metadata?.target_author?.name || 'an author')
+      : (feedable?.display_name || feedable?.username || item.metadata?.target_user?.display_name || item.metadata?.target_user?.username || 'someone')
+
+  const targetPath = isAuthor ? `/authors/${targetId}` : `/users/${targetId}`
 
   return (
-    <div className="flex flex-col gap-4">
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-text-muted mb-1">
-          Follow Activity
-        </p>
-        <h3 className="text-lg font-semibold text-text-primary mb-1">
-          {actor ? (
-            <Link href={`/users/${actor.id}`}>{actorDisplay}</Link>
-          ) : (
-            actorDisplay
-          )}{' '}
-          is now following{' '}
-          {targetUser ? (
-            <Link href={`/users/${targetUser.id}`}>{targetDisplay}</Link>
-          ) : (
-            targetDisplay
-          )}
+    <div className="flex items-start gap-4">
+      <UserAvatar user={actor} />
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
+          <UserPlus size={14} />
+          <span>New Connection</span>
+        </div>
+        <h3 className="text-base font-medium text-text-primary leading-snug">
+          <span className="font-bold">
+            {actor && !isActorMe ? (
+              <Link href={`/users/${actor.id}`} className="hover:text-brand-indigo">{actorDisplay}</Link>
+            ) : (
+              actorDisplay
+            )}
+          </span>
+          {' '}{isActorMe ? 'are' : 'is'} now following{' '}
+          <span className="font-bold text-brand-indigo">
+            {targetId && !isTargetMe ? (
+              <Link href={targetPath} className="hover:underline">{targetDisplay}</Link>
+            ) : (
+              targetDisplay
+            )}
+          </span>
         </h3>
-        <p className="text-sm text-text-muted">{reason}</p>
+        
+        {targetId && !isTargetMe && (
+          <div className="mt-3">
+            <Link
+              href={targetPath}
+              className="inline-flex items-center justify-center rounded-xl border border-border-default bg-white px-4 py-1.5 text-xs font-bold text-text-secondary transition hover:border-brand-indigo hover:text-brand-indigo shadow-sm"
+            >
+              View {isAuthor ? 'Author' : 'Profile'}
+            </Link>
+          </div>
+        )}
       </div>
-      {targetUser && (
-        <Link
-          href={`/users/${targetUser.id}`}
-          className="inline-flex items-center justify-center rounded-full border border-border-default bg-background-muted px-3 py-1.5 text-sm font-semibold text-text-secondary transition hover:border-brand-indigo hover:text-brand-indigo"
-        >
-          View profile
-        </Link>
-      )}
     </div>
   )
 }
 
-const UserBookActivity = (item: FeedItem) => {
-  const actor = item.metadata?.actor as User | undefined
+const UserBookActivity = (item: FeedItem, currentUser: User | null) => {
+  const actor = (item.user || item.metadata?.actor) as User | undefined
   const userBook = item.feedable as UserBook | undefined
   const book = userBook?.book
   if (!book) return null
 
-  const actorDisplay = actor?.display_name || actor?.username || 'Someone'
-  const targetHeading = item.activity_type === 'user_finished_book' ? 'Finished Book' : 'Want to Read'
-  const actionText =
-    item.activity_type === 'user_finished_book' ? 'finished reading' : 'wants to read'
+  const isActorMe = actor?.id === currentUser?.id
+  const actorDisplay = isActorMe ? 'You' : (actor?.display_name || actor?.username || 'Someone')
+  
+  const isFinished = item.activity_type === 'user_finished_book'
+  const targetHeading = isFinished ? 'Completed Book' : 'Added to Shelf'
+  const actionText = isFinished ? 'finished reading' : 'wants to read'
+  const icon = isFinished ? <CheckCircle2 size={14} /> : <BookOpen size={14} />
+  const colorClass = isFinished ? "text-brand-green" : "text-blue-600"
 
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-text-muted mb-1">
-          {targetHeading}
-        </p>
-        <h3 className="text-lg font-semibold text-text-primary mb-1">
-          {actor ? (
-            <Link href={`/users/${actor.id}`}>{actorDisplay}</Link>
-          ) : (
-            actorDisplay
-          )}{' '}
-          {actionText} <Link href={`/books/${book.id}`}>{book.title}</Link>
-        </h3>
-        <p className="text-sm text-text-muted">{book.author_name || book.author?.name}</p>
+      <div className="flex items-start gap-4">
+        <UserAvatar user={actor} />
+        <div className="flex-1 min-w-0">
+          <div className={`flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider ${colorClass} mb-1`}>
+            {icon}
+            <span>{targetHeading}</span>
+          </div>
+          <h3 className="text-base font-medium text-text-primary leading-snug">
+            <span className="font-bold">
+              {actor && !isActorMe ? (
+                <Link href={`/users/${actor.id}`} className="hover:text-brand-indigo">{actorDisplay}</Link>
+              ) : (
+                actorDisplay
+              )}
+            </span>
+            {' '}{isActorMe ? (isFinished ? 'finished reading' : 'want to read') : actionText}
+          </h3>
+        </div>
       </div>
-      <div className="flex flex-wrap items-center gap-3">
+
+      <div className="flex gap-4 ml-14 bg-slate-50/50 p-3 rounded-2xl border border-slate-100/50">
         {book.cover_image_url && (
-          <Link href={`/books/${book.id}`} className="flex-shrink-0">
+          <Link href={`/books/${book.id}`} className="flex-shrink-0 group">
             <img
               src={book.cover_image_url}
               alt={book.title}
-              className="w-20 h-28 object-cover rounded-lg border border-border-default shadow-sm"
+              className="w-14 h-20 object-cover rounded-lg shadow-sm group-hover:shadow-md transition-shadow"
             />
           </Link>
         )}
-        <div className="flex flex-wrap gap-2 items-center text-xs text-text-muted">
-          <Link
-            href={`/books/${book.id}`}
-            className="inline-flex items-center justify-center rounded-full border border-border-default bg-background-muted px-3 py-1.5 font-semibold text-text-secondary transition hover:border-brand-indigo hover:text-brand-indigo"
-          >
-            View Book
+        <div className="flex-1 min-w-0 flex flex-col justify-center">
+          <Link href={`/books/${book.id}`}>
+            <h4 className="text-base font-bold text-text-primary hover:text-brand-indigo truncate">
+              {book.title}
+            </h4>
           </Link>
-          {userBook?.status && (
-            <span className="px-2 py-1 rounded-full bg-background-muted text-xs text-text-secondary">
-              Status: {userBook.status}
-            </span>
-          )}
+          <p className="text-xs text-text-secondary truncate">{book.author_name || book.author?.name}</p>
+          
+          <div className="mt-2">
+            <Link
+              href={`/books/${book.id}`}
+              className="text-xs font-bold text-brand-indigo hover:underline"
+            >
+              See more
+            </Link>
+          </div>
         </div>
       </div>
     </div>
@@ -306,15 +375,13 @@ const LegacyContent = (item: FeedItem) => {
       const author = item.feedable as Author
       return author ? (
         <div className="flex gap-4">
-          {author.avatar_url && (
-            <Link href={`/authors/${author.id}`} className="flex-shrink-0">
-              <img
-                src={author.avatar_url}
-                alt={author.name}
-                className="w-16 h-16 rounded-full object-cover"
-              />
-            </Link>
-          )}
+          <Link href={`/authors/${author.id}`} className="flex-shrink-0">
+            <Avatar
+              src={author.avatar_url}
+              name={author.name}
+              size="lg"
+            />
+          </Link>
           <div className="flex-1 min-w-0">
           <div className="text-xs text-text-muted mb-1">Author Announcement</div>
           <Link href={`/authors/${author.id}`}>
@@ -334,6 +401,8 @@ const LegacyContent = (item: FeedItem) => {
 }
 
 export default function FeedItemComponent({ item }: FeedItemProps) {
+  const { user: currentUser } = useAuth()
+
   const renderContent = () => {
     if (item.activity_type === 'book_recommendation') {
       return BookRecommendation(item)
@@ -345,19 +414,25 @@ export default function FeedItemComponent({ item }: FeedItemProps) {
       item.activity_type === 'user_finished_book' ||
       item.activity_type === 'user_added_book'
     ) {
-      return UserBookActivity(item)
+      return UserBookActivity(item, currentUser)
     }
-    if (item.activity_type === 'follow_activity') {
-      return FollowActivity(item)
+    if (
+      item.activity_type === 'follow_activity' ||
+      item.activity_type === 'user_followed_user' ||
+      item.activity_type === 'user_followed_author'
+    ) {
+      return FollowActivity(item, currentUser)
     }
     return LegacyContent(item)
   }
 
   return (
-    <article className="bg-background-card rounded-2xl border border-border-default p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
+    <article className="bg-background-card rounded-[2rem] border border-border-default p-5 sm:p-6 shadow-sm hover:shadow-xl transition-all duration-300 group">
       {renderContent()}
-      <div className="mt-4 pt-4 border-t border-border-default text-xs text-text-muted">
-        {formatRelativeTime(item.created_at)}
+      <div className="mt-4 pt-4 border-t border-slate-50 flex items-center justify-between">
+        <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">
+          {formatRelativeTime(item.created_at)}
+        </span>
       </div>
     </article>
   )

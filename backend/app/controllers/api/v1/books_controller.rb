@@ -67,7 +67,7 @@ module Api
               id: ub.user.id,
               username: ub.user.username,
               display_name: ub.user.display_name,
-              avatar_url: ub.user.avatar_url,
+              avatar_url: ub.user.avatar_url_with_attachment,
               status: ub.status
             }
           }

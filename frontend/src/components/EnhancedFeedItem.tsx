@@ -30,9 +30,10 @@
 
 import Link from 'next/link'
 import type { FeedItem, Book, Event, Author, User, UserBook } from '@book-app/shared'
-import { useFollow } from '@book-app/shared'
+import { useFollow, useAuth } from '@book-app/shared'
 import { formatRelativeTime } from '../utils/format'
 import Button from './Button'
+import Avatar from './Avatar'
 
 interface EnhancedFeedItemProps {
   item: FeedItem
@@ -43,26 +44,37 @@ export default function EnhancedFeedItem({
   item, 
   showFollowButtons = true 
 }: EnhancedFeedItemProps) {
+  const { user: currentUser } = useAuth()
+
   // Render user avatar and info for user activities
-  const renderUserHeader = (user: User) => (
-    <div className="flex items-center gap-3 mb-3">
-      <Link href={`/users/${user.id}`} className="flex-shrink-0">
-        <img
-          src={user.avatar_url || 'https://i.pravatar.cc/150?img=0'}
-          alt={user.display_name || user.username}
-          className="w-10 h-10 rounded-full object-cover ring-2 ring-slate-100"
-        />
-      </Link>
-      <div className="flex-1 min-w-0">
-        <Link 
-          href={`/users/${user.id}`}
-          className="font-medium text-slate-900 hover:text-primary-600"
-        >
-          {user.display_name || user.username}
+  const renderUserHeader = (user: User) => {
+    const isMe = user.id === currentUser?.id
+    const displayName = isMe ? 'You' : (user.display_name || user.username)
+
+    return (
+      <div className="flex items-center gap-3 mb-3">
+        <Link href={`/users/${user.id}`} className="flex-shrink-0">
+          <Avatar
+            src={user.avatar_url}
+            name={user.display_name || user.username}
+            size="md"
+          />
         </Link>
+        <div className="flex-1 min-w-0">
+          {isMe ? (
+            <span className="font-medium text-slate-900">{displayName}</span>
+          ) : (
+            <Link 
+              href={`/users/${user.id}`}
+              className="font-medium text-slate-900 hover:text-primary-600"
+            >
+              {displayName}
+            </Link>
+          )}
+        </div>
       </div>
-    </div>
-  )
+    )
+  }
 
   // Generic follow button component for any entity
   const FollowButtonComponent = ({ 
@@ -213,7 +225,10 @@ export default function EnhancedFeedItem({
         const user = item.user
         if (!user || !userBook.book) return null
         
-        const shelfLabel = userBook.shelf === 'to_read' ? 'wants to read' : `added to ${userBook.shelf}`
+        const isMe = user.id === currentUser?.id
+        const shelfLabel = userBook.shelf === 'to_read' 
+          ? (isMe ? 'want to read' : 'wants to read') 
+          : `added to ${userBook.shelf}`
         
         return (
           <div>
@@ -232,7 +247,7 @@ export default function EnhancedFeedItem({
                 <div className="flex items-start justify-between gap-3 mb-1">
                   <div className="flex-1 min-w-0">
                     <div className="text-xs text-blue-600 font-medium mb-1">
-                      📖 {shelfLabel}
+                      📖 {isMe ? 'You ' : ''}{shelfLabel}
                     </div>
                     <Link href={`/books/${userBook.book.id}`}>
                       <h3 className="text-base font-semibold text-slate-900 hover:text-primary-600">
@@ -260,6 +275,8 @@ export default function EnhancedFeedItem({
         const user = item.user
         if (!user || !userBook.book) return null
         
+        const isMe = user.id === currentUser?.id
+        
         return (
           <div>
             {renderUserHeader(user)}
@@ -277,7 +294,7 @@ export default function EnhancedFeedItem({
                 <div className="flex items-start justify-between gap-3 mb-1">
                   <div className="flex-1 min-w-0">
                     <div className="text-xs text-green-600 font-medium mb-1">
-                      ✅ Finished reading
+                      ✅ {isMe ? 'You finished' : 'Finished'} reading
                     </div>
                     <Link href={`/books/${userBook.book.id}`}>
                       <h3 className="text-base font-semibold text-slate-900 hover:text-primary-600">
@@ -315,6 +332,8 @@ export default function EnhancedFeedItem({
         const user = item.user
         if (!user || !userBook.book) return null
         
+        const isMe = user.id === currentUser?.id
+        
         return (
           <div>
             {renderUserHeader(user)}
@@ -332,7 +351,7 @@ export default function EnhancedFeedItem({
                 <div className="flex items-start justify-between gap-3 mb-1">
                   <div className="flex-1 min-w-0">
                     <div className="text-xs text-indigo-600 font-medium mb-1">
-                      📖 Reading progress
+                      📖 {isMe ? 'Your reading' : 'Reading'} progress
                     </div>
                     <Link href={`/books/${userBook.book.id}`}>
                       <h3 className="text-base font-semibold text-slate-900 hover:text-primary-600">
@@ -376,6 +395,8 @@ export default function EnhancedFeedItem({
         const user = item.user
         if (!user || !userBook.book) return null
         
+        const isMe = user.id === currentUser?.id
+        
         return (
           <div>
             {renderUserHeader(user)}
@@ -391,7 +412,7 @@ export default function EnhancedFeedItem({
               )}
               <div className="flex-1 min-w-0">
                 <div className="text-xs text-amber-600 font-medium mb-1">
-                  ⭐ Reviewed
+                  ⭐ {isMe ? 'You reviewed' : 'Reviewed'}
                 </div>
                 <Link href={`/books/${userBook.book.id}`}>
                   <h3 className="text-base font-semibold text-slate-900 hover:text-primary-600 mb-1">
@@ -427,8 +448,53 @@ export default function EnhancedFeedItem({
         return (
           <div>
             {renderUserHeader(user)}
-            <div className="flex gap-4 ml-13">
+            <div className="flex gap-4 ml-12 sm:ml-13">
               {renderAuthorAnnouncement(author)}
+            </div>
+          </div>
+        )
+      }
+
+      case 'follow_activity':
+      case 'user_followed_user': {
+        const targetUser = item.feedable as User
+        const actor = item.user || (item.metadata?.actor as User)
+        if (!actor || !targetUser) return null
+
+        const isActorMe = actor.id === currentUser?.id
+        const isTargetMe = targetUser.id === currentUser?.id
+        const targetDisplayName = isTargetMe ? 'you' : (targetUser.display_name || targetUser.username)
+
+        return (
+          <div>
+            {renderUserHeader(actor)}
+            <div className="flex items-center justify-between gap-4 ml-12 sm:ml-13 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+              <div className="flex items-center gap-3">
+                <Link href={`/users/${targetUser.id}`} className="flex-shrink-0">
+                  <Avatar
+                    src={targetUser.avatar_url}
+                    name={targetUser.display_name || targetUser.username}
+                    size="md"
+                    showBorder={false}
+                  />
+                </Link>
+                <div className="min-w-0">
+                  <div className="text-xs text-slate-500 mb-0.5">{isActorMe ? 'You started' : 'Started'} following</div>
+                  {isTargetMe ? (
+                    <span className="font-bold text-slate-900 truncate block">{targetDisplayName}</span>
+                  ) : (
+                    <Link 
+                      href={`/users/${targetUser.id}`}
+                      className="font-bold text-slate-900 hover:text-primary-600 truncate block"
+                    >
+                      {targetDisplayName}
+                    </Link>
+                  )}
+                </div>
+              </div>
+              {showFollowButtons && targetUser.id && !isTargetMe && (
+                <FollowButtonComponent type="User" id={targetUser.id} />
+              )}
             </div>
           </div>
         )
@@ -440,47 +506,52 @@ export default function EnhancedFeedItem({
   }
 
   // Helper to render author info with follow button
-  const renderAuthorAnnouncement = (author: Author) => (
-    <div className="flex gap-4">
-      {author.avatar_url && (
-        <Link href={`/authors/${author.id}`} className="flex-shrink-0">
-          <img
-            src={author.avatar_url}
-            alt={author.name}
-            className="w-16 h-16 rounded-full object-cover ring-2 ring-slate-100"
-          />
-        </Link>
-      )}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between gap-3 mb-1">
-          <div className="flex-1 min-w-0">
-            <div className="text-xs text-slate-500 mb-1">
-              {item.activity_type === 'user_followed_author' ? '👤 started following' : '✨ Author Announcement'}
+  const renderAuthorAnnouncement = (author: Author) => {
+    const isFollowAction = item.activity_type === 'user_followed_author'
+    const isMe = item.user?.id === currentUser?.id
+    
+    return (
+      <div className="flex gap-4">
+        {author.avatar_url && (
+          <Link href={`/authors/${author.id}`} className="flex-shrink-0">
+            <img
+              src={author.avatar_url}
+              alt={author.name}
+              className="w-16 h-16 rounded-full object-cover ring-2 ring-slate-100"
+            />
+          </Link>
+        )}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-3 mb-1">
+            <div className="flex-1 min-w-0">
+              <div className="text-xs text-slate-500 mb-1">
+                {isFollowAction ? (isMe ? 'You started following' : '👤 started following') : '✨ Author Announcement'}
+              </div>
+              <Link href={`/authors/${author.id}`}>
+                <h3 className="text-lg font-semibold text-slate-900 hover:text-primary-600 mb-1">
+                  {author.name}
+                </h3>
+              </Link>
+              {author.bio && (
+                <p className="text-sm text-slate-600 mt-2 line-clamp-2">{author.bio}</p>
+              )}
+              <div className="flex flex-wrap gap-4 text-xs text-slate-500 mt-2">
+                {author.books_count !== undefined && (
+                  <span>{author.books_count} books</span>
+                )}
+                {author.followers_count !== undefined && (
+                  <span>{author.followers_count} followers</span>
+                )}
+              </div>
             </div>
-            <Link href={`/authors/${author.id}`}>
-              <h3 className="text-lg font-semibold text-slate-900 hover:text-primary-600 mb-1">
-                {author.name}
-              </h3>
-            </Link>
-            {author.bio && (
-              <p className="text-sm text-slate-600 mt-2 line-clamp-2">{author.bio}</p>
+            {showFollowButtons && (
+              <FollowButtonComponent type="Author" id={author.id} />
             )}
-            <div className="flex flex-wrap gap-4 text-xs text-slate-500 mt-2">
-              {author.books_count !== undefined && (
-                <span>{author.books_count} books</span>
-              )}
-              {author.followers_count !== undefined && (
-                <span>{author.followers_count} followers</span>
-              )}
-            </div>
           </div>
-          {showFollowButtons && (
-            <FollowButtonComponent type="Author" id={author.id} />
-          )}
         </div>
       </div>
-    </div>
-  )
+    )
+  }
 
   return (
     <article className="bg-white rounded-lg border border-slate-200 p-4 sm:p-6 hover:shadow-md transition-shadow">

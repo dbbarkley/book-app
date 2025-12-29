@@ -15,5 +15,8 @@ Rails.application.configure do
   config.active_support.disallowed_deprecation_warnings = []
   config.active_record.migration_error = :page_load
   config.active_record.verbose_query_logs = true
+
+  # Store uploaded files on the local file system in a temporary directory.
+  config.active_storage.service = :test
 end
 

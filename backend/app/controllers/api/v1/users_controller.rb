@@ -218,7 +218,7 @@ module Api
       end
 
       def user_params
-        params.require(:user).permit(:display_name, :bio, :avatar_url, :zipcode)
+        params.require(:user).permit(:display_name, :bio, :avatar_url, :zipcode, :avatar)
       end
 
       def serialize_user(user)
@@ -227,7 +227,7 @@ module Api
           username: user.username,
           display_name: user.display_name,
           bio: user.bio,
-          avatar_url: user.avatar_url,
+          avatar_url: user.avatar_url_with_attachment,
           zipcode: user.zipcode,
           created_at: user.created_at
         }

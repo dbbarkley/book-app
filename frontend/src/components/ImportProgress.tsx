@@ -12,6 +12,8 @@ interface ImportProgressProps {
   progressPercentage: number
   errorMessage?: string
   metadata?: Record<string, any>
+  onViewBooks?: () => void
+  onGoToFeed?: () => void
 }
 
 /**
@@ -34,8 +36,26 @@ export function ImportProgress({
   progressPercentage,
   errorMessage,
   metadata,
+  onViewBooks,
+  onGoToFeed,
 }: ImportProgressProps) {
   const router = useRouter()
+
+  const handleViewBooks = () => {
+    if (onViewBooks) {
+      onViewBooks()
+    } else {
+      router.push('/library')
+    }
+  }
+
+  const handleGoToFeed = () => {
+    if (onGoToFeed) {
+      onGoToFeed()
+    } else {
+      router.push('/feed')
+    }
+  }
 
   const getStatusConfig = () => {
     switch (status) {
@@ -179,13 +199,13 @@ export function ImportProgress({
       {isComplete && (
         <div className="flex gap-3">
           <button
-            onClick={() => router.push('/library')}
+            onClick={handleViewBooks}
             className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
           >
             View My Books
           </button>
           <button
-            onClick={() => router.push('/feed')}
+            onClick={handleGoToFeed}
             className="flex-1 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors"
           >
             Go to Feed

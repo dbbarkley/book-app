@@ -19,6 +19,7 @@ import {
   ReviewForm, 
   BookCoverImage, 
   Button,
+  Avatar,
   QuickUpdateModal
 } from '@/components'
 import { formatDate } from '@/utils/format'
@@ -309,15 +310,12 @@ export default function BookPage() {
                         className="group flex items-center gap-2 bg-white border border-slate-100 rounded-full pl-1 pr-4 py-1 hover:border-primary-200 hover:shadow-md transition-all shadow-sm"
                         title={`${friend.display_name || friend.username} is ${shelfLabels[friend.status] || friend.status}`}
                       >
-                        <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-100 border-2 border-white">
-                          {friend.avatar_url ? (
-                            <img src={friend.avatar_url} alt={friend.username} className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-slate-400">
-                              {friend.username[0].toUpperCase()}
-                            </div>
-                          )}
-                        </div>
+                        <Avatar
+                          src={friend.avatar_url}
+                          name={friend.display_name || friend.username}
+                          size="sm"
+                          borderColor="ring-white"
+                        />
                         <span className="text-xs font-bold text-slate-700 group-hover:text-primary-600 transition-colors">
                           {friend.display_name || friend.username}
                         </span>
@@ -344,15 +342,13 @@ export default function BookPage() {
             {book.author && (
               <div className="bg-white border border-slate-100 rounded-3xl p-8 shadow-sm space-y-6">
                 <div className="flex items-center gap-6">
-                  <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl overflow-hidden shadow-lg border-4 border-white flex-none">
-                    {book.author.avatar_url ? (
-                      <img src={book.author.avatar_url} alt={book.author.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full bg-slate-100 flex items-center justify-center text-2xl font-black text-slate-300">
-                        {book.author.name[0]}
-                      </div>
-                    )}
-                  </div>
+                  <Avatar
+                    src={book.author.avatar_url}
+                    name={book.author.name}
+                    size="xl"
+                    className="!rounded-3xl"
+                    borderColor="ring-white"
+                  />
                   <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">About the Author</p>
                     <h3 className="text-2xl font-black text-slate-900">{book.author.name}</h3>

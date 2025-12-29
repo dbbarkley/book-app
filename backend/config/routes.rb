@@ -8,6 +8,10 @@ Rails.application.routes.draw do
       post 'auth/refresh', to: 'auth#refresh'
       get 'auth/me', to: 'auth#me'
       
+      # Social Auth
+      get 'auth/facebook/callback', to: 'auth#facebook'
+      get 'auth/failure', to: redirect('http://localhost:3002/login?error=auth_failed')
+      
       # Users
       # Preferences routes must come BEFORE resources to avoid route conflicts
       get 'users/preferences', to: 'users#preferences'

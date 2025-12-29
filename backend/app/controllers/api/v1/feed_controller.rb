@@ -31,11 +31,39 @@ module Api
       private
 
       def serialize_feed_items(feed_items)
+        # Collect all user IDs from metadata to avoid N+1 queries
+        user_ids = []
+        feed_items.each do |item|
+          user_ids << item.metadata&.dig('actor', 'id')
+          user_ids << item.metadata&.dig('target_user', 'id')
+        end
+        user_ids = user_ids.compact.uniq
+        users_map = User.where(id: user_ids).index_by(&:id)
+
         feed_items.map do |item|
+          # Deep clone metadata to avoid modifying the original frozen object
+          metadata = item.metadata ? JSON.parse(item.metadata.to_json) : {}
+          
+          # Hydrate actor info with fresh data from database
+          actor_id = metadata.dig('actor', 'id')
+          if actor_id && (actor = users_map[actor_id])
+            metadata['actor']['avatar_url'] = actor.avatar_url_with_attachment
+            metadata['actor']['display_name'] = actor.display_name
+            metadata['actor']['username'] = actor.username
+          end
+
+          # Hydrate target user info (for follow activities)
+          target_user_id = metadata.dig('target_user', 'id')
+          if target_user_id && (target = users_map[target_user_id])
+            metadata['target_user']['avatar_url'] = target.avatar_url_with_attachment
+            metadata['target_user']['display_name'] = target.display_name
+            metadata['target_user']['username'] = target.username
+          end
+
           {
             id: item.id,
             activity_type: item.activity_type,
-            metadata: item.metadata,
+            metadata: metadata,
             feedable: serialize_feedable(item.feedable),
             created_at: item.created_at
           }
@@ -75,7 +103,7 @@ module Api
           id: user.id,
           username: user.username,
           display_name: user.display_name,
-          avatar_url: user.avatar_url
+          avatar_url: user.avatar_url_with_attachment
         }
       end
 

@@ -140,7 +140,7 @@ module Api
             id: post.user.id,
             username: post.user.username,
             display_name: post.user.display_name,
-            avatar_url: post.user.avatar_url
+            avatar_url: post.user.avatar_url_with_attachment
           },
           heart_count: post.heart_count,
           reply_count: post.forum_replies.not_deleted.count,

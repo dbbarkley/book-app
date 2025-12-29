@@ -12,7 +12,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { motion, Variants } from 'framer-motion'
 import { useFeed, useFollows } from '@book-app/shared'
-import { FeedItem, SkeletonLoader, Button } from '@/components'
+import { FeedItem, SkeletonLoader, Button, FeedEmptyState } from '@/components'
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -125,26 +125,7 @@ export default function FeedPage() {
           {isInitialLoading && <div className="space-y-4">{skeletons}</div>}
 
           {!loading && !hasItems && !error && (
-            <div className="rounded-2xl border border-border-default bg-background-card p-6 text-center space-y-3">
-              <h2 className="text-xl font-semibold text-text-primary">Feed is loading</h2>
-              <p className="text-sm text-text-secondary">
-                Follow authors, add books, or refresh to see activity tailored to your interests.
-              </p>
-              <div className="flex flex-wrap justify-center gap-3">
-                {/* <Link
-                  href="/recommendations"
-                  className="inline-flex items-center justify-center rounded-full bg-brand-indigo px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-indigo-dark"
-                >
-                  Explore recommendations
-                </Link> */}
-                <Link
-                  href="/library"
-                  className="inline-flex items-center justify-center rounded-full border border-border-default bg-background-card px-5 py-2 text-sm font-semibold text-text-primary transition hover:border-brand-indigo hover:text-brand-indigo"
-                >
-                  Open library
-                </Link>
-              </div>
-            </div>
+            <FeedEmptyState />
           )}
 
           {hasItems && (

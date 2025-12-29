@@ -8,6 +8,7 @@ import Link from 'next/link'
 import type { Author } from '@book-app/shared'
 import { formatNumber, truncateText } from '../utils/format'
 import FollowButton from './FollowButton'
+import Avatar from './Avatar'
 
 interface AuthorCardProps {
   author: Author
@@ -38,15 +39,13 @@ export default function AuthorCard({
   return (
     <div className="flex gap-4 bg-white rounded-lg border border-slate-200 p-4 hover:shadow-lg transition-shadow">
       <Link href={`/authors/${author.id}`} className="flex gap-4 flex-1 min-w-0">
-        {author.avatar_url && (
-          <div className="flex-shrink-0">
-            <img
-              src={author.avatar_url}
-              alt={author.name}
-              className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover"
-            />
-          </div>
-        )}
+        <div className="flex-shrink-0">
+          <Avatar
+            src={author.avatar_url}
+            name={author.name}
+            size="lg"
+          />
+        </div>
         <div className="flex-1 min-w-0">
           <h3 className="text-lg font-semibold text-slate-900 mb-1">{author.name}</h3>
           {showBio && author.bio && (

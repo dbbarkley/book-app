@@ -9,15 +9,18 @@ class UserActivityFeedService < BaseService
   private
 
   def execute
-    followers = @actor.followers
-    return success!([]) if followers.empty?
+    recipients = @actor.followers.to_a
+    recipients << @actor
+    recipients << @feedable if @feedable.is_a?(User)
+
+    recipients.uniq!
 
     payload = @metadata.deep_dup
     payload[:actor] = actor_payload
 
-    created_items = followers.map do |follower|
+    created_items = recipients.map do |recipient|
       FeedItem.find_or_create_by(
-        user: follower,
+        user: recipient,
         feedable: @feedable,
         activity_type: @activity_type
       ) do |item|
@@ -33,7 +36,7 @@ class UserActivityFeedService < BaseService
       id: @actor.id,
       username: @actor.username,
       display_name: @actor.display_name,
-      avatar_url: @actor.avatar_url
+      avatar_url: @actor.avatar_url_with_attachment
     }
   end
 end

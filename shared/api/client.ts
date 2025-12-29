@@ -440,6 +440,10 @@ export class ApiClient {
         followers_count: number
         following_count: number
       }
+      current_user_follow?: {
+        following: boolean
+        follow_id?: number | null
+      }
     }>(`/users/${userId}/profile`)
     return response.data
   }
@@ -469,7 +473,29 @@ export class ApiClient {
     return response.data
   }
 
-  async updateUser(userId: number, updates: { display_name?: string; bio?: string; avatar_url?: string; zipcode?: string }) {
+  async updateUser(userId: number, updates: { display_name?: string; bio?: string; avatar_url?: string; zipcode?: string; avatar?: any }) {
+    // Check if we have an avatar file to upload
+    if (updates.avatar instanceof File || updates.avatar instanceof Blob) {
+      const formData = new FormData()
+      
+      // Add regular fields
+      if (updates.display_name) formData.append('user[display_name]', updates.display_name)
+      if (updates.bio) formData.append('user[bio]', updates.bio)
+      if (updates.zipcode) formData.append('user[zipcode]', updates.zipcode)
+      if (updates.avatar_url) formData.append('user[avatar_url]', updates.avatar_url)
+      
+      // Add file
+      formData.append('user[avatar]', updates.avatar)
+
+      const response = await this.client.patch<{ user: User }>(`/users/${userId}`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      })
+      return response.data.user
+    }
+
+    // Regular JSON update
     const response = await this.client.patch<{ user: User }>(`/users/${userId}`, {
       user: updates,
     })

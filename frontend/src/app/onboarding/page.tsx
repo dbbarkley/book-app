@@ -506,15 +506,6 @@ export default function OnboardingPage() {
             }
           />
 
-          <div className="text-center text-sm text-slate-500 mt-6">
-            <p>
-              Looking for curated picks? After completing onboarding, visit{' '}
-              <Link href="/recommendations" className="text-primary-600 font-semibold hover:underline">
-                Recommendations
-              </Link>{' '}
-              for books and authors tuned to your interests.
-            </p>
-          </div>
         </div>
       </div>
     </div>

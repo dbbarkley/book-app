@@ -5,6 +5,7 @@ import { ForumPost, ForumComment } from '@/shared/types'
 import { useForumsStore } from '@/shared/store/forumsStore'
 import { formatRelativeTime } from '@/utils/format'
 import ThreadReplies from './ThreadReplies'
+import Avatar from './Avatar'
 
 interface PostCardProps {
   item: ForumPost | ForumComment
@@ -106,17 +107,11 @@ const PostCard: React.FC<PostCardProps> = ({ item, isReply = false }) => {
   return (
     <div className={`py-6 flex gap-4 ${isReply ? 'pl-4 border-l-2 border-gray-100 ml-4' : ''}`}>
       {/* Avatar */}
-      <div className="flex-shrink-0">
-        <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden border border-gray-100">
-          {item.user.avatar_url ? (
-            <img src={item.user.avatar_url} alt={item.user.username} className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-gray-400 font-medium">
-              {item.user.username.charAt(0).toUpperCase()}
-            </div>
-          )}
-        </div>
-      </div>
+      <Avatar
+        src={item.user.avatar_url}
+        name={item.user.display_name || item.user.username}
+        size="md"
+      />
 
       {/* Content */}
       <div className="flex-1 min-w-0">

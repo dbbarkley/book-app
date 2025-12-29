@@ -44,6 +44,7 @@ import EventCard from '@/components/EventCard'
 import VenueCard from '@/components/VenueCard'
 import InputField from '@/components/InputField'
 import Button from '@/components/Button'
+import Avatar from '@/components/Avatar'
 import Link from 'next/link'
 import type { User, Venue, Event } from '@book-app/shared'
 import { Search, Users, UserCircle, Calendar, MapPin, BookOpen, X } from 'lucide-react'
@@ -465,14 +466,13 @@ function SearchContent() {
                         href={`/users/${user.id}`}
                         className="flex items-center gap-4 bg-background-card p-5 rounded-3xl border border-border-default hover:shadow-xl transition-all duration-300 group h-full"
                       >
-                        <div className="w-16 h-16 rounded-2xl overflow-hidden bg-background-muted flex-shrink-0 group-hover:scale-105 transition-transform duration-300">
-                          {user.avatar_url ? (
-                            <img src={user.avatar_url} alt={user.username} className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-brand-indigo font-bold text-2xl">
-                              {user.username[0].toUpperCase()}
-                            </div>
-                          )}
+                        <div className="flex-shrink-0 group-hover:scale-105 transition-transform duration-300">
+                          <Avatar
+                            src={user.avatar_url}
+                            name={user.display_name || user.username}
+                            size="lg"
+                            className="!rounded-2xl shadow-none"
+                          />
                         </div>
                         <div className="flex-1 min-w-0">
                           <h4 className="font-bold text-text-primary text-lg truncate group-hover:text-brand-indigo transition-colors">

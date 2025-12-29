@@ -7,7 +7,7 @@ import { GoodreadsImportInstructions } from '@/components/GoodreadsImportInstruc
 import { CsvUploader } from '@/components/CsvUploader'
 import { ImportPreview } from '@/components/ImportPreview'
 import { ImportProgress } from '@/components/ImportProgress'
-import { useGoodreadsImport, useImportStatus } from '@book-app/shared'
+import { useGoodreadsImport, useImportStatus, useOnboarding, useAuth } from '@book-app/shared'
 
 /**
  * Goodreads Import Page
@@ -141,6 +141,8 @@ const parseCsvForPreview = async (file: File): Promise<ParsedCsvData> => {
 export default function GoodreadsImportPage() {
   const router = useRouter()
   const { uploadCsv, isUploading, error: uploadError } = useGoodreadsImport()
+  const { submitPreferences } = useOnboarding()
+  const { refreshUser } = useAuth()
 
   // Step management
   const [step, setStep] = useState<'upload' | 'preview' | 'progress'>('upload')
@@ -201,6 +203,18 @@ export default function GoodreadsImportPage() {
       handleCancelPreview()
     } else {
       router.back()
+    }
+  }
+
+  const handleFinishOnboarding = async (targetPath: string) => {
+    try {
+      // Mark onboarding as completed
+      await submitPreferences()
+      await refreshUser()
+    } catch (error) {
+      console.warn('Failed to complete onboarding on navigation:', error)
+    } finally {
+      router.push(targetPath)
     }
   }
 
@@ -268,6 +282,8 @@ export default function GoodreadsImportPage() {
               progressPercentage={status.progress_percentage}
               errorMessage={status.error_message}
               metadata={status.metadata}
+              onViewBooks={() => handleFinishOnboarding('/library')}
+              onGoToFeed={() => handleFinishOnboarding('/feed')}
             />
           </div>
         )}

@@ -1,7 +1,22 @@
 module Api
   module V1
     class AuthController < BaseController
-      skip_before_action :authenticate_user!, only: [:register, :login]
+      skip_before_action :authenticate_user!, only: [:register, :login, :facebook]
+
+      def facebook
+        auth = request.env['omniauth.auth']
+        user = User.from_omniauth(auth)
+
+        if user.persisted?
+          token = generate_token(user)
+          # Redirect to frontend with token in params
+          # In production, use a more secure way to pass the token
+          frontend_url = ENV['FRONTEND_URL'] || 'http://localhost:3002'
+          redirect_to "#{frontend_url}/auth/callback?token=#{token}"
+        else
+          render json: { errors: user.errors.full_messages }, status: :unprocessable_entity
+        end
+      end
 
       def register
         user = User.new(user_params)
@@ -62,7 +77,7 @@ module Api
       private
 
       def user_params
-        params.require(:user).permit(:email, :username, :display_name, :bio, :avatar_url)
+        params.require(:user).permit(:email, :username, :display_name, :bio, :avatar_url, :avatar)
       end
 
       def generate_token(user)
@@ -76,7 +91,7 @@ module Api
           username: user.username,
           display_name: user.display_name,
           bio: user.bio,
-          avatar_url: user.avatar_url,
+          avatar_url: user.avatar_url_with_attachment,
           zipcode: user.zipcode,
           created_at: user.created_at,
           onboarding_completed: user.onboarding_completed || false

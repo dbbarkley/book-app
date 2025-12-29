@@ -149,7 +149,7 @@ module Api
             id: reply.user.id,
             username: reply.user.username,
             display_name: reply.user.display_name,
-            avatar_url: reply.user.avatar_url
+            avatar_url: reply.user.avatar_url_with_attachment
           },
           heart_count: reply.heart_count,
           reply_count: reply.replies.not_deleted.count,

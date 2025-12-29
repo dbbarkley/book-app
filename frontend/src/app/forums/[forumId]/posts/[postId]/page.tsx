@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { useForumPost, useComments } from '@book-app/shared/hooks'
 import Comment from '../../../../../components/forums/Comment'
 import CommentComposer from '../../../../../components/forums/CommentComposer'
+import Avatar from '../../../../../components/Avatar'
 import ThreadDrawer from '../../../../../components/forums/ThreadDrawer'
 import { formatDate } from '../../../../../utils/format'
 import type { ForumComment } from '@book-app/shared'
@@ -61,13 +62,11 @@ export default function ForumPostDetail() {
       {/* Post Content */}
       <article className="mb-12">
         <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center font-bold text-primary-700 dark:text-primary-300">
-            {post.user.avatar_url ? (
-              <img src={post.user.avatar_url} alt={post.user.username} className="w-full h-full object-cover rounded-full" />
-            ) : (
-              post.user.username.charAt(0)
-            )}
-          </div>
+          <Avatar
+            src={post.user.avatar_url}
+            name={post.user.display_name || post.user.username}
+            size="md"
+          />
           <div>
             <div className="font-bold text-text-primary">
               {post.user.display_name || post.user.username}

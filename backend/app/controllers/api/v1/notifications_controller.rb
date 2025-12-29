@@ -60,7 +60,8 @@ module Api
             type: 'User',
             id: notifiable.id,
             username: notifiable.username,
-            display_name: notifiable.display_name
+            display_name: notifiable.display_name,
+            avatar_url: notifiable.avatar_url_with_attachment
           }
         end
       end

@@ -35,6 +35,7 @@ import { LogOut } from 'lucide-react'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import InputField from '@/components/InputField'
 import Button from '@/components/Button'
+import Avatar from '@/components/Avatar'
 import GenreSelector from '@/components/GenreSelector'
 import AuthorSelector from '@/components/AuthorSelector'
 import { mockGenres } from '@/utils/onboardingData'
@@ -45,6 +46,7 @@ interface ProfileFormData {
   bio: string
   avatar_url: string
   zipcode: string
+  avatar_file: File | null
 }
 
 interface PreferencesFormData {
@@ -81,6 +83,7 @@ function SettingsContent() {
     bio: '',
     avatar_url: '',
     zipcode: '',
+    avatar_file: null,
   })
 
   const [preferencesData, setPreferencesData] = useState<PreferencesFormData>({
@@ -98,11 +101,42 @@ function SettingsContent() {
         bio: user.bio || '',
         avatar_url: user.avatar_url || '',
         zipcode: user.zipcode || '',
+        avatar_file: null,
       })
       fetchPreferences()
       fetchAuthors()
     }
   }, [user])
+
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      // Validate file size (5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Image is too large (max 5MB)')
+        return
+      }
+
+      // Validate file type
+      if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+        setError('Please upload a JPEG, PNG, or WebP image')
+        return
+      }
+
+      setFormData(prev => ({ ...prev, avatar_file: file }))
+      
+      // Create preview URL
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setAvatarPreview(reader.result as string)
+      }
+      reader.readAsDataURL(file)
+      
+      setError(null)
+    }
+  }
 
   const fetchPreferences = async () => {
     try {
@@ -151,11 +185,14 @@ function SettingsContent() {
         bio: formData.bio || undefined,
         avatar_url: formData.avatar_url || undefined,
         zipcode: formData.zipcode || undefined,
+        avatar: formData.avatar_file || undefined,
       })
 
       // Refresh user data in auth store
       await refreshUser()
       setSuccess(true)
+      setAvatarPreview(null)
+      setFormData(prev => ({ ...prev, avatar_file: null }))
 
       // Redirect to profile after a short delay
       setTimeout(() => {
@@ -272,6 +309,69 @@ function SettingsContent() {
           </div>
           <form onSubmit={handleSubmit} className="p-6 sm:p-8">
             <div className="space-y-6">
+              {/* Avatar Section */}
+              <div className="grid grid-cols-1 sm:grid-cols-[1fr,auto] gap-8 items-start pb-6 border-b border-slate-100">
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                      Profile Picture
+                    </label>
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <label className="cursor-pointer">
+                        <div className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors inline-flex items-center gap-2">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                          </svg>
+                          Upload Photo
+                        </div>
+                        <input 
+                          type="file" 
+                          className="hidden" 
+                          accept="image/jpeg,image/png,image/webp"
+                          onChange={handleFileChange}
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormData(prev => ({ ...prev, avatar_file: null, avatar_url: '' }))
+                          setAvatarPreview(null)
+                        }}
+                        className="px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                    <p className="mt-2 text-xs text-slate-500">
+                      JPG, PNG or WebP. Max size 5MB.
+                    </p>
+                  </div>
+
+                  <InputField
+                    label="Avatar URL (Optional)"
+                    type="url"
+                    value={formData.avatar_url}
+                    onChange={(e) => handleChange('avatar_url', e.target.value)}
+                    placeholder="https://example.com/avatar.jpg"
+                    helperText="Or provide a link to your profile picture"
+                  />
+                </div>
+                
+                {/* Avatar Preview */}
+                <div className="flex flex-col items-center">
+                  <label className="block text-sm font-medium text-slate-700 mb-2 text-center">
+                    Preview
+                  </label>
+                  <Avatar 
+                    src={avatarPreview || formData.avatar_url} 
+                    name={formData.display_name || user.username} 
+                    size="xl" 
+                    showStatus={true}
+                    className="shadow-lg ring-4 ring-white"
+                  />
+                </div>
+              </div>
+
               {/* Display Name */}
               <InputField
                 label="Display Name"
@@ -303,38 +403,6 @@ function SettingsContent() {
                   <span className={formData.bio.length > 450 ? 'text-amber-600 font-medium' : 'text-slate-400'}>
                     {formData.bio.length}/500
                   </span>
-                </div>
-              </div>
-
-              {/* Avatar URL */}
-              <div className="grid grid-cols-1 sm:grid-cols-[1fr,auto] gap-6 items-start">
-                <InputField
-                  label="Avatar URL"
-                  type="url"
-                  value={formData.avatar_url}
-                  onChange={(e) => handleChange('avatar_url', e.target.value)}
-                  placeholder="https://example.com/avatar.jpg"
-                  helperText="Link to your profile picture"
-                />
-                
-                {/* Avatar Preview */}
-                <div className="flex flex-col items-center">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Preview
-                  </label>
-                  <div className="relative">
-                    <img
-                      src={formData.avatar_url || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y'}
-                      alt="Avatar preview"
-                      className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-md"
-                      onError={(e) => {
-                        e.currentTarget.src = 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y'
-                      }}
-                    />
-                    <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-1 shadow-sm border border-slate-100">
-                      <div className="w-4 h-4 bg-emerald-500 rounded-full border-2 border-white"></div>
-                    </div>
-                  </div>
                 </div>
               </div>
 

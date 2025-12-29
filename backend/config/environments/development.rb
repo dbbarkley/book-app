@@ -21,6 +21,14 @@ Rails.application.configure do
   config.active_support.deprecation = :log
   config.active_record.migration_error = :page_load
   config.active_record.verbose_query_logs = true
+
+  # Store uploaded files on the local file system (see config/storage.yml for options)
+  config.active_storage.service = :local
+
+  # Set default host for generated URLs (e.g. Active Storage)
+  config.action_controller.default_url_options = { host: 'localhost', port: 3000 }
+  Rails.application.routes.default_url_options = config.action_controller.default_url_options
+
   config.file_watcher = ActiveSupport::EventedFileUpdateChecker
 end
 

@@ -69,22 +69,38 @@ class FollowService < BaseService
   end
 
   def enqueue_user_follow_activity(follow)
-    return unless follow.followable_type == 'User'
+    return unless ['User', 'Author'].include?(follow.followable_type)
 
-    target_user = follow.followable
-    return unless target_user
+    target = follow.followable
+    return unless target
+
+    activity_type = follow.followable_type == 'User' ? 'user_followed_user' : 'user_followed_author'
+    
+    metadata = if follow.followable_type == 'User'
+                 {
+                   target_user: {
+                     id: target.id,
+                     username: target.username,
+                     display_name: target.display_name,
+                     avatar_url: target.avatar_url_with_attachment
+                   }
+                 }
+               else
+                 {
+                   target_author: {
+                     id: target.id,
+                     name: target.name,
+                     avatar_url: target.respond_to?(:avatar_url) ? target.avatar_url : nil
+                   }
+                 }
+               end
 
     GenerateUserActivityFeedItemsJob.perform_later(
       @follower.id,
-      'User',
-      target_user.id,
-      'follow_activity',
-      target_user: {
-        id: target_user.id,
-        username: target_user.username,
-        display_name: target_user.display_name,
-        avatar_url: target_user.avatar_url
-      }
+      follow.followable_type,
+      target.id,
+      activity_type,
+      metadata
     )
   end
 end
