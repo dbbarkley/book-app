@@ -64,6 +64,10 @@ module Api
         visibility = normalize_visibility(params[:visibility])
 
         user_book = current_user.user_books.find_or_initialize_by(book_id: book_id)
+        
+        # Enrich book if missing page count
+        BookEnrichmentService.enrich_book(user_book.book) if user_book.book.page_count.blank?
+
         user_book.assign_attributes(
           status: status,
           shelf: status,

@@ -1,0 +1,21 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Solid Background Circle (Bronze) -->
+  <circle cx="12" cy="12" r="11" fill="#78350F"/>
+  
+  <!-- The Arc Glyph (Now White for contrast) -->
+  <g transform="translate(1.8, 1.8) scale(0.85)">
+    <path 
+      d="M5 16C5 12.134 8.13401 9 12 9C15.866 9 19 12.134 19 16" 
+      stroke="#FFFFFF" 
+      stroke-width="2" 
+      stroke-linecap="round"
+    />
+    <path 
+      d="M4 18H20" 
+      stroke="#FFFFFF" 
+      stroke-width="1.8" 
+      stroke-linecap="round"
+    />
+  </g>
+</svg>
+

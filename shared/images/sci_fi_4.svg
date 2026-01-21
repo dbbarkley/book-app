@@ -1,0 +1,22 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- High-Tech Neon Gradient -->
+    <linearGradient id="sciFiGradient4" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#A5F3FC" /> <!-- Lightest Cyan -->
+      <stop offset="100%" stop-color="#22D3EE" /> <!-- Base Cyan -->
+    </linearGradient>
+  </defs>
+
+  <!-- HUD Halo (Outer Ring) -->
+  <circle cx="12" cy="12" r="11.5" stroke="#22D3EE" stroke-width="0.5" stroke-dasharray="4 1" opacity="0.8"/>
+  
+  <!-- Solid Gradient Background -->
+  <circle cx="12" cy="12" r="10" fill="url(#sciFiGradient4)"/>
+  
+  <!-- White Pulse Glyph -->
+  <g transform="translate(1.8, 1.8) scale(0.85)">
+    <path d="M7 9H17" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/>
+    <path d="M5 12H19" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M9 15H15" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/>
+  </g>
+</svg>

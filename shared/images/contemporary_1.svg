@@ -1,0 +1,11 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- The Frame Glyph (Open-ended square representing a slice of life) -->
+  <path 
+    d="M14 6H6V18H18V10" 
+    stroke="#3B82F6" 
+    stroke-width="1.8" 
+    stroke-linecap="round" 
+    stroke-linejoin="round"
+  />
+</svg>
+

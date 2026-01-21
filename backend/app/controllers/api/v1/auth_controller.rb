@@ -1,9 +1,10 @@
 module Api
   module V1
     class AuthController < BaseController
-      skip_before_action :authenticate_user!, only: [:register, :login, :facebook]
+      skip_before_action :authenticate_user!, only: [:register, :login, :callback, :facebook]
 
-      def facebook
+      # Generic callback for all OmniAuth providers
+      def callback
         auth = request.env['omniauth.auth']
         user = User.from_omniauth(auth)
 
@@ -14,8 +15,17 @@ module Api
           frontend_url = ENV['FRONTEND_URL'] || 'http://localhost:3002'
           redirect_to "#{frontend_url}/auth/callback?token=#{token}"
         else
-          render json: { errors: user.errors.full_messages }, status: :unprocessable_entity
+          # Redirect to login with errors
+          error_msg = user.errors.full_messages.join(', ')
+          frontend_url = ENV['FRONTEND_URL'] || 'http://localhost:3002'
+          redirect_to "#{frontend_url}/login?error=#{CGI.escape(error_msg)}"
         end
+      end
+
+      # Keep facebook action for backward compatibility if needed, 
+      # but it can now just call callback
+      def facebook
+        callback
       end
 
       def register
@@ -94,7 +104,11 @@ module Api
           avatar_url: user.avatar_url_with_attachment,
           zipcode: user.zipcode,
           created_at: user.created_at,
-          onboarding_completed: user.onboarding_completed || false
+          onboarding_completed: user.onboarding_completed || false,
+          preferences: {
+            milestones_viewed: user.preferences['milestones_viewed'] || [],
+            reading_goal: user.preferences['reading_goal']
+          }
         }
       end
 

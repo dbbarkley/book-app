@@ -31,7 +31,7 @@ const itemVariants: Variants = {
     }
   },
 }
-import { apiClient } from '@book-app/shared'
+import { apiClient, GenreBadgeData } from '@book-app/shared'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import { formatNumber, formatDate } from '@/utils/format'
 import type { User, Follow } from '@book-app/shared'
@@ -43,12 +43,16 @@ import Avatar from '@/components/Avatar'
 import UserLibrary from '@/components/UserLibrary'
 import GenreChart from '@/components/charts/GenreChart'
 import TopAuthorsChart from '@/components/charts/TopAuthorsChart'
+import { GenreBadgesRow } from '@/components/gamification/GenreBadgesRow'
+import { GamificationDashboard } from '@/components/gamification/GamificationDashboard'
+import { BadgeDetailModal } from '@/components/gamification/BadgeDetailModal'
 
 interface UserProfileData {
   user: User | null
   stats: {
     followers_count: number
     following_count: number
+    genre_badges?: GenreBadgeData[]
   } | null
   following: Follow[]
   followers: User[]
@@ -95,9 +99,11 @@ function UserProfileContent() {
   const [readingStats, setReadingStats] = useState<ReadingStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'following' | 'followers'>('following')
+  const [activeTab, setActiveTab] = useState<'following' | 'followers' | 'awards'>('following')
   const [followLoading, setFollowLoading] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  const [selectedBadge, setSelectedBadge] = useState<GenreBadgeData | null>(null)
+  const [isBadgeModalOpen, setIsBadgeModalOpen] = useState(false)
 
   const isOwnProfile = currentUser?.id === userId
 
@@ -236,16 +242,24 @@ function UserProfileContent() {
               )}
               
               {stats && (
-                <div className="flex flex-wrap justify-center sm:justify-start gap-4 mb-6 text-sm text-slate-600">
-                  <div className="bg-slate-50 px-3 py-1.5 rounded-full border border-slate-100">
-                    <span className="font-bold text-slate-900">{formatNumber(stats.followers_count)}</span> followers
-                  </div>
-                  <div className="bg-slate-50 px-3 py-1.5 rounded-full border border-slate-100">
-                    <span className="font-bold text-slate-900">{formatNumber(stats.following_count)}</span> following
-                  </div>
-                  {user.created_at && (
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6">
+                  <div className="flex flex-wrap justify-center sm:justify-start gap-4 text-sm text-slate-600">
                     <div className="bg-slate-50 px-3 py-1.5 rounded-full border border-slate-100">
-                      Joined {formatDate(user.created_at)}
+                      <span className="font-bold text-slate-900">{formatNumber(stats.followers_count)}</span> followers
+                    </div>
+                    <div className="bg-slate-50 px-3 py-1.5 rounded-full border border-slate-100">
+                      <span className="font-bold text-slate-900">{formatNumber(stats.following_count)}</span> following
+                    </div>
+                  </div>
+                  {stats.genre_badges && stats.genre_badges.length > 0 && (
+                    <div className="flex justify-center sm:justify-start">
+                      <GenreBadgesRow 
+                        badges={stats.genre_badges} 
+                        onBadgeClick={(badge) => {
+                          setSelectedBadge(badge)
+                          setIsBadgeModalOpen(true)
+                        }}
+                      />
                     </div>
                   )}
                 </div>
@@ -325,6 +339,16 @@ function UserProfileContent() {
               }`}
             >
               Followers ({followers.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('awards')}
+              className={`pb-2 px-4 font-medium transition-colors ${
+                activeTab === 'awards'
+                  ? 'text-primary-600 border-b-2 border-primary-600'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Awards ({stats?.genre_badges?.length || 0})
             </button>
           </div>
         </motion.div>
@@ -443,7 +467,35 @@ function UserProfileContent() {
               )}
             </div>
           )}
+
+          {/* Awards Tab */}
+          {activeTab === 'awards' && (
+            <div className="space-y-6 pb-12">
+              <div className="bg-slate-50 rounded-2xl border border-slate-200 p-6 sm:p-8">
+                <div className="mb-6">
+                  <h3 className="text-xl font-bold text-slate-900 mb-2">Genre Mastery</h3>
+                  <p className="text-slate-600 text-sm">
+                    Badges earned by reading books in specific genres. 1 page = 1 XP. Click any badge to see your progress!
+                  </p>
+                </div>
+                <GamificationDashboard 
+                  badges={stats?.genre_badges || []} 
+                  onBadgeClick={(badge) => {
+                    setSelectedBadge(badge)
+                    setIsBadgeModalOpen(true)
+                  }}
+                />
+              </div>
+            </div>
+          )}
         </motion.div>
+
+        {/* Badge Detail Modal */}
+        <BadgeDetailModal
+          badge={selectedBadge}
+          isOpen={isBadgeModalOpen}
+          onClose={() => setIsBadgeModalOpen(false)}
+        />
       </motion.div>
     </div>
   )

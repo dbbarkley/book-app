@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2025_12_29_150000) do
+ActiveRecord::Schema[7.2].define(version: 2026_01_21_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -66,12 +66,14 @@ ActiveRecord::Schema[7.2].define(version: 2025_12_29_150000) do
     t.string "cover_image_source"
     t.datetime "cover_last_enriched_at"
     t.jsonb "categories", default: []
+    t.integer "page_count"
     t.index ["author_id"], name: "index_books_on_author_id"
     t.index ["categories"], name: "index_books_on_categories", using: :gin
     t.index ["cover_image_quality"], name: "index_books_on_cover_image_quality"
     t.index ["cover_last_enriched_at"], name: "index_books_on_cover_last_enriched_at"
     t.index ["google_books_id"], name: "index_books_on_google_books_id", unique: true, where: "(google_books_id IS NOT NULL)"
     t.index ["isbn"], name: "index_books_on_isbn", unique: true, where: "(isbn IS NOT NULL)"
+    t.index ["page_count"], name: "index_books_on_page_count"
     t.index ["release_date"], name: "index_books_on_release_date"
     t.index ["title", "author_id"], name: "index_books_on_title_and_author_id"
   end
@@ -266,6 +268,37 @@ ActiveRecord::Schema[7.2].define(version: 2025_12_29_150000) do
     t.index ["zipcode"], name: "index_processed_locations_on_zipcode"
   end
 
+  create_table "recommendations", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "recommendable_type", null: false
+    t.bigint "recommendable_id", null: false
+    t.text "reason"
+    t.float "score", default: 0.0
+    t.string "source"
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id", "recommendable_type", "recommendable_id"], name: "index_recommendations_on_user_and_recommendable", unique: true
+    t.index ["user_id"], name: "index_recommendations_on_user_id"
+  end
+
+  create_table "scraped_books", force: :cascade do |t|
+    t.string "title"
+    t.string "author_name"
+    t.string "cover_image_url"
+    t.string "external_url"
+    t.string "source"
+    t.string "genre"
+    t.string "category"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.string "format", default: "Physical"
+    t.index ["category"], name: "index_scraped_books_on_category"
+    t.index ["format"], name: "index_scraped_books_on_format"
+    t.index ["genre"], name: "index_scraped_books_on_genre"
+    t.index ["title", "author_name"], name: "index_scraped_books_on_title_and_author_name", unique: true
+  end
+
   create_table "user_books", force: :cascade do |t|
     t.bigint "user_id", null: false
     t.bigint "book_id", null: false
@@ -289,6 +322,26 @@ ActiveRecord::Schema[7.2].define(version: 2025_12_29_150000) do
     t.index ["user_id", "shelf"], name: "index_user_books_on_user_id_and_shelf"
     t.index ["user_id"], name: "index_user_books_on_user_id"
     t.index ["visibility"], name: "index_user_books_on_visibility"
+  end
+
+  create_table "user_genre_stat_books", force: :cascade do |t|
+    t.bigint "user_genre_stat_id", null: false
+    t.bigint "user_book_id", null: false
+    t.integer "xp_contributed", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_genre_stat_id", "user_book_id"], name: "index_user_genre_stat_books_unique", unique: true
+    t.index ["user_genre_stat_id"], name: "index_user_genre_stat_books_on_user_genre_stat_id"
+  end
+
+  create_table "user_genre_stats", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "genre", null: false
+    t.integer "xp", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id", "genre"], name: "index_user_genre_stats_on_user_id_and_genre", unique: true
+    t.index ["user_id"], name: "index_user_genre_stats_on_user_id"
   end
 
   create_table "users", force: :cascade do |t|
@@ -354,6 +407,10 @@ ActiveRecord::Schema[7.2].define(version: 2025_12_29_150000) do
   add_foreign_key "forum_reports", "users"
   add_foreign_key "forums", "users", column: "owner_id"
   add_foreign_key "imports", "users"
+  add_foreign_key "recommendations", "users"
   add_foreign_key "user_books", "books"
   add_foreign_key "user_books", "users"
+  add_foreign_key "user_genre_stat_books", "user_books"
+  add_foreign_key "user_genre_stat_books", "user_genre_stats"
+  add_foreign_key "user_genre_stats", "users"
 end

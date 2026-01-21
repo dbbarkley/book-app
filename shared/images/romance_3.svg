@@ -1,0 +1,20 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Solid Background Circle (New for Tier 3) -->
+  <circle cx="12" cy="12" r="11" fill="#F472B6"/>
+  
+  <!-- The Intersect Glyph (Now White for contrast) -->
+  <g transform="translate(1.8, 1.8) scale(0.85)">
+    <path 
+      d="M10 16C12.2091 16 14 14.2091 14 12C14 9.79086 12.2091 8 10 8C7.79086 8 6 9.79086 6 12C6 14.2091 7.79086 16 10 16Z" 
+      stroke="#FFFFFF" 
+      stroke-width="1.8" 
+      stroke-linecap="round"
+    />
+    <path 
+      d="M14 16C16.2091 16 18 14.2091 18 12C18 9.79086 16.2091 8 14 8C11.79086 8 10 9.79086 10 12C10 14.2091 11.79086 16 14 16Z" 
+      stroke="#FFFFFF" 
+      stroke-width="1.8" 
+      stroke-linecap="round"
+    />
+  </g>
+</svg>

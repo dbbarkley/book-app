@@ -9,7 +9,8 @@ Rails.application.routes.draw do
       get 'auth/me', to: 'auth#me'
       
       # Social Auth
-      get 'auth/facebook/callback', to: 'auth#facebook'
+      get 'auth/:provider/callback', to: 'auth#callback'
+      get 'auth/facebook/callback', to: 'auth#facebook' # Legacy support
       get 'auth/failure', to: redirect('http://localhost:3002/login?error=auth_failed')
       
       # Users
@@ -24,6 +25,7 @@ Rails.application.routes.draw do
         get 'followers', on: :member
         get 'library', on: :member
         get 'stats', on: :member
+        get 'genre/:genre/books', on: :member, action: :genre_books, constraints: { genre: /[^\/]+/ }
       end
       
       # Follows
@@ -36,6 +38,8 @@ Rails.application.routes.draw do
       get 'recommendations/books', to: 'recommendations#books'
       get 'recommendations/authors', to: 'recommendations#authors'
       get 'recommendations/events', to: 'recommendations#events'
+      get 'recommendations/new_releases', to: 'recommendations#new_releases'
+      get 'recommendations/coming_soon', to: 'recommendations#coming_soon'
       
       # Authors
       resources :authors, only: [:index, :show, :create] do

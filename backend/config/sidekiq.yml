@@ -2,3 +2,10 @@
   - default
   - low_priority
 
+# :scheduler:
+#   :schedule:
+#     scrape_new_releases:
+#       cron: "0 3 */3 * *" # Every 3 days at 3:00 AM
+#       class: ScrapeNewReleasesJob
+#       queue: default
+#       description: "Scrapes new book releases from Amazon and B&N"

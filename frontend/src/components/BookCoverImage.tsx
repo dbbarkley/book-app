@@ -99,19 +99,21 @@ export function BookCoverImage({
     )
   }
 
+  const isFull = className.includes('w-full') || className.includes('h-full')
+
   return (
     <motion.div 
       layoutId={layoutId}
-      className={`relative ${className}`} 
-      style={{ width: dimensions.width, height: dimensions.height }}
+      className={`relative overflow-hidden flex items-center justify-center ${className}`} 
+      style={!isFull ? { width: dimensions.width, height: dimensions.height } : undefined}
     >
       {/* Loading skeleton */}
       {isLoading && (
         <div className="absolute inset-0 z-10">
           <SkeletonLoader
             variant="rectangular"
-            width={dimensions.width}
-            height={dimensions.height}
+            width="100%"
+            height="100%"
             animation="shimmer"
           />
         </div>
@@ -120,9 +122,8 @@ export function BookCoverImage({
       {/* Actual image */}
       <Image
         src={imageSrc}
-        alt={`Cover of ${title}`}
-        width={dimensions.width}
-        height={dimensions.height}
+        alt={`Cover of ${title || 'Unknown'}`}
+        {...(isFull ? { fill: true } : { width: dimensions.width, height: dimensions.height })}
         className={`
           rounded-lg shadow-lg object-cover
           transition-opacity duration-300

@@ -1,0 +1,16 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Solid Background Circle (Gold) -->
+  <circle cx="12" cy="12" r="11" fill="#FBBF24"/>
+  
+  <!-- The Flare Glyph (Now White for maximum clarity) -->
+  <g transform="translate(1.8, 1.8) scale(0.85)">
+    <path 
+      d="M13 3L10 12H17L11 21" 
+      stroke="#FFFFFF" 
+      stroke-width="2" 
+      stroke-linecap="round" 
+      stroke-linejoin="round"
+    />
+  </g>
+</svg>
+

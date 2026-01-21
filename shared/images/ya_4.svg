@@ -1,0 +1,27 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Vibrant Gold Gradient for Tier 4 -->
+    <linearGradient id="yaGradient4" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FDE68A" /> <!-- Lighter Gold -->
+      <stop offset="100%" stop-color="#FBBF24" /> <!-- Base Gold -->
+    </linearGradient>
+  </defs>
+
+  <!-- Vibrant Halo (Outer Ring - Energy dashes) -->
+  <circle cx="12" cy="12" r="11.5" stroke="#FBBF24" stroke-width="0.5" stroke-dasharray="3 1" opacity="0.8"/>
+  
+  <!-- Solid Gradient Background -->
+  <circle cx="12" cy="12" r="10" fill="url(#yaGradient4)"/>
+  
+  <!-- White Flare Glyph -->
+  <g transform="translate(1.8, 1.8) scale(0.85)">
+    <path 
+      d="M13 3L10 12H17L11 21" 
+      stroke="#FFFFFF" 
+      stroke-width="2" 
+      stroke-linecap="round" 
+      stroke-linejoin="round"
+    />
+  </g>
+</svg>
+

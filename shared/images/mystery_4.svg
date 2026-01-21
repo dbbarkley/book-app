@@ -1,0 +1,25 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Noir Gradient for Tier 4 -->
+    <linearGradient id="mysteryGradient4" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#94A3B8" /> <!-- Lighter Slate -->
+      <stop offset="100%" stop-color="#475569" /> <!-- Base Slate -->
+    </linearGradient>
+  </defs>
+
+  <!-- Noir Halo (Outer Ring) -->
+  <circle cx="12" cy="12" r="11.5" stroke="#475569" stroke-width="0.5" stroke-dasharray="3 2" opacity="0.8"/>
+  
+  <!-- Solid Gradient Background -->
+  <circle cx="12" cy="12" r="10" fill="url(#mysteryGradient4)"/>
+  
+  <!-- White Aperture Glyph -->
+  <g transform="translate(1.8, 1.8) scale(0.85)">
+    <path 
+      d="M12 4C7.58172 4 4 7.58172 4 12C4 16.4183 7.58172 20 12 20C16.4183 20 20 16.4183 20 12C20 7.58172 16.4183 4 12 4ZM12 7V17" 
+      stroke="#FFFFFF" 
+      stroke-width="1.8" 
+      stroke-linecap="round"
+    />
+  </g>
+</svg>

@@ -1,0 +1,27 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Clean Blue Gradient for Tier 4 -->
+    <linearGradient id="contemporaryGradient4" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#93C5FD" /> <!-- Lighter Blue -->
+      <stop offset="100%" stop-color="#3B82F6" /> <!-- Base Blue -->
+    </linearGradient>
+  </defs>
+
+  <!-- Modern Halo (Outer Ring - Solid and clean) -->
+  <circle cx="12" cy="12" r="11.5" stroke="#3B82F6" stroke-width="0.4" opacity="0.6"/>
+  
+  <!-- Solid Gradient Background -->
+  <circle cx="12" cy="12" r="10" fill="url(#contemporaryGradient4)"/>
+  
+  <!-- White Frame Glyph -->
+  <g transform="translate(1.8, 1.8) scale(0.85)">
+    <path 
+      d="M14 6H6V18H18V10" 
+      stroke="#FFFFFF" 
+      stroke-width="2" 
+      stroke-linecap="round" 
+      stroke-linejoin="round"
+    />
+  </g>
+</svg>
+

@@ -1,0 +1,43 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Multi-stop Cyber Gradient -->
+    <linearGradient id="sciFiGradient5" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#CFFAFE" /> <!-- Lightest Cyan -->
+      <stop offset="30%" stop-color="#22D3EE" /> <!-- Base Cyan -->
+      <stop offset="70%" stop-color="#0891B2" /> <!-- Deep Deep Cyan -->
+      <stop offset="100%" stop-color="#164E63" /> <!-- Midnight Teal -->
+    </linearGradient>
+    
+    <!-- Neon Stroke for Gem Edges -->
+    <linearGradient id="neonEdge" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#22D3EE" />
+      <stop offset="100%" stop-color="#06B6D4" />
+    </linearGradient>
+  </defs>
+
+  <!-- Faceted Gem Shape (Octagon) -->
+  <path 
+    d="M8 2H16L22 8V16L16 22H8L2 16V8L8 2Z" 
+    fill="url(#sciFiGradient5)" 
+    stroke="url(#neonEdge)" 
+    stroke-width="0.5"
+  />
+
+  <!-- Internal Facet Lines (Digital Matrix look) -->
+  <path d="M8 2L12 12M16 2L12 12M22 8L12 12M22 16L12 12M16 22L12 12M8 22L12 12M2 16L12 12M2 8L12 12" stroke="white" stroke-width="0.2" opacity="0.4"/>
+
+  <!-- The Pulse Glyph (Boldest Signal) -->
+  <g transform="translate(2, 2) scale(0.83)">
+    <path d="M7 9H17" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M5 12H19" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/>
+    <path d="M9 15H15" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round"/>
+  </g>
+
+  <!-- Digital Strobe Sparkles -->
+  <rect x="5" y="5" width="1" height="1" fill="#A5F3FC" opacity="0.8">
+    <animate attributeName="opacity" values="0.8;0;0.8" dur="1s" repeatCount="indefinite" />
+  </rect>
+  <rect x="18" y="18" width="1" height="1" fill="#A5F3FC" opacity="0.8">
+    <animate attributeName="opacity" values="0;0.8;0" dur="1s" repeatCount="indefinite" />
+  </rect>
+</svg>

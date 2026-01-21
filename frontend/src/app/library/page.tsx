@@ -1,12 +1,20 @@
 'use client'
 
+import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Book as BookIcon, CheckCircle, XCircle, Lock } from 'lucide-react'
-import { useAuth, usePrivateLibrary, useUserLibrary } from '@book-app/shared'
+import { 
+  useAuth, 
+  usePrivateLibrary, 
+  useUserLibrary,
+  useMilestones 
+} from '@book-app/shared'
 import Button from '@/components/Button'
 import Shelf from '@/components/Shelf'
 import ReadingHero from '@/components/ReadingHero'
 import LibraryStats from '@/components/LibraryStats'
+import { Spotlight } from '@/components/onboarding/Spotlight'
+import GoalSettingModal from '@/components/library/GoalSettingModal'
 
 /**
  * Modernized Books Library Page
@@ -30,6 +38,30 @@ export default function BooksLibraryPage() {
   const { privateBooks, loading: privateLoading, error: privateError, refreshPrivateLibrary } =
     usePrivateLibrary()
 
+  const {
+    hasViewedMilestone,
+    markMilestoneViewed,
+    readingGoal,
+    setGoal,
+    isLoading: isGoalLoading
+  } = useMilestones()
+
+  const [isGoalModalOpen, setIsGoalModalOpen] = useState(false)
+  const [hasAttemptedModal, setHasAttemptedModal] = useState(false)
+
+  useEffect(() => {
+    // Show goal modal 2 seconds after landing if not set and hasn't been attempted this session
+    if (isAuthenticated && !hasViewedMilestone('goal_set') && !hasAttemptedModal) {
+      const timer = setTimeout(() => {
+        if (!hasViewedMilestone('goal_set')) {
+          setIsGoalModalOpen(true)
+          setHasAttemptedModal(true)
+        }
+      }, 2000)
+      return () => clearTimeout(timer)
+    }
+  }, [isAuthenticated, hasViewedMilestone, hasAttemptedModal])
+
   const handleUpdate = () => {
     refreshLibrary()
     refreshPrivateLibrary()
@@ -41,6 +73,12 @@ export default function BooksLibraryPage() {
   const readBooks = groupedLibrary?.read || []
   const dnfBooks = groupedLibrary?.dnf || []
 
+  const currentYear = new Date().getFullYear()
+  const readThisYear = readBooks.filter(ub => {
+    if (!ub.finished_at) return false
+    return new Date(ub.finished_at).getFullYear() === currentYear
+  }).length
+
   const totalPublicBooks =
     (readingBooks?.length || 0) + 
     (toReadBooks?.length || 0) + 
@@ -51,6 +89,7 @@ export default function BooksLibraryPage() {
     reading: readingBooks.length,
     toRead: toReadBooks.length,
     read: readBooks.length,
+    readThisYear: readThisYear,
     dnf: dnfBooks.length,
     private: privateBooks.length
   }
@@ -106,7 +145,22 @@ export default function BooksLibraryPage() {
         </div>
 
         {/* Stats Dashboard */}
-        <LibraryStats stats={stats} />
+        <Spotlight
+          isVisible={!hasViewedMilestone('personal_library')}
+          message="Your reading stats and shelves live here. Track your progress as you read."
+          onDismiss={() => markMilestoneViewed('personal_library')}
+          position="bottom"
+        >
+          <LibraryStats stats={stats} goal={readingGoal} onGoalClick={() => setIsGoalModalOpen(true)} />
+        </Spotlight>
+
+        {/* Goal Setting Modal */}
+        <GoalSettingModal
+          isOpen={isGoalModalOpen}
+          onClose={() => setIsGoalModalOpen(false)}
+          onSave={setGoal}
+          isLoading={isGoalLoading}
+        />
 
         {/* Error Message */}
         {libraryError && (

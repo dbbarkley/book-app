@@ -1,0 +1,16 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Solid Background Circle (Neon Cyan) -->
+  <circle cx="12" cy="12" r="11" fill="#22D3EE"/>
+  
+  <!-- The Pulse Glyph (Now White for maximum contrast) -->
+  <g transform="translate(1.8, 1.8) scale(0.85)">
+    <!-- Top line -->
+    <path d="M7 9H17" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/>
+    
+    <!-- Middle line -->
+    <path d="M5 12H19" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round"/>
+    
+    <!-- Bottom line -->
+    <path d="M9 15H15" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/>
+  </g>
+</svg>

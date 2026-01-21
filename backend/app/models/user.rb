@@ -16,6 +16,7 @@ class User < ApplicationRecord
   has_many :notifications, dependent: :destroy
   has_many :user_books, dependent: :destroy
   has_many :imports, dependent: :destroy
+  has_many :user_genre_stats, dependent: :destroy
   
   # Forum associations
   has_many :owned_forums, class_name: 'Forum', foreign_key: :owner_id, dependent: :destroy
@@ -69,13 +70,17 @@ class User < ApplicationRecord
     if user.persisted? && !user.avatar.attached? && auth.info.image.present?
       begin
         downloaded_image = HTTParty.get(auth.info.image).body
+        extension = auth.info.image.split('.').last.split('?').first || 'jpg'
+        # Basic validation for extension
+        extension = 'jpg' unless extension.in?(%w(jpg jpeg png webp))
+        
         user.avatar.attach(
           io: StringIO.new(downloaded_image),
-          filename: "facebook_avatar_#{user.id}.jpg",
-          content_type: 'image/jpeg'
+          filename: "#{auth.provider}_avatar_#{user.id}.#{extension}",
+          content_type: "image/#{extension == 'jpg' ? 'jpeg' : extension}"
         )
       rescue => e
-        Rails.logger.error "Failed to download Facebook avatar: #{e.message}"
+        Rails.logger.error "Failed to download #{auth.provider} avatar: #{e.message}"
         # Fallback to saving the URL string just in case
         user.update(avatar_url: auth.info.image) if user.avatar_url.blank?
       end

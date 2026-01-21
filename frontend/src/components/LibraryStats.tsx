@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { motion } from 'framer-motion'
-import { BookOpen, CheckCircle, Clock, XCircle, Lock } from 'lucide-react'
+import { BookOpen, CheckCircle, Clock, XCircle, Lock, Target } from 'lucide-react'
 
 const container = {
   hidden: { opacity: 0 },
@@ -24,19 +24,54 @@ interface LibraryStatsProps {
     reading: number
     toRead: number
     read: number
+    readThisYear?: number
     dnf: number
     private: number
   }
+  goal?: number | null
+  onGoalClick?: () => void
 }
 
-export default function LibraryStats({ stats }: LibraryStatsProps) {
+export default function LibraryStats({ stats, goal, onGoalClick }: LibraryStatsProps) {
   const statItems = [
     { id: 'reading', label: 'Reading', value: stats.reading, icon: BookOpen, color: 'text-blue-600', bg: 'bg-blue-50' },
     { id: 'to-read', label: 'To Read', value: stats.toRead, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50' },
-    { id: 'read', label: 'Read', value: stats.read, icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
+    { id: 'read', label: 'Total Read', value: stats.read, icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
     { id: 'dnf', label: 'DNF', value: stats.dnf, icon: XCircle, color: 'text-rose-600', bg: 'bg-rose-50' },
     { id: 'private', label: 'Private', value: stats.private, icon: Lock, color: 'text-slate-600', bg: 'bg-slate-50' },
   ]
+
+  if (goal) {
+    const readValue = stats.readThisYear ?? stats.read
+    const progress = Math.min(100, Math.round((readValue / goal) * 100))
+    statItems.unshift({ 
+      id: 'reading-hero', 
+      label: `${progress}% Goal`, 
+      value: `${readValue}/${goal}`, 
+      icon: Target, 
+      color: 'text-indigo-600', 
+      bg: 'bg-indigo-50',
+      isGoal: true
+    })
+  } else {
+    statItems.unshift({ 
+      id: 'reading-hero', 
+      label: 'Set Goal', 
+      value: '0', 
+      icon: Target, 
+      color: 'text-slate-400', 
+      bg: 'bg-slate-50',
+      isGoal: true
+    })
+  }
+
+  const handleStatClick = (stat: any) => {
+    if (stat.isGoal && onGoalClick) {
+      onGoalClick()
+    } else {
+      scrollToSection(stat.id)
+    }
+  }
 
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id)
@@ -59,7 +94,7 @@ export default function LibraryStats({ stats }: LibraryStatsProps) {
       variants={container}
       initial="hidden"
       animate="show"
-      className="grid grid-cols-3 sm:grid-cols-5 gap-2 mb-10"
+      className={`grid ${goal ? 'grid-cols-3 sm:grid-cols-6' : 'grid-cols-3 sm:grid-cols-5'} gap-2 mb-10`}
     >
       {statItems.map((stat) => (
         <motion.button 
@@ -67,7 +102,7 @@ export default function LibraryStats({ stats }: LibraryStatsProps) {
           variants={item}
           whileHover={{ scale: 1.02, y: -2 }}
           whileTap={{ scale: 0.98 }}
-          onClick={() => scrollToSection(stat.id)}
+          onClick={() => handleStatClick(stat)}
           className={`${stat.bg} rounded-xl p-3 flex flex-col items-center justify-center text-center transition-shadow hover:shadow-md border border-transparent hover:border-white shadow-sm cursor-pointer`}
         >
           <stat.icon className={`w-4 h-4 ${stat.color} mb-1`} />

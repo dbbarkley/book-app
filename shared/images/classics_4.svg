@@ -1,0 +1,33 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Bronze Gradient for Tier 4 -->
+    <linearGradient id="classicsGradient4" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#A75A2D" /> <!-- Lighter Bronze -->
+      <stop offset="100%" stop-color="#78350F" /> <!-- Base Bronze -->
+    </linearGradient>
+  </defs>
+
+  <!-- Engraved Halo (Outer Ring - Solid and thin) -->
+  <circle cx="12" cy="12" r="11.5" stroke="#78350F" stroke-width="0.3" opacity="0.8"/>
+  <circle cx="12" cy="12" r="11" stroke="#78350F" stroke-width="0.1" opacity="0.4"/>
+  
+  <!-- Solid Gradient Background -->
+  <circle cx="12" cy="12" r="10" fill="url(#classicsGradient4)"/>
+  
+  <!-- White Arc Glyph -->
+  <g transform="translate(1.8, 1.8) scale(0.85)">
+    <path 
+      d="M5 16C5 12.134 8.13401 9 12 9C15.866 9 19 12.134 19 16" 
+      stroke="#FFFFFF" 
+      stroke-width="2" 
+      stroke-linecap="round"
+    />
+    <path 
+      d="M4 18H20" 
+      stroke="#FFFFFF" 
+      stroke-width="1.8" 
+      stroke-linecap="round"
+    />
+  </g>
+</svg>
+

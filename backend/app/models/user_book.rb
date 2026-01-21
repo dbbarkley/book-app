@@ -26,8 +26,17 @@ class UserBook < ApplicationRecord
   # Calculate completion percentage when pages are updated
   before_save :calculate_completion_percentage
   before_validation :sync_status_with_shelf
+  after_save :update_genre_xp
 
   private
+
+  def update_genre_xp
+    if saved_change_to_pages_read?
+      old_pages, new_pages = saved_change_to_pages_read
+      delta = new_pages.to_i - old_pages.to_i
+      GenreXpService.award_xp(user, book, delta, self) if delta > 0
+    end
+  end
 
   def sync_status_with_shelf
     # If status is default or blank, and shelf is something else, trust shelf

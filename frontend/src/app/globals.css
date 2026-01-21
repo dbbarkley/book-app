@@ -43,7 +43,7 @@
 
   @screen lg {
     .container-mobile {
-      @apply max-w-6xl;
+      @apply max-w-7xl;
     }
   }
 

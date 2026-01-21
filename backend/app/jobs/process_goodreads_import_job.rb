@@ -143,6 +143,9 @@ class ProcessGoodreadsImportJob < ApplicationJob
     )
     user_book.save!
 
+    # Trigger enrichment if book is missing details
+    BookEnrichmentService.enrich_book(book) if book.page_count.blank? || book.categories.blank?
+
     book
   end
 

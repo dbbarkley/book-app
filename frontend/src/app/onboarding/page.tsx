@@ -78,15 +78,15 @@ export default function OnboardingPage() {
       try {
         // Check if user object has onboarding_completed
         if (user?.onboarding_completed === true) {
-          // Already completed, redirect to home
-          router.push('/')
+          // Already completed, redirect to dashboard
+          router.push('/dashboard')
           return
         }
 
         // Check from API
         const completed = await apiClient.checkOnboardingStatus()
         if (completed) {
-          router.push('/')
+          router.push('/dashboard')
         }
       } catch (error) {
         // If check fails, allow access to onboarding page
@@ -131,7 +131,7 @@ export default function OnboardingPage() {
         await refreshUser().catch(() => {
           // If refresh fails, allow navigation anyway
         })
-        router.push('/')
+        router.push('/dashboard')
         router.refresh()
       }
     } else {
@@ -149,7 +149,7 @@ export default function OnboardingPage() {
       await refreshUser().catch(() => {
         // Continue even if refresh fails
       })
-      router.push('/')
+      router.push('/dashboard')
       router.refresh()
     }
   }

@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '@book-app/shared'
 import Avatar from './Avatar'
 import { 
+  Home,
   LayoutDashboard, 
   BookOpen, 
   Search, 
@@ -27,6 +28,7 @@ export default function Navigation() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const navLinks = [
+    { href: '/dashboard', label: 'Home', icon: Home },
     { href: '/feed', label: 'Feed', icon: LayoutDashboard },
     { href: '/library', label: 'Library', icon: BookOpen },
     { href: '/forums', label: 'Forums', icon: MessageSquare },

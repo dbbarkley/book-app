@@ -1,0 +1,53 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Multi-stop Royal Gradient -->
+    <linearGradient id="romanceGradient5" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FDF2F8" /> <!-- Highlight -->
+      <stop offset="30%" stop-color="#F9A8D4" /> <!-- Soft Pink -->
+      <stop offset="70%" stop-color="#DB2777" /> <!-- Deep Rose -->
+      <stop offset="100%" stop-color="#9D174D" /> <!-- Royal Magenta -->
+    </linearGradient>
+    
+    <!-- Shimmer Mask (to be animated via CSS/Framer) -->
+    <linearGradient id="shimmer" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="white" stop-opacity="0" />
+      <stop offset="50%" stop-color="white" stop-opacity="0.5" />
+      <stop offset="100%" stop-color="white" stop-opacity="0" />
+    </linearGradient>
+  </defs>
+
+  <!-- Faceted Gem Shape (Octagon) -->
+  <path 
+    d="M8 2H16L22 8V16L16 22H8L2 16V8L8 2Z" 
+    fill="url(#romanceGradient5)" 
+    stroke="#DB2777" 
+    stroke-width="0.5"
+  />
+
+  <!-- Internal Facet Lines (Adds the "Gem" look) -->
+  <path d="M8 2L12 12M16 2L12 12M22 8L12 12M22 16L12 12M16 22L12 12M8 22L12 12M2 16L12 12M2 8L12 12" stroke="white" stroke-width="0.2" opacity="0.3"/>
+
+  <!-- The Intersect Glyph -->
+  <g transform="translate(2, 2) scale(0.83)">
+    <path 
+      d="M10 16C12.2091 16 14 14.2091 14 12C14 9.79086 12.2091 8 10 8C7.79086 8 6 9.79086 6 12C6 14.2091 7.79086 16 10 16Z" 
+      stroke="#FFFFFF" 
+      stroke-width="2" 
+      stroke-linecap="round"
+    />
+    <path 
+      d="M14 16C16.2091 16 18 14.2091 18 12C18 9.79086 16.2091 8 14 8C11.79086 8 10 9.79086 10 12C10 14.2091 11.79086 16 14 16Z" 
+      stroke="#FFFFFF" 
+      stroke-width="2" 
+      stroke-linecap="round"
+    />
+  </g>
+
+  <!-- Animated Sparkle Points (Can be targeted by CSS) -->
+  <circle cx="5" cy="5" r="0.5" fill="white" opacity="0.8">
+    <animate attributeName="opacity" values="0.8;0.2;0.8" dur="2s" repeatCount="indefinite" />
+  </circle>
+  <circle cx="19" cy="19" r="0.5" fill="white" opacity="0.8">
+    <animate attributeName="opacity" values="0.2;0.8;0.2" dur="2s" repeatCount="indefinite" />
+  </circle>
+</svg>

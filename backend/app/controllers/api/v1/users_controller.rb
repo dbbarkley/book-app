@@ -3,7 +3,7 @@ module Api
     class UsersController < BaseController
       include Authenticable
       before_action :authenticate_user!, except: [:show, :stats]
-      before_action :set_user, only: [:show, :update, :profile, :following, :followers, :library, :stats]
+      before_action :set_user, only: [:show, :update, :profile, :following, :followers, :library, :stats, :genre_books]
 
       def show
         render json: serialize_user(@user), status: :ok
@@ -39,7 +39,8 @@ module Api
           user: serialize_user(@user),
           stats: {
             followers_count: @user.followers.count,
-            following_count: @user.follows.count
+            following_count: @user.follows.count,
+            genre_badges: serialize_genre_badges(@user)
           },
           current_user_follow: current_follow ? {
             following: true,
@@ -58,6 +59,19 @@ module Api
       def followers
         followers = @user.followers
         render json: serialize_users(followers), status: :ok
+      end
+
+      # GET /api/v1/users/:id/genre/:genre/books
+      def genre_books
+        genre = params[:genre]
+        books = get_genre_contributing_books(@user, genre)
+        total_xp = books.sum { |b| b[:xp_contributed] }
+        
+        render json: {
+          genre: genre,
+          books: books,
+          total_xp: total_xp
+        }, status: :ok
       end
 
       # GET /api/v1/users/:id/stats
@@ -170,6 +184,8 @@ module Api
           preferences: {
             genres: user.preferences['genres'] || [],
             author_ids: user.preferences['author_ids'] || [],
+            milestones_viewed: user.preferences['milestones_viewed'] || [],
+            reading_goal: user.preferences['reading_goal'],
             onboarding_completed: user.onboarding_completed,
             zipcode: user.zipcode
           }
@@ -179,7 +195,14 @@ module Api
       # Update current user's preferences
       def update_preferences
         user = current_user
-        preferences_params = params.require(:preferences).permit(:onboarding_completed, :zipcode, genres: [], author_ids: [])
+        preferences_params = params.require(:preferences).permit(
+          :onboarding_completed, 
+          :zipcode, 
+          :reading_goal,
+          genres: [], 
+          author_ids: [],
+          milestones_viewed: []
+        )
 
         # Update onboarding_completed if provided
         if preferences_params.key?(:onboarding_completed)
@@ -195,13 +218,22 @@ module Api
         user.preferences ||= {}
         user.preferences['genres'] = preferences_params[:genres] if preferences_params.key?(:genres)
         user.preferences['author_ids'] = preferences_params[:author_ids] if preferences_params.key?(:author_ids)
+        user.preferences['milestones_viewed'] = preferences_params[:milestones_viewed] if preferences_params.key?(:milestones_viewed)
+        user.preferences['reading_goal'] = preferences_params[:reading_goal].to_i if preferences_params.key?(:reading_goal)
 
         if user.save
+          # Trigger recommendations generation if onboarding is completed
+          if user.onboarding_completed? && user.saved_change_to_onboarding_completed?
+            GenerateRecommendationsJob.perform_later(user.id)
+          end
+
           render json: {
             message: 'Preferences updated successfully',
             preferences: {
               genres: user.preferences['genres'] || [],
               author_ids: user.preferences['author_ids'] || [],
+              milestones_viewed: user.preferences['milestones_viewed'] || [],
+              reading_goal: user.preferences['reading_goal'],
               onboarding_completed: user.onboarding_completed,
               zipcode: user.zipcode
             }
@@ -221,8 +253,46 @@ module Api
         params.require(:user).permit(:display_name, :bio, :avatar_url, :zipcode, :avatar)
       end
 
+      def serialize_genre_badges(user)
+        user.user_genre_stats.order(xp: :desc).map do |stat|
+          {
+            genre: stat.genre,
+            xp: stat.xp,
+            tier: stat.tier_info
+          }
+        end
+      end
+
+      def get_genre_contributing_books(user, genre)
+        # Get the genre stat for this user and genre
+        stat = user.user_genre_stats.find_by(genre: genre)
+        return [] unless stat
+        
+        # Get all books that contributed to this genre via the join table
+        stat.user_genre_stat_books
+          .includes(user_book: { book: :author })
+          .order(xp_contributed: :desc)
+          .map do |stat_book|
+            ub = stat_book.user_book
+            next unless ub&.book.present?
+            
+            {
+              id: ub.book.id,
+              title: ub.book.title,
+              author_name: ub.book.author&.name || 'Unknown Author',
+              cover_image_url: ub.book.cover_image_url,
+              pages_read: ub.pages_read.to_i,
+              total_pages: ub.total_pages || (ub.book.respond_to?(:page_count) ? ub.book.page_count : nil),
+              status: ub.status,
+              finished_at: ub.finished_at,
+              xp_contributed: stat_book.xp_contributed
+            }
+          end
+          .compact
+      end
+
       def serialize_user(user)
-        {
+        data = {
           id: user.id,
           username: user.username,
           display_name: user.display_name,
@@ -231,6 +301,17 @@ module Api
           zipcode: user.zipcode,
           created_at: user.created_at
         }
+
+        # Add private fields if this is the current user
+        if user == current_user
+          data[:onboarding_completed] = user.onboarding_completed
+          data[:preferences] = {
+            milestones_viewed: user.preferences['milestones_viewed'] || [],
+            reading_goal: user.preferences['reading_goal']
+          }
+        end
+
+        data
       end
 
       def serialize_users(users)

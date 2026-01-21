@@ -31,25 +31,26 @@ const GENRE_GRADIENTS: Record<string, string> = {
 
 // Generate consistent color based on title (for books without genre)
 function getTitleBasedGradient(title: string): string {
-  const charCode = title.charCodeAt(0) || 0
+  const charCode = (title || 'Unknown').charCodeAt(0) || 0
   const gradients = Object.values(GENRE_GRADIENTS)
   const index = charCode % (gradients.length - 1) // Exclude default
   return gradients[index]
 }
 
 export function ModernPlaceholder({
-  title,
+  title = 'Unknown',
   author,
   genre,
   size = 'medium',
   className = '',
 }: ModernPlaceholderProps) {
-  const firstLetter = title.charAt(0).toUpperCase()
+  const safeTitle = title || 'Unknown'
+  const firstLetter = safeTitle.charAt(0).toUpperCase()
   
-  // Select gradient based on genre or title
+  // Select gradient based on genre or safeTitle
   const gradient = genre 
     ? GENRE_GRADIENTS[genre.toLowerCase()] || GENRE_GRADIENTS.default
-    : getTitleBasedGradient(title)
+    : getTitleBasedGradient(safeTitle)
 
   const sizeClasses = {
     small: {
@@ -74,7 +75,8 @@ export function ModernPlaceholder({
   return (
     <div
       className={`
-        ${sizes.container}
+        ${className.includes('w-full') ? 'w-full' : sizes.container.split(' ')[0]}
+        ${className.includes('h-full') ? 'h-full' : sizes.container.split(' ')[1]}
         bg-gradient-to-br ${gradient}
         rounded-lg shadow-lg
         flex flex-col items-center justify-center
@@ -94,7 +96,7 @@ export function ModernPlaceholder({
       {author && (
         <div className="absolute bottom-0 left-0 right-0 bg-black/20 backdrop-blur-sm p-2 z-10">
           <div className="text-white/90 font-medium text-[10px] sm:text-xs truncate text-center">
-            {title.length > 20 ? `${title.substring(0, 20)}...` : title}
+            {safeTitle.length > 20 ? `${safeTitle.substring(0, 20)}...` : safeTitle}
           </div>
           <div className={`text-white/70 ${sizes.author} truncate text-center mt-0.5`}>
             {author}

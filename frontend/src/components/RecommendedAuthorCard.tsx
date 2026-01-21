@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useMemo } from 'react'
 import { useFollowAuthor, type RecommendedAuthor } from '@book-app/shared'
 import Button from './Button'
@@ -10,43 +11,52 @@ interface RecommendedAuthorCardProps {
 }
 
 export default function RecommendedAuthorCard({ recommendation }: RecommendedAuthorCardProps) {
+  if (!recommendation || !recommendation.author) {
+    return null
+  }
+
   const { author, reason } = recommendation
   const { isFollowing, isLoading, toggleFollow } = useFollowAuthor(author.id)
 
-  const initials = useMemo(() => {
-    return author.name
-      .split(' ')
-      .map((chunk) => chunk[0])
-      .slice(0, 2)
-      .join('')
-      .toUpperCase()
-  }, [author.name])
+  const handleFollow = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    toggleFollow()
+  }
 
   return (
-    <article className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 flex flex-col gap-3 min-w-[220px] max-w-xs">
-      <div className="flex items-center gap-3">
-        <Avatar
-          src={author.avatar_url}
-          name={author.name}
-          size="md"
-        />
-        <div>
-          <h3 className="text-lg font-semibold text-slate-900 leading-tight">{author.name}</h3>
-          <p className="text-sm text-slate-500">Recommended author</p>
+    <Link href={`/authors/${author.id}`} className="block h-full group">
+      <article className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 flex flex-col gap-3 w-full h-full transition-all hover:shadow-md hover:border-brand-indigo/30">
+        <div className="flex items-center gap-3">
+          <Avatar
+            src={author.avatar_url}
+            name={author.name}
+            size="md"
+            className="group-hover:scale-105 transition-transform"
+          />
+          <div className="min-w-0">
+            <h3 className="text-base font-bold text-slate-900 leading-tight truncate group-hover:text-brand-indigo transition-colors">
+              {author.name}
+            </h3>
+            <p className="text-xs text-slate-500 font-medium truncate">Author</p>
+          </div>
         </div>
-      </div>
 
-      <p className="text-sm text-slate-600 flex-1">{reason}</p>
+        <p className="text-xs text-slate-600 line-clamp-3 italic flex-1">
+          &ldquo;{reason}&rdquo;
+        </p>
 
-      <Button
-        onClick={toggleFollow}
-        variant={isFollowing ? 'outline' : 'primary'}
-        size="md"
-        isLoading={isLoading}
-      >
-        {isFollowing ? 'Unfollow' : 'Follow'}
-      </Button>
-    </article>
+        <Button
+          onClick={handleFollow}
+          variant={isFollowing ? 'outline' : 'primary'}
+          size="sm"
+          isLoading={isLoading}
+          className="mt-2 w-full font-bold shadow-sm"
+        >
+          {isFollowing ? 'Unfollow' : 'Follow'}
+        </Button>
+      </article>
+    </Link>
   )
 }
 

@@ -1,0 +1,49 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Multi-stop Topaz/Bronze Gradient -->
+    <linearGradient id="historyGradient5" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FEF3C7" /> <!-- Lightest Amber -->
+      <stop offset="30%" stop-color="#F59E0B" /> <!-- Base Gold -->
+      <stop offset="70%" stop-color="#B45309" /> <!-- Deep Bronze -->
+      <stop offset="100%" stop-color="#78350F" /> <!-- Darkest Brown -->
+    </linearGradient>
+    
+    <!-- Bronze Edge Highlight -->
+    <linearGradient id="historyEdge" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#D97706" />
+      <stop offset="100%" stop-color="#78350F" />
+    </linearGradient>
+  </defs>
+
+  <!-- Faceted Gem Shape (Octagon) -->
+  <path 
+    d="M8 2H16L22 8V16L16 22H8L2 16V8L8 2Z" 
+    fill="url(#historyGradient5)" 
+    stroke="url(#historyEdge)" 
+    stroke-width="0.5"
+  />
+
+  <!-- Internal Facet Lines (Temple-like geometry) -->
+  <path d="M8 2L12 12M16 2L12 12M22 8L12 12M22 16L12 12M16 22L12 12M8 22L12 12M2 16L12 12M2 8L12 12" stroke="white" stroke-width="0.2" opacity="0.3"/>
+
+  <!-- The Column Glyph (Boldest Form) -->
+  <g transform="translate(2, 2) scale(0.83)">
+    <path d="M6 18H18" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round"/>
+    <path d="M9 18V6" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M15 18V6" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M7 6H17" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round"/>
+  </g>
+
+  <!-- Animated "Aura" Sparkles (Slow, steady glow) -->
+  <circle cx="5" cy="5" r="0.5" fill="#FEF3C7" opacity="0.6">
+    <animate attributeName="opacity" values="0.6;0.1;0.6" dur="4s" repeatCount="indefinite" />
+  </circle>
+  <circle cx="19" cy="19" r="0.5" fill="#FEF3C7" opacity="0.6">
+    <animate attributeName="opacity" values="0.1;0.6;0.1" dur="4s" repeatCount="indefinite" />
+  </circle>
+  
+  <!-- Occasional Shine Line (Static for SVG, can be animated in CSS) -->
+  <path d="M2 8L8 2" stroke="white" stroke-width="0.5" opacity="0.2">
+    <animate attributeName="stroke-dashoffset" from="20" to="-20" dur="5s" repeatCount="indefinite" />
+  </path>
+</svg>

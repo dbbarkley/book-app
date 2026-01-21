@@ -1,0 +1,50 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Multi-stop Sinister Gradient -->
+    <linearGradient id="horrorGradient5" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#EF4444" /> <!-- Bright Blood -->
+      <stop offset="30%" stop-color="#B91C1C" /> <!-- Crimson -->
+      <stop offset="70%" stop-color="#7F1D1D" /> <!-- Deep Maroon -->
+      <stop offset="100%" stop-color="#450A0A" /> <!-- Darkest Pit -->
+    </linearGradient>
+    
+    <!-- Dark Sharp Edge Highlight -->
+    <linearGradient id="bloodEdge" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#991B1B" />
+      <stop offset="100%" stop-color="#450A0A" />
+    </linearGradient>
+  </defs>
+
+  <!-- Faceted Gem Shape (Octagon) -->
+  <path 
+    d="M8 2H16L22 8V16L16 22H8L2 16V8L8 2Z" 
+    fill="url(#horrorGradient5)" 
+    stroke="url(#bloodEdge)" 
+    stroke-width="0.5"
+  />
+
+  <!-- Internal Facet Lines (Sharp, piercing geometry) -->
+  <path d="M8 2L12 12M16 2L12 12M22 8L12 12M22 16L12 12M16 22L12 12M8 22L12 12M2 16L12 12M2 8L12 12" stroke="white" stroke-width="0.2" opacity="0.3"/>
+
+  <!-- The Shard Glyph (Boldest Form) -->
+  <g transform="translate(2, 2) scale(0.83)">
+    <path 
+      d="M12 3L16 10L21 12L14 15L13 21L8 14L3 11L9 8L12 3Z" 
+      stroke="#FFFFFF" 
+      stroke-width="2.2" 
+      stroke-linejoin="miter"
+    />
+  </g>
+
+  <!-- Animated Sinister Sparkles (Needle-like points) -->
+  <circle cx="5" cy="5" r="0.4" fill="#FCA5A5" opacity="0.8">
+    <animate attributeName="opacity" values="0.8;0;0.8" dur="1.5s" repeatCount="indefinite" />
+  </circle>
+  <circle cx="19" cy="19" r="0.4" fill="#FCA5A5" opacity="0.8">
+    <animate attributeName="opacity" values="0;0.8;0" dur="1.5s" repeatCount="indefinite" />
+  </circle>
+  <circle cx="12" cy="12" r="11" stroke="#EF4444" stroke-width="0.2" opacity="0.4">
+    <animate attributeName="r" values="10.5;11.5;10.5" dur="3s" repeatCount="indefinite" />
+    <animate attributeName="opacity" values="0.4;0.1;0.4" dur="3s" repeatCount="indefinite" />
+  </circle>
+</svg>

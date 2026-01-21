@@ -1,0 +1,25 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Deep Blood-Red Gradient for Tier 4 -->
+    <linearGradient id="horrorGradient4" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#EF4444" /> <!-- Bright blood red -->
+      <stop offset="100%" stop-color="#7F1D1D" /> <!-- Deep dried blood maroon -->
+    </linearGradient>
+  </defs>
+
+  <!-- Eerie Halo (Outer Ring - Dotted for a "flickering" effect) -->
+  <circle cx="12" cy="12" r="11.5" stroke="#B91C1C" stroke-width="0.5" stroke-dasharray="1 3" opacity="0.8"/>
+  
+  <!-- Solid Gradient Background -->
+  <circle cx="12" cy="12" r="10" fill="url(#horrorGradient4)"/>
+  
+  <!-- White Shard Glyph -->
+  <g transform="translate(1.8, 1.8) scale(0.85)">
+    <path 
+      d="M12 3L16 10L21 12L14 15L13 21L8 14L3 11L9 8L12 3Z" 
+      stroke="#FFFFFF" 
+      stroke-width="1.8" 
+      stroke-linejoin="miter"
+    />
+  </g>
+</svg>

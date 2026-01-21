@@ -18,10 +18,10 @@ export default function HomePage() {
   const router = useRouter()
   const { isAuthenticated, loading } = useAuth()
 
-  // Redirect authenticated users to feed
+  // Redirect authenticated users to dashboard
   useEffect(() => {
     if (!loading && isAuthenticated) {
-      router.push('/feed')
+      router.push('/dashboard')
     }
   }, [isAuthenticated, loading, router])
 

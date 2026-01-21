@@ -1,0 +1,50 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Multi-stop Technical Emerald Gradient -->
+    <linearGradient id="nonFictionGradient5" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#D1FAE5" /> <!-- Lightest Emerald -->
+      <stop offset="30%" stop-color="#34D399" /> <!-- Base Emerald -->
+      <stop offset="70%" stop-color="#059669" /> <!-- Deep Emerald -->
+      <stop offset="100%" stop-color="#064E3B" /> <!-- Darkest Forest -->
+    </linearGradient>
+    
+    <!-- Sharp Logic-Edge Highlight -->
+    <linearGradient id="logicEdge" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10B981" />
+      <stop offset="100%" stop-color="#064E3B" />
+    </linearGradient>
+  </defs>
+
+  <!-- Faceted Gem Shape (Octagon) -->
+  <path 
+    d="M8 2H16L22 8V16L16 22H8L2 16V8L8 2Z" 
+    fill="url(#nonFictionGradient5)" 
+    stroke="url(#logicEdge)" 
+    stroke-width="0.5"
+  />
+
+  <!-- Internal Facet Lines (Geometric precision) -->
+  <path d="M8 2L12 12M16 2L12 12M22 8L12 12M22 16L12 12M16 22L12 12M8 22L12 12M2 16L12 12M2 8L12 12" stroke="white" stroke-width="0.2" opacity="0.3"/>
+
+  <!-- The Hex Glyph (Boldest Form) -->
+  <g transform="translate(2, 2) scale(0.83)">
+    <path 
+      d="M12 3L19.7942 7.5V16.5L12 21L4.20577 16.5V7.5L12 3Z" 
+      stroke="#FFFFFF" 
+      stroke-width="2.2" 
+      stroke-linejoin="round"
+    />
+    <circle cx="12" cy="12" r="1.8" fill="#FFFFFF"/>
+  </g>
+
+  <!-- Animated Data Pulse (Square bits for a technical feel) -->
+  <rect x="5" y="5" width="0.8" height="0.8" fill="#A7F3D0" opacity="0.8">
+    <animate attributeName="opacity" values="0.8;0.1;0.8" dur="2s" repeatCount="indefinite" />
+  </rect>
+  <rect x="18" y="18" width="0.8" height="0.8" fill="#A7F3D0" opacity="0.8">
+    <animate attributeName="opacity" values="0.1;0.8;0.1" dur="2s" repeatCount="indefinite" />
+  </rect>
+  <rect x="12" y="3" width="0.8" height="0.8" fill="#A7F3D0" opacity="0.8">
+    <animate attributeName="opacity" values="0;1;0" dur="3s" repeatCount="indefinite" />
+  </rect>
+</svg>

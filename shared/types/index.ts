@@ -10,6 +10,10 @@ export interface User {
   zipcode?: string
   created_at?: string
   onboarding_completed?: boolean
+  preferences?: {
+    milestones_viewed?: string[]
+    reading_goal?: number
+  }
 }
 
 export interface Author {
@@ -166,6 +170,9 @@ export interface UserPreference {
   genres?: string[]
   author_ids?: number[]
   onboarding_completed?: boolean
+  zipcode?: string
+  milestones_viewed?: string[]
+  reading_goal?: number
 }
 
 export interface OnboardingResponse {

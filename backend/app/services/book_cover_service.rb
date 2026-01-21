@@ -168,8 +168,16 @@ class BookCoverService
       http.request(request)
     end
     
-    # Open Library returns 200 for found covers, 404 for not found
-    response.is_a?(Net::HTTPSuccess)
+    # Open Library returns 200 for found covers, 404 for not found.
+    # However, sometimes they return a 200 with a "not found" tiny image.
+    # A real cover is usually > 1000 bytes.
+    return false unless response.is_a?(Net::HTTPSuccess)
+    
+    # If it's a HEAD request, check content-length
+    content_length = response['content-length'].to_i
+    return false if content_length > 0 && content_length < 1000
+    
+    true
   rescue StandardError
     false
   end

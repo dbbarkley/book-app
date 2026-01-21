@@ -406,6 +406,16 @@ export class ApiClient {
     return response.data.recommended_events ?? []
   }
 
+  async getNewReleases() {
+    const response = await this.client.get<{ new_releases: any[] }>('/recommendations/new_releases')
+    return response.data.new_releases || []
+  }
+
+  async getComingSoon() {
+    const response = await this.client.get<{ coming_soon: any[] }>('/recommendations/coming_soon')
+    return response.data.coming_soon || []
+  }
+
   // Notification endpoints
   async getNotifications() {
     const response = await this.client.get<{ notifications: Notification[] }>('/notifications')
@@ -473,6 +483,25 @@ export class ApiClient {
     return response.data
   }
 
+  async getGenreContributingBooks(userId: number, genre: string) {
+    const response = await this.client.get<{
+      genre: string
+      books: Array<{
+        id: number
+        title: string
+        author_name: string
+        cover_image_url?: string
+        pages_read: number
+        total_pages?: number
+        status: string
+        finished_at?: string
+        xp_contributed: number
+      }>
+      total_xp: number
+    }>(`/users/${userId}/genre/${encodeURIComponent(genre)}/books`)
+    return response.data
+  }
+
   async updateUser(userId: number, updates: { display_name?: string; bio?: string; avatar_url?: string; zipcode?: string; avatar?: any }) {
     // Check if we have an avatar file to upload
     if (updates.avatar instanceof File || updates.avatar instanceof Blob) {
@@ -525,6 +554,8 @@ export class ApiClient {
     author_ids?: number[]
     onboarding_completed?: boolean
     zipcode?: string
+    milestones_viewed?: string[]
+    reading_goal?: number
   }) {
     const response = await this.client.post<{
       message: string
@@ -533,6 +564,8 @@ export class ApiClient {
         author_ids?: number[]
         onboarding_completed?: boolean
         zipcode?: string
+        milestones_viewed?: string[]
+        reading_goal?: number
       }
     }>('/users/preferences', {
       preferences,
@@ -547,6 +580,8 @@ export class ApiClient {
         author_ids?: number[]
         onboarding_completed?: boolean
         zipcode?: string
+        milestones_viewed?: string[]
+        reading_goal?: number
       }
     }>('/users/preferences')
     return response.data.preferences

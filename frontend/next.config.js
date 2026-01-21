@@ -32,6 +32,26 @@ const nextConfig = {
         protocol: 'https',
         hostname: '**.googleapis.com',
       },
+      {
+        protocol: 'https',
+        hostname: 'prodimage.images-bn.com',
+      },
+      {
+        protocol: 'http',
+        hostname: 'prodimage.images-bn.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'www.barnesandnoble.com',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.media-amazon.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images-na.ssl-images-amazon.com',
+      },
     ],
   },
   webpack: (config) => {

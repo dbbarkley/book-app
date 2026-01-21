@@ -1,0 +1,15 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Solid Background Circle (Emerald) -->
+  <circle cx="12" cy="12" r="11" fill="#059669"/>
+  
+  <!-- The Hex Glyph (Now White for maximum clarity) -->
+  <g transform="translate(1.8, 1.8) scale(0.85)">
+    <path 
+      d="M12 3L19.7942 7.5V16.5L12 21L4.20577 16.5V7.5L12 3Z" 
+      stroke="#FFFFFF" 
+      stroke-width="1.8" 
+      stroke-linejoin="round"
+    />
+    <circle cx="12" cy="12" r="1.5" fill="#FFFFFF"/>
+  </g>
+</svg>

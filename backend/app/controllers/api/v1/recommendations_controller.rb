@@ -2,44 +2,111 @@ module Api
   module V1
     class RecommendationsController < BaseController
       def books
-        recommended_books = candidate_books.map do |book|
-          serialize_recommended_book(book)
+        recommendations = Recommendation.for_user(current_user).books.includes(recommendable: :author)
+        
+        if recommendations.empty?
+          # Trigger background generation if empty
+          GenerateRecommendationsJob.perform_later(current_user.id) if current_user.onboarding_completed?
+          
+          results = candidate_books.map do |book|
+            serialize_recommended_book(book)
+          end
+        else
+          results = recommendations.map do |rec|
+            serialize_recommendation(rec)
+          end.compact
         end
 
-        render json: { recommended_books: recommended_books }, status: :ok
+        render json: { recommended_books: results }, status: :ok
+      end
+
+      def new_releases
+        render json: { new_releases: [] }, status: :ok
+      end
+
+      def coming_soon
+        render json: { coming_soon: [] }, status: :ok
       end
 
       def authors
-        recommended_authors = candidate_authors.map do |author|
-          serialize_recommended_author(author)
+        recommendations = Recommendation.for_user(current_user).authors.includes(:recommendable)
+        
+        if recommendations.empty?
+          results = candidate_authors.map do |author|
+            serialize_recommended_author(author)
+          end
+        else
+          results = recommendations.map do |rec|
+            serialize_recommendation(rec)
+          end.compact
         end
 
-        render json: { recommended_authors: recommended_authors }, status: :ok
+        render json: { recommended_authors: results }, status: :ok
       end
 
       def events
-        author_events = followed_author_events
-        book_events = book_related_events(author_events.map(&:id))
+        # author_events = followed_author_events
+        # book_events = book_related_events(author_events.map(&:id))
 
-        groups = []
-        groups << build_event_group(
-          'followed_authors',
-          'Events from authors you follow',
-          'Stay in the loop with the authors you already follow',
-          author_events
-        ) if author_events.any?
+        # groups = []
+        # groups << build_event_group(
+        #   'followed_authors',
+        #   'Events from authors you follow',
+        #   'Stay in the loop with the authors you already follow',
+        #   author_events
+        # ) if author_events.any?
 
-        groups << build_event_group(
-          'related_books',
-          'Events related to books you read',
-          'Discover events tied to the books you love',
-          book_events
-        ) if book_events.any?
+        # groups << build_event_group(
+        #   'related_books',
+        #   'Events related to books you read',
+        #   'Discover events tied to the books you love',
+        #   book_events
+        # ) if book_events.any?
 
-        render json: { recommended_events: groups }, status: :ok
+        # render json: { recommended_events: groups }, status: :ok
+        
+        render json: { recommended_events: [] }, status: :ok
       end
 
       private
+
+      def serialize_recommendation(rec)
+        item = rec.recommendable
+        return nil unless item
+
+        case rec.recommendable_type
+        when 'Book'
+          ensure_cover_for(item)
+          {
+            id: rec.id,
+            book: serialize_book_summary(item),
+            reason: rec.reason,
+            score: rec.score,
+            source: rec.source || 'llm_v1'
+          }
+        when 'Author'
+          {
+            id: rec.id,
+            author: serialize_author_summary(item),
+            reason: rec.reason,
+            score: rec.score,
+            source: rec.source || 'llm_v1'
+          }
+        end
+      end
+
+      def serialize_scraped_book(book)
+        {
+          title: book.title,
+          author_name: book.author_name,
+          cover_image_url: book.cover_image_url,
+          external_url: book.external_url,
+          source: book.source,
+          category: book.category,
+          format: book.format || "Physical",
+          genres: book.genre.to_s.split(',').map(&:strip) # Show all genres
+        }
+      end
 
       def candidate_books
         excluded_ids = current_user.user_books.select(:book_id)
@@ -237,7 +304,19 @@ module Api
           'Curated event recommendation'
         end
       end
+
+      def serialize_books_for_new_releases(books)
+        books.map do |book|
+          {
+            title: book.title,
+            author_name: book.author&.name,
+            cover_image_url: book.cover_image_url,
+            id: book.id,
+            release_date: book.release_date,
+            source: 'Local Library'
+          }
+        end
+      end
     end
   end
 end
-

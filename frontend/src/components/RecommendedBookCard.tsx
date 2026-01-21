@@ -1,8 +1,10 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import type { RecommendedBook } from '@book-app/shared'
 import Button from './Button'
+import { BookCoverImage } from './BookCoverImage'
 
 interface RecommendedBookCardProps {
   recommendation: RecommendedBook
@@ -11,10 +13,17 @@ interface RecommendedBookCardProps {
 
 export default function RecommendedBookCard({ recommendation, onAddToShelf }: RecommendedBookCardProps) {
   const [isAdding, setIsAdding] = useState(false)
+  
+  if (!recommendation || !recommendation.book) {
+    return null
+  }
+
   const { book, reason } = recommendation
   const authorName = book.author?.name ?? book.author_name ?? 'Unknown author'
 
-  const handleAdd = async () => {
+  const handleAdd = async (e: React.MouseEvent) => {
+    e.preventDefault() // Prevent navigation when clicking the button
+    e.stopPropagation()
     setIsAdding(true)
     try {
       await onAddToShelf()
@@ -26,37 +35,41 @@ export default function RecommendedBookCard({ recommendation, onAddToShelf }: Re
   }
 
   return (
-    <article className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 flex flex-col gap-3 min-w-[240px] max-w-xs">
-      <div className="h-40 w-full rounded-xl overflow-hidden bg-slate-100 flex items-center justify-center">
-        {book.cover_image_url ? (
-          <img
+    <Link href={`/books/${book.id}`} className="block h-full group">
+      <article className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 flex flex-col gap-3 w-full h-full transition-all hover:shadow-md hover:border-brand-indigo/30">
+        <div className="relative h-48 w-full rounded-xl overflow-hidden bg-slate-50 flex items-center justify-center shadow-inner">
+          <BookCoverImage
             src={book.cover_image_url}
-            alt={book.title}
-            className="h-full w-full object-cover"
-            loading="lazy"
+            title={book.title}
+            author={authorName}
+            size="medium"
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
-        ) : (
-          <div className="text-slate-400 text-sm">Cover unavailable</div>
-        )}
-      </div>
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors" />
+        </div>
 
-      <div className="space-y-1">
-        <h3 className="text-lg font-semibold text-slate-900 leading-tight">{book.title}</h3>
-        <p className="text-sm text-slate-500">{authorName}</p>
-      </div>
+        <div className="space-y-1">
+          <h3 className="text-base font-bold text-slate-900 leading-tight line-clamp-2 group-hover:text-brand-indigo transition-colors">
+            {book.title}
+          </h3>
+          <p className="text-xs text-slate-500 font-medium truncate">{authorName}</p>
+        </div>
 
-      <p className="text-sm text-slate-600 flex-1">{reason}</p>
+        <p className="text-xs text-slate-600 line-clamp-3 italic flex-1">
+          &ldquo;{reason}&rdquo;
+        </p>
 
-      <Button
-        onClick={handleAdd}
-        variant="primary"
-        size="md"
-        isLoading={isAdding}
-        className="mt-2"
-      >
-        Add to shelf
-      </Button>
-    </article>
+        <Button
+          onClick={handleAdd}
+          variant="primary"
+          size="sm"
+          isLoading={isAdding}
+          className="mt-2 w-full font-bold shadow-sm"
+        >
+          Add to shelf
+        </Button>
+      </article>
+    </Link>
   )
 }
 

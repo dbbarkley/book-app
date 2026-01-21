@@ -7,5 +7,13 @@ Rails.application.config.middleware.use OmniAuth::Builder do
            scope: 'email,public_profile',
            info_fields: 'email,name,first_name,last_name',
            image_size: 'large'
+
+  provider :google_oauth2, ENV['GOOGLE_CLIENT_ID'], ENV['GOOGLE_CLIENT_SECRET'],
+           {
+             scope: 'email, profile',
+             prompt: 'select_account',
+             image_aspect_ratio: 'square',
+             image_size: 50
+           }
 end
 

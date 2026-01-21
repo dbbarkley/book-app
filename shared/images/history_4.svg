@@ -1,0 +1,31 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Bronze/Amber Gradient for Tier 4 -->
+    <linearGradient id="historyGradient4" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F59E0B" /> <!-- Lighter Amber -->
+      <stop offset="100%" stop-color="#B45309" /> <!-- Base Amber -->
+    </linearGradient>
+  </defs>
+
+  <!-- Parchment Halo (Outer Ring - Solid but thin for an "engraved" look) -->
+  <circle cx="12" cy="12" r="11.5" stroke="#B45309" stroke-width="0.3" opacity="0.8"/>
+  <circle cx="12" cy="12" r="11" stroke="#B45309" stroke-width="0.1" opacity="0.4"/>
+  
+  <!-- Solid Gradient Background -->
+  <circle cx="12" cy="12" r="10" fill="url(#historyGradient4)"/>
+  
+  <!-- White Column Glyph -->
+  <g transform="translate(1.8, 1.8) scale(0.85)">
+    <!-- Base/Floor Line -->
+    <path d="M6 18H18" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round"/>
+    
+    <!-- Left Pillar -->
+    <path d="M9 18V6" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round"/>
+    
+    <!-- Right Pillar -->
+    <path d="M15 18V6" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round"/>
+    
+    <!-- Top/Header Line -->
+    <path d="M7 6H17" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round"/>
+  </g>
+</svg>
