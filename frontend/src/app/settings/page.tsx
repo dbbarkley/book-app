@@ -1,37 +1,14 @@
 'use client'
 
-// Settings Page - Edit user profile and preferences
-// Mobile-first design with TailwindCSS
-// Uses shared hooks for React Native compatibility
-
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, Variants } from 'framer-motion'
 import { useAuth, apiClient } from '@book-app/shared'
+import {
+  ChevronLeft, LogOut, Upload, X, Check,
+  BookOpen, Download, User as UserIcon,
+} from 'lucide-react'
 
-const containerVariants: Variants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-    },
-  },
-}
-
-const itemVariants: Variants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { 
-    opacity: 1, 
-    y: 0,
-    transition: {
-      type: 'spring',
-      stiffness: 260,
-      damping: 20,
-    }
-  },
-}
-import { LogOut } from 'lucide-react'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import InputField from '@/components/InputField'
 import Button from '@/components/Button'
@@ -41,11 +18,24 @@ import AuthorSelector from '@/components/AuthorSelector'
 import { mockGenres } from '@/utils/onboardingData'
 import type { Author, Genre } from '@book-app/shared'
 
+const containerVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.08 } },
+}
+const itemVariants: Variants = {
+  hidden: { opacity: 0, y: 16 },
+  visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 260, damping: 20 } },
+}
+
+const cardStyle = {
+  backgroundColor: 'var(--color-surface)',
+  border: '1px solid var(--color-rim)',
+  boxShadow: '0 8px 32px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3)',
+}
+
 interface ProfileFormData {
   display_name: string
   bio: string
-  avatar_url: string
-  zipcode: string
   avatar_file: File | null
 }
 
@@ -54,537 +44,388 @@ interface PreferencesFormData {
   author_ids: number[]
 }
 
-/**
- * Settings Page - Edit User Profile
- * 
- * Features:
- * - Edit display name
- * - Edit bio
- * - Edit avatar URL
- * - Save changes
- * 
- * For React Native:
- * - Replace Next.js navigation with React Navigation
- * - Use ImagePicker for avatar upload instead of URL
- * - Adjust styling to StyleSheet
- */
+function SectionHeader({ title, description }: { title: string; description?: string }) {
+  return (
+    <div className="px-6 py-4" style={{ borderBottom: '1px solid var(--color-rim)', backgroundColor: 'var(--color-grove)' }}>
+      <h2 className="font-serif text-lg font-bold" style={{ color: 'var(--color-lit)' }}>{title}</h2>
+      {description && <p className="text-sm mt-0.5" style={{ color: 'var(--color-lit-2)' }}>{description}</p>}
+    </div>
+  )
+}
+
+function Toast({ type, message }: { type: 'success' | 'error'; message: string }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="flex items-center gap-2 rounded-2xl px-4 py-3 text-sm mb-4"
+      style={type === 'success'
+        ? { backgroundColor: 'var(--color-success-light)', border: '1px solid var(--color-success)', color: 'var(--color-success)' }
+        : { backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-error)', color: 'var(--color-error)' }
+      }
+    >
+      {type === 'success' ? <Check size={15} /> : <X size={15} />}
+      <span className="font-medium">{message}</span>
+    </motion.div>
+  )
+}
+
 function SettingsContent() {
   const router = useRouter()
   const { user, refreshUser, logout } = useAuth()
+
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [savingPreferences, setSavingPreferences] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState(false)
-  const [preferencesSuccess, setPreferencesSuccess] = useState(false)
 
-  const [formData, setFormData] = useState<ProfileFormData>({
-    display_name: '',
-    bio: '',
-    avatar_url: '',
-    zipcode: '',
-    avatar_file: null,
-  })
+  // Profile
+  const [profileForm, setProfileForm] = useState<ProfileFormData>({ display_name: '', bio: '', avatar_file: null })
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
+  const [savingProfile, setSavingProfile] = useState(false)
+  const [profileToast, setProfileToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
-  const [preferencesData, setPreferencesData] = useState<PreferencesFormData>({
-    genres: [],
-    author_ids: [],
-  })
-
+  // Preferences
+  const [prefsForm, setPrefsForm] = useState<PreferencesFormData>({ genres: [], author_ids: [] })
   const [authors, setAuthors] = useState<Author[]>([])
+  const [authorsLoading, setAuthorsLoading] = useState(true)
+  const [authorSearchLoading, setAuthorSearchLoading] = useState(false)
+  const authorSearchId = useRef(0)
+  // Stable ref holding the saved favourite authors so handleAuthorSearch
+  // (a useCallback with no deps) can always merge them back in.
+  const savedAuthorsRef = useRef<Author[]>([])
   const [genres] = useState<Genre[]>(mockGenres)
+  const [savingPrefs, setSavingPrefs] = useState(false)
+  const [prefsToast, setPrefsToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
   useEffect(() => {
     if (user) {
-      setFormData({
-        display_name: user.display_name || '',
-        bio: user.bio || '',
-        avatar_url: user.avatar_url || '',
-        zipcode: user.zipcode || '',
-        avatar_file: null,
-      })
-      fetchPreferences()
-      fetchAuthors()
+      setProfileForm({ display_name: user.display_name || '', bio: user.bio || '', avatar_file: null })
+      fetchPreferencesAndAuthors()
     }
   }, [user])
 
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      // Validate file size (5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        setError('Image is too large (max 5MB)')
-        return
-      }
-
-      // Validate file type
-      if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-        setError('Please upload a JPEG, PNG, or WebP image')
-        return
-      }
-
-      setFormData(prev => ({ ...prev, avatar_file: file }))
-      
-      // Create preview URL
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setAvatarPreview(reader.result as string)
-      }
-      reader.readAsDataURL(file)
-      
-      setError(null)
-    }
-  }
-
-  const fetchPreferences = async () => {
+  const fetchPreferencesAndAuthors = async () => {
     try {
-      const preferences = await apiClient.getPreferences()
-      setPreferencesData({
-        genres: preferences.genres || [],
-        author_ids: preferences.author_ids || [],
-      })
+      const prefs = await apiClient.getPreferences()
+      const authorIds = prefs.author_ids || []
+      setPrefsForm({ genres: prefs.genres || [], author_ids: authorIds })
+      // Pass saved author IDs so fetchAuthors can guarantee those are in the list
+      await fetchAuthors(authorIds)
     } catch (err) {
       console.error('Failed to fetch preferences:', err)
-      // Continue with empty preferences if fetch fails
     } finally {
       setLoading(false)
     }
   }
 
-  const fetchAuthors = async () => {
+  const fetchAuthors = async (savedAuthorIds: number[] = []) => {
+    setAuthorsLoading(true)
     try {
-      const result = await apiClient.getAuthors()
-      // Handle both array and object response formats
-      const authorsList = Array.isArray(result) ? result : result.authors || []
-      setAuthors(authorsList)
+      // Fetch the default browseable list and the saved favourites in parallel.
+      // The favourites fetch ensures pills always show real names even if those
+      // authors aren't in the top-100 alphabetical list.
+      const [browseResult, savedResult] = await Promise.all([
+        apiClient.getAuthors({ per_page: 100 }),
+        savedAuthorIds.length ? apiClient.getAuthorsByIds(savedAuthorIds) : Promise.resolve({ authors: [] as Author[] }),
+      ])
+      const browse  = Array.isArray(browseResult) ? browseResult : browseResult.authors ?? []
+      const saved   = savedResult.authors ?? []
+      // Keep a stable copy so handleAuthorSearch can merge them back after a search reset
+      savedAuthorsRef.current = saved
+      const browseIds = new Set(browse.map((a: Author) => a.id))
+      const missing = saved.filter((a: Author) => !browseIds.has(a.id))
+      setAuthors([...browse, ...missing])
     } catch (err) {
       console.error('Failed to fetch authors:', err)
-      // Continue with empty authors if fetch fails
+    } finally {
+      setAuthorsLoading(false)
     }
   }
 
-  const handleChange = (field: keyof ProfileFormData, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
-    setError(null)
-    setSuccess(false)
+  const handleAuthorSearch = useCallback(async (query: string) => {
+    const id = ++authorSearchId.current
+    setAuthorSearchLoading(true)
+    try {
+      const result = query
+        ? await apiClient.searchAuthors(query, 1, 50)
+        : await apiClient.getAuthors({ per_page: 100 })
+      if (id !== authorSearchId.current) return
+      const fetched: Author[] = Array.isArray(result) ? result : result.authors || []
+      if (query) {
+        // During a search just show whatever the API returned — pills handle display
+        setAuthors(fetched)
+      } else {
+        // When search is cleared, merge saved favourites back in so pills don't lose their names
+        const fetchedIds = new Set(fetched.map((a: Author) => a.id))
+        const missing = savedAuthorsRef.current.filter((a: Author) => !fetchedIds.has(a.id))
+        setAuthors([...fetched, ...missing])
+      }
+    } catch (err) {
+      console.error('Author search failed:', err)
+    } finally {
+      if (id === authorSearchId.current) setAuthorSearchLoading(false)
+    }
+  }, [])
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 5 * 1024 * 1024) {
+      setProfileToast({ type: 'error', message: 'Image too large — max 5 MB' })
+      return
+    }
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setProfileToast({ type: 'error', message: 'Please upload a JPEG, PNG, or WebP image' })
+      return
+    }
+    setProfileForm(prev => ({ ...prev, avatar_file: file }))
+    const reader = new FileReader()
+    reader.onloadend = () => setAvatarPreview(reader.result as string)
+    reader.readAsDataURL(file)
+    setProfileToast(null)
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!user) return
-
-    setSaving(true)
-    setError(null)
-    setSuccess(false)
-
+    setSavingProfile(true)
+    setProfileToast(null)
     try {
-      const updatedUser = await apiClient.updateUser(user.id, {
-        display_name: formData.display_name || undefined,
-        bio: formData.bio || undefined,
-        avatar_url: formData.avatar_url || undefined,
-        zipcode: formData.zipcode || undefined,
-        avatar: formData.avatar_file || undefined,
+      await apiClient.updateUser(user.id, {
+        display_name: profileForm.display_name || undefined,
+        bio: profileForm.bio || undefined,
+        avatar: profileForm.avatar_file || undefined,
       })
-
-      // Refresh user data in auth store
       await refreshUser()
-      setSuccess(true)
+      setProfileForm(prev => ({ ...prev, avatar_file: null }))
       setAvatarPreview(null)
-      setFormData(prev => ({ ...prev, avatar_file: null }))
-
-      // Redirect to profile after a short delay
-      setTimeout(() => {
-        router.push(`/users/${user.id}`)
-      }, 1500)
+      setProfileToast({ type: 'success', message: 'Profile updated' })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update profile')
+      setProfileToast({ type: 'error', message: err instanceof Error ? err.message : 'Failed to update profile' })
     } finally {
-      setSaving(false)
+      setSavingProfile(false)
     }
   }
 
-  const handleSavePreferences = async () => {
-    setSavingPreferences(true)
-    setError(null)
-    setPreferencesSuccess(false)
-
+  const handleSavePrefs = async () => {
+    setSavingPrefs(true)
+    setPrefsToast(null)
     try {
-      await apiClient.savePreferences({
-        genres: preferencesData.genres,
-        author_ids: preferencesData.author_ids,
-      })
-      setPreferencesSuccess(true)
+      await apiClient.savePreferences({ genres: prefsForm.genres, author_ids: prefsForm.author_ids })
+      setPrefsToast({ type: 'success', message: 'Preferences saved' })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update preferences')
+      setPrefsToast({ type: 'error', message: err instanceof Error ? err.message : 'Failed to save preferences' })
     } finally {
-      setSavingPreferences(false)
+      setSavingPrefs(false)
     }
-  }
-
-  const handleToggleGenre = (genreId: string) => {
-    setPreferencesData((prev) => ({
-      ...prev,
-      genres: prev.genres.includes(genreId)
-        ? prev.genres.filter((id) => id !== genreId)
-        : [...prev.genres, genreId],
-    }))
-    setPreferencesSuccess(false)
-  }
-
-  const handleToggleAuthor = (authorId: number) => {
-    setPreferencesData((prev) => ({
-      ...prev,
-      author_ids: prev.author_ids.includes(authorId)
-        ? prev.author_ids.filter((id) => id !== authorId)
-        : [...prev.author_ids, authorId],
-    }))
-    setPreferencesSuccess(false)
   }
 
   if (loading || !user) {
     return (
-      <div className="container-mobile py-12">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-          <p className="mt-4 text-slate-600">Loading...</p>
-        </div>
+      <div className="container-mobile py-8 max-w-2xl mx-auto space-y-4 animate-pulse">
+        <div className="h-8 w-24 rounded-xl" style={{ backgroundColor: 'var(--color-surface)' }} />
+        <div className="h-64 rounded-[28px]" style={{ backgroundColor: 'var(--color-surface)' }} />
+        <div className="h-48 rounded-[28px]" style={{ backgroundColor: 'var(--color-surface)' }} />
       </div>
     )
   }
 
   return (
     <div className="container-mobile py-6 sm:py-8">
-      <motion.div 
-        className="max-w-2xl mx-auto"
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-      >
+      <motion.div className="max-w-2xl mx-auto" variants={containerVariants} initial="hidden" animate="visible">
+
         {/* Header */}
         <motion.div variants={itemVariants} className="mb-6">
           <button
             onClick={() => router.back()}
-            className="text-slate-600 hover:text-slate-900 mb-4 flex items-center gap-2"
+            className="flex items-center gap-1.5 text-sm font-medium mb-5 transition-colors"
+            style={{ color: 'var(--color-lit-2)' }}
+            onMouseEnter={e => (e.currentTarget.style.color = 'var(--color-lit)')}
+            onMouseLeave={e => (e.currentTarget.style.color = 'var(--color-lit-2)')}
           >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
+            <ChevronLeft size={16} />
             Back
           </button>
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">Settings</h1>
-          <p className="text-slate-600">Edit your profile information</p>
+          <h1 className="font-serif text-3xl font-bold" style={{ color: 'var(--color-lit)' }}>Settings</h1>
+          <p className="mt-1 text-sm" style={{ color: 'var(--color-lit-2)' }}>Manage your profile and preferences</p>
         </motion.div>
 
-        {/* Success Message */}
-        {success && (
-          <motion.div variants={itemVariants} className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-            <p className="text-sm text-green-800">Profile updated successfully!</p>
-          </motion.div>
-        )}
+        {/* ── Public Profile ── */}
+        <motion.div variants={itemVariants} className="rounded-[28px] overflow-hidden mb-5" style={cardStyle}>
+          <SectionHeader title="Public Profile" description="Visible to other readers" />
+          <form onSubmit={handleSaveProfile} className="p-6 sm:p-8 space-y-6">
 
-        {/* Error Message */}
-        {error && (
-          <motion.div variants={itemVariants} className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-            <p className="text-sm text-red-800">{error}</p>
-          </motion.div>
-        )}
+            {profileToast && <Toast type={profileToast.type} message={profileToast.message} />}
 
-        {/* Profile Form */}
-        <motion.div variants={itemVariants} className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden mb-6">
-          <div className="p-6 border-b border-slate-100 bg-slate-50/50">
-            <h2 className="text-lg font-bold text-slate-900">Public Profile</h2>
-            <p className="text-sm text-slate-500">This information will be shown on your public profile</p>
-          </div>
-          <form onSubmit={handleSubmit} className="p-6 sm:p-8">
-            <div className="space-y-6">
-              {/* Avatar Section */}
-              <div className="grid grid-cols-1 sm:grid-cols-[1fr,auto] gap-8 items-start pb-6 border-b border-slate-100">
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                      Profile Picture
-                    </label>
-                    <div className="flex flex-col sm:flex-row gap-3">
-                      <label className="cursor-pointer">
-                        <div className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors inline-flex items-center gap-2">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                          </svg>
-                          Upload Photo
-                        </div>
-                        <input 
-                          type="file" 
-                          className="hidden" 
-                          accept="image/jpeg,image/png,image/webp"
-                          onChange={handleFileChange}
-                        />
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setFormData(prev => ({ ...prev, avatar_file: null, avatar_url: '' }))
-                          setAvatarPreview(null)
-                        }}
-                        className="px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                    <p className="mt-2 text-xs text-slate-500">
-                      JPG, PNG or WebP. Max size 5MB.
-                    </p>
-                  </div>
-
-                  <InputField
-                    label="Avatar URL (Optional)"
-                    type="url"
-                    value={formData.avatar_url}
-                    onChange={(e) => handleChange('avatar_url', e.target.value)}
-                    placeholder="https://example.com/avatar.jpg"
-                    helperText="Or provide a link to your profile picture"
-                  />
-                </div>
-                
-                {/* Avatar Preview */}
-                <div className="flex flex-col items-center">
-                  <label className="block text-sm font-medium text-slate-700 mb-2 text-center">
-                    Preview
-                  </label>
-                  <Avatar 
-                    src={avatarPreview || formData.avatar_url} 
-                    name={formData.display_name || user.username} 
-                    size="xl" 
-                    showStatus={true}
-                    className="shadow-lg ring-4 ring-white"
-                  />
-                </div>
-              </div>
-
-              {/* Display Name */}
-              <InputField
-                label="Display Name"
-                type="text"
-                value={formData.display_name}
-                onChange={(e) => handleChange('display_name', e.target.value)}
-                placeholder="Your display name"
-                helperText="How you want to be known on the platform"
+            {/* Avatar */}
+            <div className="flex items-center gap-6 pb-6" style={{ borderBottom: '1px solid var(--color-rim)' }}>
+              <Avatar
+                src={avatarPreview || user.avatar_url}
+                name={profileForm.display_name || user.username}
+                size="xl"
               />
-
-              {/* Bio */}
-              <div>
-                <label
-                  htmlFor="bio"
-                  className="block text-sm font-medium text-gray-700 mb-1.5"
-                >
-                  Bio
+              <div className="space-y-2">
+                <label className="cursor-pointer">
+                  <div
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors"
+                    style={{ backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-rim)', color: 'var(--color-lit)' }}
+                    onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--color-rim-accent)')}
+                    onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--color-rim)')}
+                  >
+                    <Upload size={14} />
+                    {avatarPreview ? 'Change Photo' : 'Upload Photo'}
+                  </div>
+                  <input type="file" className="hidden" accept="image/jpeg,image/png,image/webp" onChange={handleFileChange} />
                 </label>
-                <textarea
-                  id="bio"
-                  value={formData.bio}
-                  onChange={(e) => handleChange('bio', e.target.value)}
-                  placeholder="Tell us about your favorite books, authors, or anything else!"
-                  rows={4}
-                  className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed text-gray-900 bg-white placeholder:text-gray-400 px-3 py-2 text-base sm:text-sm"
-                />
-                <div className="mt-1.5 flex justify-between text-sm">
-                  <span className="text-slate-500">A brief description about yourself</span>
-                  <span className={formData.bio.length > 450 ? 'text-amber-600 font-medium' : 'text-slate-400'}>
-                    {formData.bio.length}/500
-                  </span>
-                </div>
+                {avatarPreview && (
+                  <button
+                    type="button"
+                    onClick={() => { setAvatarPreview(null); setProfileForm(prev => ({ ...prev, avatar_file: null })) }}
+                    className="flex items-center gap-1.5 text-xs font-medium transition-colors"
+                    style={{ color: 'var(--color-lit-3)' }}
+                    onMouseEnter={e => (e.currentTarget.style.color = 'var(--color-error)')}
+                    onMouseLeave={e => (e.currentTarget.style.color = 'var(--color-lit-3)')}
+                  >
+                    <X size={12} /> Remove
+                  </button>
+                )}
+                <p className="text-xs" style={{ color: 'var(--color-lit-3)' }}>JPG, PNG or WebP · max 5 MB</p>
               </div>
+            </div>
 
-              <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row gap-4">
-                <Button
-                  type="submit"
-                  variant="primary"
-                  isLoading={saving}
-                  disabled={saving}
-                >
-                  Update Public Profile
-                </Button>
+            <InputField
+              label="Display Name"
+              type="text"
+              value={profileForm.display_name}
+              onChange={e => setProfileForm(prev => ({ ...prev, display_name: e.target.value }))}
+              placeholder="How you want to be known"
+            />
+
+            <div>
+              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-lit-2)' }}>Bio</label>
+              <textarea
+                value={profileForm.bio}
+                onChange={e => setProfileForm(prev => ({ ...prev, bio: e.target.value }))}
+                placeholder="Tell other readers about yourself…"
+                rows={4}
+                maxLength={500}
+                className="block w-full rounded-xl px-3 py-2.5 text-sm outline-none transition-colors resize-none"
+                style={{ backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-rim)', color: 'var(--color-lit)' }}
+                onFocus={e => (e.currentTarget.style.borderColor = 'var(--color-accent)')}
+                onBlur={e => (e.currentTarget.style.borderColor = 'var(--color-rim)')}
+              />
+              <div className="flex justify-end mt-1.5">
+                <span className="text-xs" style={{ color: profileForm.bio.length > 450 ? 'var(--color-accent)' : 'var(--color-lit-3)' }}>
+                  {profileForm.bio.length}/500
+                </span>
               </div>
+            </div>
+
+            <div className="pt-2" style={{ borderTop: '1px solid var(--color-rim)' }}>
+              <Button type="submit" variant="primary" isLoading={savingProfile} disabled={savingProfile}>
+                Save Profile
+              </Button>
             </div>
           </form>
         </motion.div>
 
-        {/* Private Information Section */}
-        <motion.div variants={itemVariants} className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden mb-6">
-          <div className="p-6 border-b border-slate-100 bg-slate-50/50">
-            <h2 className="text-lg font-bold text-slate-900">Private Information</h2>
-            <p className="text-sm text-slate-500">This information is only visible to you</p>
-          </div>
-          <div className="p-6 sm:p-8 space-y-6">
-            {/* Zipcode */}
-            <InputField
-              label="Zipcode"
-              type="text"
-              value={formData.zipcode}
-              onChange={(e) => handleChange('zipcode', e.target.value)}
-              placeholder="e.g. 90210"
-              helperText="Used to find literary events near you"
-            />
+        {/* ── Preferences ── */}
+        <motion.div variants={itemVariants} className="rounded-[28px] overflow-hidden mb-5" style={cardStyle}>
+          <SectionHeader title="Preferences" description="Personalise your recommendations" />
+          <div className="p-6 sm:p-8 space-y-8">
 
-            {/* Username (read-only) */}
+            {prefsToast && <Toast type={prefsToast.type} message={prefsToast.message} />}
+
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                Username
-              </label>
-              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-500 cursor-not-allowed">
-                <span className="text-slate-400">@</span>
-                <span className="text-sm font-medium">{user.username}</span>
-                <span className="ml-auto text-[10px] uppercase font-bold tracking-wider text-slate-400">Fixed</span>
-              </div>
-              <p className="mt-1.5 text-xs text-slate-500 italic">
-                Contact support to change your username
-              </p>
+              <h3 className="font-semibold text-sm mb-4 flex items-center gap-2" style={{ color: 'var(--color-lit)' }}>
+                <BookOpen size={15} style={{ color: 'var(--color-accent)' }} />
+                Favourite Genres
+              </h3>
+              <GenreSelector genres={genres} selectedGenres={prefsForm.genres} onToggleGenre={id =>
+                setPrefsForm(prev => ({
+                  ...prev,
+                  genres: prev.genres.includes(id) ? prev.genres.filter(g => g !== id) : [...prev.genres, id],
+                }))
+              } />
             </div>
-            
-            <div className="pt-4 border-t border-slate-100">
-              <Button
-                onClick={handleSubmit}
-                variant="outline"
-                isLoading={saving}
-                disabled={saving}
-              >
-                Save Private Details
-              </Button>
-            </div>
-          </div>
-        </motion.div>
 
-        {/* Preferences Section */}
-        <motion.div variants={itemVariants} className="mt-6 bg-white rounded-lg border border-slate-200 p-6 sm:p-8 shadow-sm">
-          <h2 className="text-xl font-bold text-slate-900 mb-2">Preferences</h2>
-          <p className="text-sm text-slate-600 mb-6">
-            Update your favorite genres and authors to personalize your feed
-          </p>
-
-          {/* Success Message */}
-          {preferencesSuccess && (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-              <p className="text-sm text-green-800">Preferences updated successfully!</p>
-            </div>
-          )}
-
-          <div className="space-y-8">
-            {/* Genres */}
             <div>
-              <h3 className="text-lg font-semibold text-slate-900 mb-4">Favorite Genres</h3>
-              <GenreSelector
-                genres={genres}
-                selectedGenres={preferencesData.genres}
-                onToggleGenre={handleToggleGenre}
-              />
-            </div>
-
-            {/* Authors */}
-            <div>
-              <h3 className="text-lg font-semibold text-slate-900 mb-4">Favorite Authors</h3>
-              {authors.length > 0 ? (
+              <h3 className="font-semibold text-sm mb-4 flex items-center gap-2" style={{ color: 'var(--color-lit)' }}>
+                <UserIcon size={15} style={{ color: 'var(--color-accent)' }} />
+                Favourite Authors
+              </h3>
+              {authorsLoading ? (
+                <div className="space-y-2">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="h-14 rounded-xl animate-pulse" style={{ backgroundColor: 'var(--color-grove)' }} />
+                  ))}
+                </div>
+              ) : (
                 <AuthorSelector
                   authors={authors}
-                  selectedAuthorIds={preferencesData.author_ids}
-                  onToggleAuthor={handleToggleAuthor}
+                  selectedAuthorIds={prefsForm.author_ids}
+                  onSearch={handleAuthorSearch}
+                  searchLoading={authorSearchLoading}
+                  onToggleAuthor={id =>
+                    setPrefsForm(prev => ({
+                      ...prev,
+                      author_ids: prev.author_ids.includes(id) ? prev.author_ids.filter(a => a !== id) : [...prev.author_ids, id],
+                    }))
+                  }
                 />
-              ) : (
-                <div className="text-center py-8 text-slate-500">
-                  <p>Loading authors...</p>
-                </div>
               )}
             </div>
 
-            {/* Save Preferences Button */}
-            <div className="pt-4 border-t border-slate-200">
-              <Button
-                variant="primary"
-                onClick={handleSavePreferences}
-                isLoading={savingPreferences}
-                disabled={savingPreferences}
-                fullWidth
-              >
+            <div className="pt-2" style={{ borderTop: '1px solid var(--color-rim)' }}>
+              <Button variant="primary" onClick={handleSavePrefs} isLoading={savingPrefs} disabled={savingPrefs}>
                 Save Preferences
               </Button>
             </div>
           </div>
         </motion.div>
 
-        {/* Import Library Section */}
-        <motion.div variants={itemVariants} className="mt-6 bg-white rounded-lg border border-slate-200 p-6 sm:p-8 shadow-sm">
-          <h2 className="text-xl font-bold text-slate-900 mb-2">Import Reading History</h2>
-          <p className="text-sm text-slate-600 mb-6">
-            Import your books, ratings, and shelves from other platforms to quickly populate your library
-          </p>
+        {/* ── Import ── */}
+        <motion.div variants={itemVariants} className="rounded-[28px] overflow-hidden mb-5" style={cardStyle}>
+          <SectionHeader title="Import Reading History" description="Bring your books over from other platforms" />
+          <div className="p-6 sm:p-8 space-y-4">
 
-          <div className="space-y-4">
-            {/* Goodreads Import */}
-            <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg p-6">
-              <div className="flex items-start gap-4 mb-4">
-                <div className="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <span className="text-amber-600 font-bold text-xl">G</span>
+            {/* Goodreads */}
+            <div className="rounded-2xl p-5" style={{ background: 'linear-gradient(135deg, var(--color-accent-subtle), rgba(201,168,76,0.04))', border: '1px solid var(--color-rim-accent)' }}>
+              <div className="flex items-start gap-4">
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 font-bold text-lg" style={{ backgroundColor: 'var(--color-accent-subtle)', color: 'var(--color-accent)' }}>
+                  G
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-slate-900 mb-1">Import from Goodreads</h3>
-                  <p className="text-sm text-slate-600 mb-4">
-                    Bring over your entire library, ratings, and reading status in about a minute
-                  </p>
-                  <div className="flex flex-wrap gap-2 text-xs text-slate-600 mb-4">
-                    <span className="inline-flex items-center gap-1 bg-white px-2 py-1 rounded">
-                      <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      All books
-                    </span>
-                    <span className="inline-flex items-center gap-1 bg-white px-2 py-1 rounded">
-                      <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      Ratings
-                    </span>
-                    <span className="inline-flex items-center gap-1 bg-white px-2 py-1 rounded">
-                      <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      Shelves
-                    </span>
+                  <h3 className="font-bold text-sm mb-1" style={{ color: 'var(--color-lit)' }}>Goodreads</h3>
+                  <p className="text-xs mb-3" style={{ color: 'var(--color-lit-2)' }}>Import your entire library, ratings and shelves in about a minute</p>
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {['All books', 'Ratings', 'Shelves'].map(label => (
+                      <span key={label} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium" style={{ backgroundColor: 'var(--color-grove)', color: 'var(--color-lit-2)' }}>
+                        <Check size={11} style={{ color: 'var(--color-success)' }} />
+                        {label}
+                      </span>
+                    ))}
                   </div>
                   <button
                     onClick={() => router.push('/import/goodreads')}
-                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors inline-flex items-center gap-2"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-colors"
+                    style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-accent-on)' }}
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                    </svg>
+                    <Download size={14} />
                     Start Import
                   </button>
                 </div>
               </div>
             </div>
 
-            {/* Coming Soon - StoryGraph */}
-            <div className="bg-slate-50 border border-slate-200 rounded-lg p-6 opacity-60">
+            {/* StoryGraph — coming soon */}
+            <div className="rounded-2xl p-5 opacity-40" style={{ backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-rim)' }}>
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <span className="text-purple-600 font-bold text-lg">SG</span>
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 font-bold text-sm" style={{ backgroundColor: 'var(--color-accent-subtle)', color: 'var(--color-accent)' }}>
+                  SG
                 </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-slate-900 mb-1">Import from StoryGraph</h3>
-                  <p className="text-sm text-slate-600 mb-2">
-                    Import your reading data from StoryGraph
-                  </p>
-                  <span className="inline-block text-xs bg-slate-200 text-slate-600 px-2 py-1 rounded">
+                <div>
+                  <h3 className="font-bold text-sm mb-1" style={{ color: 'var(--color-lit)' }}>StoryGraph</h3>
+                  <p className="text-xs mb-2" style={{ color: 'var(--color-lit-2)' }}>Import your reading data from StoryGraph</p>
+                  <span className="text-xs px-2 py-1 rounded-lg font-bold" style={{ backgroundColor: 'var(--color-rim)', color: 'var(--color-lit-3)' }}>
                     Coming Soon
                   </span>
                 </div>
@@ -593,40 +434,42 @@ function SettingsContent() {
           </div>
         </motion.div>
 
-        {/* Account Section */}
-        <motion.div variants={itemVariants} className="mt-6 bg-white rounded-lg border border-slate-200 p-6 sm:p-8 shadow-sm">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-slate-900">Account</h2>
+        {/* ── Account ── */}
+        <motion.div variants={itemVariants} className="rounded-[28px] overflow-hidden mb-5" style={cardStyle}>
+          <SectionHeader title="Account" />
+          <div className="p-6 sm:p-8">
+            <div className="space-y-4 mb-6">
+              <div className="flex items-center justify-between py-3" style={{ borderBottom: '1px solid var(--color-rim)' }}>
+                <span className="text-sm font-medium" style={{ color: 'var(--color-lit-2)' }}>Username</span>
+                <span className="text-sm font-mono font-semibold" style={{ color: 'var(--color-lit)' }}>@{user.username}</span>
+              </div>
+              <div className="flex items-center justify-between py-3" style={{ borderBottom: '1px solid var(--color-rim)' }}>
+                <span className="text-sm font-medium" style={{ color: 'var(--color-lit-2)' }}>Email</span>
+                <span className="text-sm" style={{ color: 'var(--color-lit)' }}>{user.email || '—'}</span>
+              </div>
+              <div className="flex items-center justify-between py-3">
+                <span className="text-sm font-medium" style={{ color: 'var(--color-lit-2)' }}>Member since</span>
+                <span className="text-sm" style={{ color: 'var(--color-lit)' }}>
+                  {user.created_at
+                    ? new Date(user.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })
+                    : '—'}
+                </span>
+              </div>
+            </div>
+
             <button
-              onClick={() => {
-                logout()
-                router.push('/login')
-              }}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              onClick={() => { logout(); router.push('/login') }}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-colors"
+              style={{ backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-rim)', color: 'var(--color-error)' }}
+              onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--color-error)')}
+              onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--color-rim)')}
             >
-              <LogOut className="w-4 h-4" />
-              Logout
+              <LogOut size={15} />
+              Sign out
             </button>
           </div>
-          <div className="space-y-4">
-            <div>
-              <p className="text-sm font-medium text-slate-700 mb-1">Email</p>
-              <p className="text-sm text-slate-600">{user.email || 'Not set'}</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-slate-700 mb-1">Member Since</p>
-              <p className="text-sm text-slate-600">
-                {user.created_at
-                  ? new Date(user.created_at).toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
-                    })
-                  : 'Unknown'}
-              </p>
-            </div>
-          </div>
         </motion.div>
+
       </motion.div>
     </div>
   )
@@ -639,4 +482,3 @@ export default function SettingsPage() {
     </ProtectedRoute>
   )
 }
-

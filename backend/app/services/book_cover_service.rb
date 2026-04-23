@@ -54,9 +54,13 @@ class BookCoverService
       cover_last_enriched_at: Time.current
     }
 
-    # Also update categories if they were found in Google Books
+    # Also update categories and page_count if they were found in Google Books
     if best_data[:categories].present? && @book.respond_to?(:categories) && @book.categories.blank?
       update_attrs[:categories] = best_data[:categories]
+    end
+
+    if best_data[:page_count].present? && @book.respond_to?(:page_count) && @book.page_count.blank?
+      update_attrs[:page_count] = best_data[:page_count]
     end
 
     @book.update!(update_attrs)
@@ -66,17 +70,12 @@ class BookCoverService
 
   # Check if book needs enrichment
   def needs_enrichment?
-    # No cover at all or no categories
     return true if @book.cover_image_url.blank?
-    return true if @book.respond_to?(:categories) && @book.categories.blank?
-    
-    # Low quality cover
+    return true if @book.respond_to?(:categories)  && @book.categories.blank?
+    return true if @book.respond_to?(:page_count)  && @book.page_count.blank?
     return true if @book.cover_image_quality.to_i < MEDIUM_QUALITY
-    
-    # Haven't enriched in 30 days
-    return true if @book.cover_last_enriched_at.blank? || 
+    return true if @book.cover_last_enriched_at.blank? ||
                    @book.cover_last_enriched_at < 30.days.ago
-    
     false
   end
 
@@ -115,7 +114,9 @@ class BookCoverService
               "intitle:#{@book.title}+inauthor:#{@book.author.name}"
             end
 
-    uri = URI("#{GOOGLE_BOOKS_BASE}?q=#{URI.encode_www_form_component(query)}&maxResults=1")
+    key = ENV['GOOGLE_BOOKS_API_KEY']
+    api_key_param = key.present? ? "&key=#{key}" : ''
+    uri = URI("#{GOOGLE_BOOKS_BASE}?q=#{URI.encode_www_form_component(query)}&maxResults=1#{api_key_param}")
     
     response = Net::HTTP.get_response(uri)
     return nil unless response.is_a?(Net::HTTPSuccess)
@@ -146,14 +147,16 @@ class BookCoverService
                 LOW_QUALITY
               end
 
-    # Google Books provides categories/genres
+    # Google Books provides categories/genres and page count
     categories = volume&.dig('volumeInfo', 'categories') || []
+    page_count = volume&.dig('volumeInfo', 'pageCount')
 
     {
-      url: cover_url,
-      quality: quality,
-      source: 'google_books',
-      categories: categories
+      url:        cover_url,
+      quality:    quality,
+      source:     'google_books',
+      categories: categories,
+      page_count: page_count,
     }
   rescue StandardError => e
     Rails.logger.error("Google Books cover fetch failed for book #{@book.id}: #{e.message}")

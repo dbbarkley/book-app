@@ -54,6 +54,9 @@ export const useRecommendationsStore = create<RecommendationsState>((set, get) =
 
   refresh: async () => {
     try {
+      // Tell the backend to wipe stale results and run SmartRecommendationService,
+      // then re-fetch both lists so the UI reflects the new results.
+      await apiClient.regenerateRecommendations()
       await Promise.all([get().fetchBooks(), get().fetchAuthors()])
     } catch (error) {
       console.warn('Failed to refresh recommendations', error)

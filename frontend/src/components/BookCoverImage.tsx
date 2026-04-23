@@ -125,7 +125,7 @@ export function BookCoverImage({
         alt={`Cover of ${title || 'Unknown'}`}
         {...(isFull ? { fill: true } : { width: dimensions.width, height: dimensions.height })}
         className={`
-          rounded-lg shadow-lg object-cover
+          rounded-lg shadow-lg object-contain
           transition-opacity duration-300
           ${isLoading ? 'opacity-0' : 'opacity-100'}
         `}

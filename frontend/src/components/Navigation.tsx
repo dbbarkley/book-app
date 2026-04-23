@@ -1,8 +1,5 @@
 'use client'
 
-// Navigation Component - Mobile-friendly top navigation
-// Responsive design with mobile menu
-
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
@@ -10,15 +7,13 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '@book-app/shared'
 import Avatar from './Avatar'
-import { 
+import {
   Home,
-  LayoutDashboard, 
-  BookOpen, 
-  Search, 
-  User, 
-  Menu, 
+  BookOpen,
+  Search,
+  User,
+  Menu,
   X,
-  MessageSquare,
   Settings
 } from 'lucide-react'
 
@@ -27,190 +22,269 @@ export default function Navigation() {
   const { isAuthenticated, user } = useAuth()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
-  const navLinks = [
-    { href: '/dashboard', label: 'Home', icon: Home },
-    { href: '/feed', label: 'Feed', icon: LayoutDashboard },
-    { href: '/library', label: 'Library', icon: BookOpen },
-    { href: '/forums', label: 'Forums', icon: MessageSquare },
+  const navLinks = isAuthenticated ? [
+    { href: '/dashboard',         label: 'Home',     icon: Home     },
+    { href: '/library',           label: 'Library',  icon: BookOpen },
+    { href: '/search',            label: 'Discover', icon: Search   },
+    { href: `/users/${user?.id}`, label: 'Profile',  icon: User     },
+  ] : [
     { href: '/search', label: 'Discover', icon: Search },
-    ...(isAuthenticated ? [{ href: `/users/${user?.id}`, label: 'Profile', icon: User }] : []),
   ]
 
-  const isActive = (href: string) => pathname === href
+  const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/')
+
+  const close = () => setMobileMenuOpen(false)
 
   return (
-    <nav className="sticky top-0 z-50 bg-background-app/80 backdrop-blur-md border-b border-border-default/50">
-      <div className="container-mobile">
-        <div className="flex items-center justify-between h-20">
-          {/* Logo */}
-          <Link href="/" className="flex items-center h-full transition-opacity hover:opacity-80">
-            <div className="relative h-28 w-[200px]">
-              <Image
-                src="/logo.png"
-                alt="WellRead"
-                fill
-                className="object-contain object-left"
-                style={{ filter: 'brightness(0)' }}
-                priority
-              />
-            </div>
-          </Link>
+    <>
+      <nav
+        className="sticky top-0 z-50 backdrop-blur-md"
+        style={{
+          backgroundColor: 'rgba(24, 35, 26, 0.95)',
+          borderBottom: '1px solid rgba(237, 224, 196, 0.12)',
+          boxShadow: '0 4px 24px rgba(0,0,0,0.45)',
+        }}
+      >
+        <div className="container-mobile">
+          <div className="flex items-center justify-between h-16">
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-1" style={{ marginRight: '200px' }}>
-            {navLinks.map((link) => {
-              const Icon = link.icon
-              const active = isActive(link.href)
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={`relative flex items-center space-x-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors duration-200 ${
-                    active
-                      ? 'text-white'
-                      : 'text-text-secondary hover:bg-background-muted hover:text-text-primary'
-                  }`}
-                >
-                  {active && (
-                    <motion.div
-                      layoutId="nav-pill"
-                      className="absolute inset-0 bg-brand-indigo rounded-xl shadow-sm"
-                      transition={{ type: 'spring', stiffness: 350, damping: 30 }}
-                    />
-                  )}
-                  <span className="relative z-10 flex items-center gap-2">
-                    <Icon size={18} />
-                    <span>{link.label}</span>
-                  </span>
-                </Link>
-              )
-            })}
-          </div>
-
-          {/* Right Section */}
-          <div className="flex items-center space-x-2">
-            {!isAuthenticated ? (
-              <div className="hidden md:flex items-center space-x-2">
-                <Link
-                  href="/login"
-                  className="px-4 py-2 text-sm font-medium text-text-secondary hover:text-text-primary transition-colors"
-                >
-                  Login
-                </Link>
-                <Link
-                  href="/signup"
-                  className="px-4 py-2 text-sm font-medium text-white bg-brand-indigo rounded-xl hover:bg-brand-indigo-dark transition-all shadow-sm"
-                >
-                  Sign Up
-                </Link>
-              </div>
-            ) : (
-              <div className="flex items-center space-x-3">
-                <Link
-                  href="/settings"
-                  className="p-2 rounded-xl text-text-secondary hover:bg-background-muted transition-colors hidden sm:block"
-                  aria-label="Settings"
-                >
-                  <Settings size={20} />
-                </Link>
-                <Link 
-                  href={`/users/${user?.id}`}
-                  className="flex items-center gap-2 p-1 pr-3 rounded-full hover:bg-background-muted transition-colors border border-transparent hover:border-border-default"
-                >
-                  <Avatar 
-                    src={user?.avatar_url} 
-                    name={user?.display_name || user?.username} 
-                    size="sm" 
-                  />
-                  <span className="hidden lg:block text-sm font-medium text-text-primary">
-                    {user?.display_name || user?.username}
-                  </span>
-                </Link>
-              </div>
-            )}
-
-            {/* Mobile Menu Button */}
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 rounded-xl text-text-secondary hover:bg-background-muted transition-colors"
-              aria-label="Toggle menu"
-            >
-              {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-            </button>
-          </div>
-        </div>
-
-        {/* Mobile Menu */}
-        {mobileMenuOpen && (
-          <div className="md:hidden py-4 border-t border-border-default/50 animate-in fade-in slide-in-from-top-5 duration-200">
-            {isAuthenticated && user && (
-              <div className="flex items-center gap-3 px-4 py-4 mb-2 border-b border-border-default/30">
-                <Avatar 
-                  src={user.avatar_url} 
-                  name={user.display_name || user.username} 
-                  size="md" 
+            {/* Logo */}
+            <Link href="/" className="flex items-center flex-shrink-0 transition-opacity hover:opacity-75">
+              <div className="relative h-10 w-36">
+                <Image
+                  src="/logo.png"
+                  alt="Libraio"
+                  fill
+                  className="object-contain object-left"
+                  style={{ filter: 'brightness(0) invert(1) sepia(1) saturate(2) hue-rotate(5deg)' }}
+                  priority
                 />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-text-primary truncate">
-                    {user.display_name || user.username}
-                  </p>
-                  <p className="text-xs text-text-muted truncate">
-                    @{user.username}
-                  </p>
-                </div>
-                <Link 
-                  href="/settings" 
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="p-2 text-text-secondary hover:text-text-primary"
-                >
-                  <Settings size={20} />
-                </Link>
               </div>
-            )}
-            <div className="flex flex-col space-y-1">
+            </Link>
+
+            {/* Desktop nav links */}
+            <div className="hidden md:flex items-center gap-1 flex-1 justify-center">
               {navLinks.map((link) => {
                 const Icon = link.icon
+                const active = isActive(link.href)
                 return (
                   <Link
                     key={link.href}
                     href={link.href}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className={`flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
-                      isActive(link.href)
-                        ? 'bg-brand-indigo/10 text-brand-indigo'
-                        : 'text-text-secondary hover:bg-background-muted'
+                    className={`relative flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors duration-150 ${
+                      active ? 'text-accent-on' : 'text-lit hover:text-lit hover:bg-grove'
                     }`}
                   >
-                    <Icon size={20} />
-                    <span>{link.label}</span>
+                    {active && (
+                      <motion.div
+                        layoutId="nav-pill"
+                        className="absolute inset-0 rounded-xl"
+                        style={{ backgroundColor: 'var(--color-accent)' }}
+                        transition={{ type: 'spring', stiffness: 400, damping: 32 }}
+                      />
+                    )}
+                    <span className="relative z-10 flex items-center gap-2">
+                      <Icon size={16} />
+                      <span>{link.label}</span>
+                    </span>
                   </Link>
                 )
               })}
-              
-              {!isAuthenticated && (
-                <div className="pt-4 mt-2 border-t border-border-default/50 flex flex-col space-y-2">
+            </div>
+
+            {/* Right section */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {!isAuthenticated ? (
+                <div className="hidden md:flex items-center gap-2">
                   <Link
                     href="/login"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="flex justify-center px-4 py-3 rounded-xl text-sm font-medium text-text-secondary hover:bg-background-muted"
+                    className="px-4 py-2 text-sm font-semibold text-lit-2 hover:text-lit transition-colors rounded-xl hover:bg-grove"
                   >
                     Login
                   </Link>
                   <Link
                     href="/signup"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="flex justify-center px-4 py-3 rounded-xl text-sm font-medium text-white bg-brand-indigo hover:bg-brand-indigo-dark shadow-sm"
+                    className="px-4 py-2 text-sm font-semibold rounded-xl transition-all"
+                    style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-accent-on)' }}
                   >
                     Sign Up
                   </Link>
                 </div>
+              ) : (
+                <div className="flex items-center gap-1">
+                  <Link
+                    href="/settings"
+                    className="p-2 rounded-xl text-lit-2 hover:text-lit hover:bg-grove transition-colors hidden sm:flex"
+                    aria-label="Settings"
+                  >
+                    <Settings size={18} />
+                  </Link>
+                  <div className="hidden sm:block w-px h-6 mx-1" style={{ backgroundColor: 'var(--color-rim)' }} />
+                  <Link
+                    href={`/users/${user?.id}`}
+                    className="flex items-center gap-2 px-2 py-1.5 rounded-xl hover:bg-grove transition-colors"
+                  >
+                    <Avatar
+                      src={user?.avatar_url}
+                      name={user?.display_name || user?.username}
+                      size="sm"
+                    />
+                    <span className="hidden lg:block text-sm font-semibold text-lit">
+                      {user?.display_name || user?.username}
+                    </span>
+                  </Link>
+                </div>
               )}
 
+              {/* Mobile hamburger */}
+              <button
+                onClick={() => setMobileMenuOpen(true)}
+                className="md:hidden p-2 rounded-xl text-lit hover:bg-grove transition-colors"
+                aria-label="Open menu"
+              >
+                <Menu size={22} />
+              </button>
             </div>
           </div>
+        </div>
+      </nav>
+
+      {/* ── Mobile drawer — rendered outside nav so it's truly full-screen ── */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              key="backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-[60] md:hidden"
+              style={{ backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(2px)' }}
+              onClick={close}
+            />
+
+            {/* Drawer panel */}
+            <motion.div
+              key="drawer"
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+              className="fixed top-0 right-0 h-full w-72 z-[70] md:hidden flex flex-col"
+              style={{
+                backgroundColor: 'var(--color-surface)',
+                borderLeft: '1px solid var(--color-rim)',
+                boxShadow: '-8px 0 32px rgba(0,0,0,0.5)',
+              }}
+            >
+              {/* Drawer header */}
+              <div
+                className="flex items-center justify-between px-4 h-16 flex-shrink-0"
+                style={{ borderBottom: '1px solid var(--color-rim)' }}
+              >
+                <span className="text-sm font-semibold" style={{ color: 'var(--color-lit-2)' }}>Menu</span>
+                <button
+                  onClick={close}
+                  className="p-2 rounded-xl transition-colors"
+                  style={{ color: 'var(--color-lit)' }}
+                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--color-grove)')}
+                  onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+                  aria-label="Close menu"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* User info strip */}
+              {isAuthenticated && user && (
+                <div
+                  className="flex items-center gap-3 mx-3 mt-4 mb-2 px-3 py-3 rounded-2xl flex-shrink-0"
+                  style={{ backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-rim)' }}
+                >
+                  <Avatar src={user.avatar_url} name={user.display_name || user.username} size="md" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold truncate" style={{ color: 'var(--color-lit)' }}>
+                      {user.display_name || user.username}
+                    </p>
+                    <p className="text-xs truncate" style={{ color: 'var(--color-lit-2)' }}>
+                      @{user.username}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Nav links */}
+              <div className="flex flex-col gap-0.5 px-3 py-3 flex-1">
+                {navLinks.map((link) => {
+                  const Icon = link.icon
+                  const active = isActive(link.href)
+                  return (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      onClick={close}
+                      className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all"
+                      style={
+                        active
+                          ? { backgroundColor: 'var(--color-accent)', color: 'var(--color-accent-on)' }
+                          : { color: 'var(--color-lit)' }
+                      }
+                      onMouseEnter={e => { if (!active) e.currentTarget.style.backgroundColor = 'var(--color-grove)' }}
+                      onMouseLeave={e => { if (!active) e.currentTarget.style.backgroundColor = 'transparent' }}
+                    >
+                      <Icon size={18} />
+                      <span>{link.label}</span>
+                    </Link>
+                  )
+                })}
+              </div>
+
+              {/* Bottom actions */}
+              <div
+                className="flex flex-col gap-2 px-3 py-4 flex-shrink-0"
+                style={{ borderTop: '1px solid var(--color-rim)' }}
+              >
+                {isAuthenticated ? (
+                  <Link
+                    href="/settings"
+                    onClick={close}
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all"
+                    style={{ color: 'var(--color-lit-2)' }}
+                    onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--color-grove)')}
+                    onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+                  >
+                    <Settings size={18} />
+                    <span>Settings</span>
+                  </Link>
+                ) : (
+                  <>
+                    <Link
+                      href="/login"
+                      onClick={close}
+                      className="flex justify-center px-4 py-3 rounded-xl text-sm font-semibold transition-colors"
+                      style={{ color: 'var(--color-lit-2)' }}
+                      onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--color-grove)')}
+                      onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+                    >
+                      Login
+                    </Link>
+                    <Link
+                      href="/signup"
+                      onClick={close}
+                      className="flex justify-center px-4 py-3 rounded-xl text-sm font-semibold transition-all"
+                      style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-accent-on)' }}
+                    >
+                      Sign Up
+                    </Link>
+                  </>
+                )}
+              </div>
+            </motion.div>
+          </>
         )}
-      </div>
-    </nav>
+      </AnimatePresence>
+    </>
   )
 }
-

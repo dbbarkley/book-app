@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_01_21_000000) do
+ActiveRecord::Schema[7.2].define(version: 2026_04_23_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -222,6 +222,18 @@ ActiveRecord::Schema[7.2].define(version: 2026_01_21_000000) do
     t.index ["owner_id"], name: "index_forums_on_owner_id"
   end
 
+  create_table "friendships", force: :cascade do |t|
+    t.bigint "requester_id", null: false
+    t.bigint "requestee_id", null: false
+    t.string "status", default: "pending", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["requestee_id"], name: "index_friendships_on_requestee_id"
+    t.index ["requester_id", "requestee_id"], name: "index_friendships_on_requester_id_and_requestee_id", unique: true
+    t.index ["requester_id"], name: "index_friendships_on_requester_id"
+    t.index ["status"], name: "index_friendships_on_status"
+  end
+
   create_table "imports", force: :cascade do |t|
     t.bigint "user_id", null: false
     t.string "source", null: false
@@ -306,7 +318,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_01_21_000000) do
     t.integer "pages_read"
     t.integer "total_pages"
     t.integer "completion_percentage", default: 0
-    t.integer "rating"
+    t.decimal "rating", precision: 3, scale: 2
     t.text "review"
     t.datetime "started_at"
     t.datetime "finished_at"
@@ -316,6 +328,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_01_21_000000) do
     t.string "visibility", default: "public", null: false
     t.string "dnf_reason"
     t.integer "dnf_page"
+    t.text "notes"
     t.index ["book_id"], name: "index_user_books_on_book_id"
     t.index ["status"], name: "index_user_books_on_status"
     t.index ["user_id", "book_id"], name: "index_user_books_on_user_id_and_book_id", unique: true
@@ -406,6 +419,8 @@ ActiveRecord::Schema[7.2].define(version: 2026_01_21_000000) do
   add_foreign_key "forum_replies", "users"
   add_foreign_key "forum_reports", "users"
   add_foreign_key "forums", "users", column: "owner_id"
+  add_foreign_key "friendships", "users", column: "requestee_id"
+  add_foreign_key "friendships", "users", column: "requester_id"
   add_foreign_key "imports", "users"
   add_foreign_key "recommendations", "users"
   add_foreign_key "user_books", "books"

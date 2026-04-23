@@ -1,5 +1,4 @@
 // InputField Component - Reusable input with validation error display
-// Mobile-first design with TailwindCSS
 // Reusable in Next.js and React Native (with minor adjustments)
 
 import React from 'react'
@@ -12,84 +11,43 @@ export interface InputFieldProps
   fullWidth?: boolean
 }
 
-/**
- * Reusable InputField component with label, error, and helper text
- * 
- * Usage:
- * ```tsx
- * <InputField
- *   label="Email"
- *   type="email"
- *   value={email}
- *   onChange={(e) => setEmail(e.target.value)}
- *   error={errors.email}
- * />
- * ```
- * 
- * For React Native:
- * - Replace input with TextInput from react-native
- * - Convert className to StyleSheet
- * - Keep the same prop interface for consistency
- * - Use Text component for label/error/helper text
- */
 const InputField = React.forwardRef<HTMLInputElement, InputFieldProps>(
   function InputField(
-    {
-      label,
-      error,
-      helperText,
-      fullWidth = true,
-      className = '',
-      id,
-      ...props
-    },
+    { label, error, helperText, fullWidth = true, className = '', id, ...props },
     ref
   ) {
-    const inputId =
-      id || `input-${label?.toLowerCase().replace(/\s+/g, '-') || 'field'}`
-
-    const baseInputStyles =
-      'block rounded-lg border border-border-default bg-background-card text-text-primary placeholder:text-text-muted shadow-sm focus:border-brand-indigo focus:ring-2 focus:ring-brand-indigo/50 transition-colors disabled:bg-background-muted disabled:cursor-not-allowed'
-
-    const errorInputStyles = error
-      ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-      : ''
-
-    const sizeStyles = 'px-3 py-2 text-base sm:text-sm'
-    const widthStyles = fullWidth ? 'w-full' : ''
+    const inputId = id || `input-${label?.toLowerCase().replace(/\s+/g, '-') || 'field'}`
 
     return (
       <div className={fullWidth ? 'w-full' : ''}>
         {label && (
-          <label
-            htmlFor={inputId}
-            className="block text-sm font-medium text-text-secondary mb-1.5"
-          >
+          <label htmlFor={inputId} className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-lit-2)' }}>
             {label}
-            {props.required && <span className="text-red-500 ml-1">*</span>}
+            {props.required && <span className="ml-1" style={{ color: 'var(--color-error)' }}>*</span>}
           </label>
         )}
         <input
           ref={ref}
           id={inputId}
-          className={`${baseInputStyles} ${errorInputStyles} ${sizeStyles} ${widthStyles} ${className}`}
+          className={`block rounded-xl px-3 py-2.5 text-base sm:text-sm transition-colors outline-none disabled:opacity-50 disabled:cursor-not-allowed ${fullWidth ? 'w-full' : ''} ${className}`}
+          style={{
+            backgroundColor: 'var(--color-grove)',
+            border: `1px solid ${error ? 'var(--color-error)' : 'var(--color-rim)'}`,
+            color: 'var(--color-lit)',
+          }}
+          onFocus={e => { if (!error) e.currentTarget.style.borderColor = 'var(--color-accent)' }}
+          onBlur={e => { e.currentTarget.style.borderColor = error ? 'var(--color-error)' : 'var(--color-rim)' }}
           aria-invalid={error ? 'true' : 'false'}
-          aria-describedby={
-            error ? `${inputId}-error` : helperText ? `${inputId}-helper` : undefined
-          }
+          aria-describedby={error ? `${inputId}-error` : helperText ? `${inputId}-helper` : undefined}
           {...props}
         />
         {error && (
-          <p
-            id={`${inputId}-error`}
-            className="mt-1.5 text-sm text-red-600"
-            role="alert"
-          >
+          <p id={`${inputId}-error`} className="mt-1.5 text-sm" role="alert" style={{ color: 'var(--color-error)' }}>
             {error}
           </p>
         )}
         {helperText && !error && (
-          <p id={`${inputId}-helper`} className="mt-1.5 text-sm text-text-muted">
+          <p id={`${inputId}-helper`} className="mt-1.5 text-xs" style={{ color: 'var(--color-lit-3)' }}>
             {helperText}
           </p>
         )}

@@ -43,13 +43,13 @@ export default function Button({
 
   const variantStyles = {
     primary:
-      'bg-brand-indigo text-white hover:bg-brand-indigo-dark focus:ring-brand-indigo/60 active:bg-brand-indigo-dark/90',
+      'bg-accent text-accent-on hover:bg-accent-hover focus:ring-accent/50 active:bg-accent-hover/90 font-semibold',
     secondary:
-      'bg-transparent border border-border-default text-text-primary hover:border-brand-indigo focus:ring-brand-indigo/50',
+      'bg-transparent border border-rim text-ink hover:border-rim-accent focus:ring-accent/40',
     outline:
-      'border border-border-default text-text-primary hover:border-brand-indigo focus:ring-brand-indigo/50',
+      'border border-rim text-ink hover:border-rim-accent focus:ring-accent/40',
     ghost:
-      'text-brand-indigo hover:text-brand-indigo-dark focus:ring-brand-indigo/40',
+      'text-accent-hover hover:text-ink focus:ring-accent/30',
   }
 
   const sizeStyles = {

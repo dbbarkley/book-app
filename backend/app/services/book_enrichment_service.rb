@@ -5,7 +5,7 @@ class BookEnrichmentService < BaseService
   GOOGLE_BOOKS_API_BASE = 'https://www.googleapis.com/books/v1/volumes'
 
   def self.enrich_book(book)
-    return if book.page_count.present? && book.categories.present?
+    return if book.page_count.present? && book.categories.present? && book.description.present?
 
     # Try searching by Google Books ID first
     if book.google_books_id.present?
@@ -68,8 +68,15 @@ class BookEnrichmentService < BaseService
     parse_volume(response['items'].first)
   end
 
+  def self.append_api_key(url)
+    key = ENV['GOOGLE_BOOKS_API_KEY']
+    return url if key.blank?
+    separator = url.include?('?') ? '&' : '?'
+    "#{url}#{separator}key=#{key}"
+  end
+
   def self.get_json(url)
-    uri = URI(url)
+    uri = URI(append_api_key(url))
     response = Net::HTTP.get(uri)
     JSON.parse(response)
   rescue => e
@@ -79,14 +86,29 @@ class BookEnrichmentService < BaseService
 
   def self.parse_volume(item)
     return nil unless item && item['volumeInfo']
-    
+
     info = item['volumeInfo']
     {
       google_books_id: item['id'],
       page_count: info['pageCount'],
       categories: info['categories'],
-      description: info['description']
+      description: strip_html(info['description'])
     }
+  end
+
+  def self.strip_html(text)
+    return nil if text.blank?
+    text
+      .gsub(/<br\s*\/?>/i, "\n")
+      .gsub(/<[^>]+>/, '')
+      .gsub(/&amp;/, '&')
+      .gsub(/&lt;/, '<')
+      .gsub(/&gt;/, '>')
+      .gsub(/&quot;/, '"')
+      .gsub(/&#39;/, "'")
+      .gsub(/&nbsp;/, ' ')
+      .strip
+      .presence
   end
 end
 

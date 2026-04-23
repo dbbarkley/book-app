@@ -23,16 +23,6 @@ interface ImportPreviewProps {
   isLoading?: boolean
 }
 
-/**
- * ImportPreview Component
- * 
- * Shows a preview of what will be imported before starting the actual import
- * Displays:
- * - Total book count
- * - Count by shelf (read, reading, to-read)
- * - Sample books from the CSV
- * - Confirmation CTA
- */
 export function ImportPreview({
   totalBooks,
   booksByShelf,
@@ -44,26 +34,22 @@ export function ImportPreview({
   const getShelfIcon = (shelf: string) => {
     switch (shelf.toLowerCase()) {
       case 'read':
-        return <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+        return <CheckCircle2 className="w-4 h-4" style={{ color: 'var(--color-accent)' }} />
       case 'currently-reading':
-        return <BookOpen className="w-4 h-4 text-blue-600" />
+        return <BookOpen className="w-4 h-4" style={{ color: 'var(--color-accent)' }} />
       case 'to-read':
-        return <BookMarked className="w-4 h-4 text-amber-600" />
+        return <BookMarked className="w-4 h-4" style={{ color: 'var(--color-lit-3)' }} />
       default:
-        return <Book className="w-4 h-4 text-gray-600" />
+        return <Book className="w-4 h-4" style={{ color: 'var(--color-lit-3)' }} />
     }
   }
 
   const getShelfLabel = (shelf: string) => {
     switch (shelf.toLowerCase()) {
-      case 'read':
-        return 'Read'
-      case 'currently-reading':
-        return 'Currently Reading'
-      case 'to-read':
-        return 'Want to Read'
-      default:
-        return shelf
+      case 'read': return 'Read'
+      case 'currently-reading': return 'Currently Reading'
+      case 'to-read': return 'Want to Read'
+      default: return shelf
     }
   }
 
@@ -71,69 +57,55 @@ export function ImportPreview({
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Preview Your Import</h2>
-        <p className="text-gray-600">
-          We found <span className="font-semibold text-gray-900">{totalBooks} books</span> in your Goodreads export.
-          Review the details below and confirm to start importing.
+        <h2 className="font-serif text-2xl font-bold mb-1" style={{ color: 'var(--color-lit)' }}>
+          Preview Your Import
+        </h2>
+        <p className="text-sm" style={{ color: 'var(--color-lit-2)' }}>
+          We found <span className="font-semibold" style={{ color: 'var(--color-lit)' }}>{totalBooks} books</span> in
+          your Goodreads export. Review below and confirm to start importing.
         </p>
       </div>
 
-      {/* Stats cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {/* Total */}
-        <div className="bg-white border border-gray-200 rounded-lg p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Book className="w-5 h-5 text-gray-500" />
-            <p className="text-sm font-medium text-gray-600">Total Books</p>
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[
+          { label: 'Total', value: totalBooks, icon: Book },
+          { label: 'Read', value: booksByShelf.read, icon: CheckCircle2 },
+          { label: 'Reading', value: booksByShelf['currently-reading'], icon: BookOpen },
+          { label: 'To Read', value: booksByShelf['to-read'], icon: BookMarked },
+        ].map(({ label, value, icon: Icon }) => (
+          <div key={label} className="rounded-xl p-4 text-center"
+            style={{ backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-rim)' }}>
+            <Icon className="w-4 h-4 mx-auto mb-2" style={{ color: 'var(--color-accent)' }} />
+            <p className="text-xl font-bold" style={{ color: 'var(--color-lit)' }}>{value}</p>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--color-lit-3)' }}>{label}</p>
           </div>
-          <p className="text-2xl font-bold text-gray-900">{totalBooks}</p>
-        </div>
-
-        {/* Read */}
-        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-            <p className="text-sm font-medium text-emerald-700">Read</p>
-          </div>
-          <p className="text-2xl font-bold text-emerald-900">{booksByShelf.read}</p>
-        </div>
-
-        {/* Reading */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <BookOpen className="w-5 h-5 text-blue-600" />
-            <p className="text-sm font-medium text-blue-700">Reading</p>
-          </div>
-          <p className="text-2xl font-bold text-blue-900">{booksByShelf['currently-reading']}</p>
-        </div>
-
-        {/* To Read */}
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <BookMarked className="w-5 h-5 text-amber-600" />
-            <p className="text-sm font-medium text-amber-700">To Read</p>
-          </div>
-          <p className="text-2xl font-bold text-amber-900">{booksByShelf['to-read']}</p>
-        </div>
+        ))}
       </div>
 
       {/* Sample books */}
       {sampleBooks.length > 0 && (
-        <div className="bg-white border border-gray-200 rounded-lg p-4">
-          <h3 className="font-semibold text-gray-900 mb-4">Sample Books</h3>
-          <div className="space-y-3">
+        <div className="rounded-xl overflow-hidden"
+          style={{ border: '1px solid var(--color-rim)' }}>
+          <div className="px-4 py-3" style={{ backgroundColor: 'var(--color-grove)', borderBottom: '1px solid var(--color-rim)' }}>
+            <p className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--color-lit-3)' }}>
+              Sample Books
+            </p>
+          </div>
+          <div style={{ backgroundColor: 'var(--color-surface)' }}>
             {sampleBooks.slice(0, 5).map((book, index) => (
-              <div key={index} className="flex items-start gap-3 pb-3 border-b border-gray-100 last:border-0 last:pb-0">
-                <div className="pt-1">{getShelfIcon(book.shelf)}</div>
+              <div key={index} className="flex items-start gap-3 px-4 py-3"
+                style={{ borderBottom: index < Math.min(sampleBooks.length, 5) - 1 ? '1px solid var(--color-rim)' : 'none' }}>
+                <div className="pt-0.5">{getShelfIcon(book.shelf)}</div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-gray-900 truncate">{book.title}</p>
-                  <p className="text-sm text-gray-600">{book.author}</p>
+                  <p className="text-sm font-medium truncate" style={{ color: 'var(--color-lit)' }}>{book.title}</p>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--color-lit-3)' }}>{book.author}</p>
                   <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs text-gray-500">{getShelfLabel(book.shelf)}</span>
+                    <span className="text-xs" style={{ color: 'var(--color-lit-3)' }}>{getShelfLabel(book.shelf)}</span>
                     {book.rating && book.rating > 0 && (
                       <>
-                        <span className="text-gray-300">•</span>
-                        <span className="text-xs text-amber-600">{'★'.repeat(book.rating)}</span>
+                        <span style={{ color: 'var(--color-rim)' }}>·</span>
+                        <span className="text-xs" style={{ color: 'var(--color-accent)' }}>{'★'.repeat(book.rating)}</span>
                       </>
                     )}
                   </div>
@@ -142,9 +114,11 @@ export function ImportPreview({
             ))}
           </div>
           {sampleBooks.length > 5 && (
-            <p className="text-sm text-gray-500 mt-3 text-center">
-              ...and {sampleBooks.length - 5} more books
-            </p>
+            <div className="px-4 py-3 text-center" style={{ borderTop: '1px solid var(--color-rim)', backgroundColor: 'var(--color-grove)' }}>
+              <p className="text-xs" style={{ color: 'var(--color-lit-3)' }}>
+                …and {sampleBooks.length - 5} more books
+              </p>
+            </div>
           )}
         </div>
       )}
@@ -154,19 +128,20 @@ export function ImportPreview({
         <button
           onClick={onCancel}
           disabled={isLoading}
-          className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-1 py-3 px-5 rounded-xl font-bold text-sm transition-all hover:opacity-80 disabled:opacity-40"
+          style={{ backgroundColor: 'var(--color-grove)', color: 'var(--color-lit-2)', border: '1px solid var(--color-rim)' }}
         >
           Cancel
         </button>
         <button
           onClick={onConfirm}
           disabled={isLoading}
-          className="flex-1 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-1 py-3 px-5 rounded-xl font-bold text-sm transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-40"
+          style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-accent-on)' }}
         >
-          {isLoading ? 'Starting Import...' : 'Start Import'}
+          {isLoading ? 'Starting…' : 'Start Import'}
         </button>
       </div>
     </div>
   )
 }
-

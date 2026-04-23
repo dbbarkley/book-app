@@ -103,8 +103,8 @@ export default function AuthForm({
   const validateForm = (): boolean => {
     const newErrors: Partial<Record<keyof AuthFormData, string>> = {}
 
-    if (mode === 'signup' && formData.name) {
-      const nameError = validateField('name', formData.name)
+    if (mode === 'signup') {
+      const nameError = validateField('name', formData.name || '')
       if (nameError) newErrors.name = nameError
     }
 
@@ -141,6 +141,22 @@ export default function AuthForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
+      {/* Server-side error (e.g. email already taken) — shown at top so it's never missed */}
+      {externalError && (
+        <div
+          className="rounded-xl p-3 sm:p-4"
+          role="alert"
+          style={{
+            backgroundColor: 'rgba(220,38,38,0.12)',
+            border: '1px solid rgba(220,38,38,0.35)',
+          }}
+        >
+          <p className="text-sm font-medium" style={{ color: 'var(--color-error)' }}>
+            {externalError}
+          </p>
+        </div>
+      )}
+
       {mode === 'signup' && (
         <InputField
           label="Username"
@@ -190,15 +206,6 @@ export default function AuthForm({
         }
       />
 
-      {externalError && (
-        <div
-          className="rounded-lg bg-red-50 border border-red-200 p-3 sm:p-4"
-          role="alert"
-        >
-          <p className="text-sm text-red-800">{externalError}</p>
-        </div>
-      )}
-
       <Button
         type="submit"
         variant="primary"
@@ -212,10 +219,10 @@ export default function AuthForm({
 
       <div className="relative my-6">
         <div className="absolute inset-0 flex items-center" aria-hidden="true">
-          <div className="w-full border-t border-slate-200"></div>
+          <div className="w-full" style={{ borderTop: '1px solid var(--color-rim)' }}></div>
         </div>
         <div className="relative flex justify-center text-sm">
-          <span className="bg-white px-4 text-slate-500 font-medium">Or continue with</span>
+          <span className="px-4 text-ink-3 font-medium" style={{ backgroundColor: 'var(--color-surface)' }}>Or continue with</span>
         </div>
       </div>
 
@@ -226,7 +233,8 @@ export default function AuthForm({
             const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
             window.location.href = `${backendUrl}/auth/google_oauth2`;
           }}
-          className="flex w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 transition-all hover:bg-slate-50 shadow-sm active:scale-[0.98]"
+          className="flex w-full items-center justify-center gap-3 rounded-xl px-4 py-3 text-sm font-bold text-ink transition-all shadow-sm active:scale-[0.98]"
+          style={{ border: '1px solid var(--color-rim)', backgroundColor: 'var(--color-grove)' }}
         >
           <svg className="h-5 w-5" viewBox="0 0 24 24">
             <path
@@ -268,7 +276,7 @@ export default function AuthForm({
         <div className="text-center mt-4">
           <a
             href="/forgot-password"
-            className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
+            className="text-sm text-accent hover:text-accent-hover hover:underline"
           >
             Forgot your password?
           </a>

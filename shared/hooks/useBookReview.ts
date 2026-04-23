@@ -39,7 +39,7 @@ export function useBookReview(): UseBookReviewReturn {
   const saveReview = async (userBookId: number, rating: number, review?: string) => {
     setLocalError(null)
     try {
-      return await saveReviewStore(bookId, rating, review)
+      return await saveReviewStore(userBookId, rating, review)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to save review'
       setLocalError(errorMessage)

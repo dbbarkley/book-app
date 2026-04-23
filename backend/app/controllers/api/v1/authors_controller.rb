@@ -6,8 +6,14 @@ module Api
 
       def index
         authors = Author.all.order(:name)
-        
-        # Support search query parameter
+
+        # Fetch specific IDs (e.g. to resolve saved favourite authors by ID)
+        if params[:ids].present?
+          ids = Array(params[:ids]).map(&:to_i).select(&:positive?)
+          authors = authors.where(id: ids)
+        end
+
+        # Search by name / bio
         if params[:query].present?
           query = params[:query].downcase
           authors = authors.where(
@@ -16,14 +22,14 @@ module Api
             "%#{query}%"
           )
         end
-        
-        # Support pagination
-        page = params[:page]&.to_i || 1
+
+        # Pagination (bypassed when fetching by IDs — just return all matches)
+        page     = params[:page]&.to_i || 1
         per_page = params[:per_page]&.to_i || 20
-        per_page = [per_page, 100].min # Cap at 100
-        
+        per_page = [per_page, 100].min
+
         total_count = authors.count
-        authors = authors.limit(per_page).offset((page - 1) * per_page)
+        authors = authors.limit(per_page).offset((page - 1) * per_page) unless params[:ids].present?
         
         render json: {
           authors: serialize_authors(authors),
@@ -38,7 +44,7 @@ module Api
 
       def show
         author = Author.find(params[:id])
-        render json: serialize_author_detail(author), status: :ok
+        render json: { author: serialize_author_detail(author) }, status: :ok
       end
 
       # POST /api/v1/authors
@@ -65,13 +71,13 @@ module Api
       def books
         author = Author.find(params[:id])
         books = author.books.order(release_date: :desc)
-        render json: serialize_books(books), status: :ok
+        render json: { books: serialize_books(books) }, status: :ok
       end
 
       def events
         author = Author.find(params[:id])
         events = author.events.order(starts_at: :asc)
-        render json: serialize_events(events), status: :ok
+        render json: { events: serialize_events(events) }, status: :ok
       end
 
       def followers

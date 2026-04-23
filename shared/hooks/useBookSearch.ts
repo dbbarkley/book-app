@@ -44,7 +44,7 @@ interface UseBookSearchReturn {
  * Pagination loads more results by making multiple requests.
  */
 export function useBookSearch(options: UseBookSearchOptions = {}): UseBookSearchReturn {
-  const { debounceMs = 300, initialQuery = '', perPage = 20 } = options
+  const { debounceMs = 600, initialQuery = '', perPage = 20 } = options
 
   const [books, setBooks] = useState<Book[]>([])
   const [pagination, setPagination] = useState<{ 
@@ -152,12 +152,15 @@ export function useBookSearch(options: UseBookSearchOptions = {}): UseBookSearch
     setQueryState(newQuery)
   }, [])
 
+  // Only update query state — the useEffect handles the debounced API call.
+  // Do NOT call performSearch directly here; that caused double-firing on
+  // every keystroke (direct call + debounced effect), burning through the
+  // Google Books free-tier rate limit (429) very quickly.
   const search = useCallback(
-    async (searchQuery: string) => {
+    (searchQuery: string) => {
       setQueryState(searchQuery)
-      await performSearch(searchQuery, 1)
     },
-    [performSearch]
+    []
   )
 
   const loadMore = useCallback(async () => {

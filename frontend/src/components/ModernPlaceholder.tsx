@@ -2,10 +2,11 @@
 
 /**
  * ModernPlaceholder Component
- * 
- * Beautiful gradient placeholder for books without covers
- * Shows first letter of title with elegant typography
- * Genre-based color schemes for visual variety
+ *
+ * Dark library-themed placeholder for books without covers.
+ * Uses a curated palette of dark, warm tones — walnut, olive, leather, slate —
+ * so every placeholder feels like a physical book on a dark shelf rather
+ * than a random bright gradient.
  */
 
 interface ModernPlaceholderProps {
@@ -16,25 +17,27 @@ interface ModernPlaceholderProps {
   className?: string
 }
 
-// Genre-based gradient color schemes
-const GENRE_GRADIENTS: Record<string, string> = {
-  fiction: 'from-indigo-400 via-purple-400 to-pink-400',
-  mystery: 'from-slate-600 via-slate-700 to-slate-800',
-  scifi: 'from-cyan-400 via-blue-500 to-indigo-600',
-  fantasy: 'from-violet-400 via-fuchsia-500 to-pink-500',
-  romance: 'from-rose-400 via-pink-400 to-red-400',
-  thriller: 'from-red-600 via-orange-600 to-yellow-600',
-  history: 'from-amber-600 via-orange-500 to-red-500',
-  biography: 'from-teal-400 via-emerald-500 to-green-600',
-  default: 'from-gray-400 via-gray-500 to-gray-600',
-}
+// Dark, library-appropriate color pairs [from, to] for gradients
+// All feel like aged book cover materials: walnut, olive, leather, midnight, slate
+const DARK_PALETTES: Array<[string, string]> = [
+  ['#2C1A10', '#150D06'],   // Walnut / dark mahogany
+  ['#1A2E1E', '#0D1A0F'],   // Deep olive (matches canvas)
+  ['#1E1A10', '#120F06'],   // Aged leather / sepia
+  ['#16202A', '#0C1318'],   // Midnight navy-green
+  ['#281A10', '#160D06'],   // Dark amber / burnt sienna
+  ['#1A1628', '#0F0D18'],   // Deep indigo-slate
+  ['#1C2418', '#0F150C'],   // Forest shadow
+  ['#261818', '#150C0C'],   // Dark crimson / ruby
+]
 
-// Generate consistent color based on title (for books without genre)
-function getTitleBasedGradient(title: string): string {
-  const charCode = (title || 'Unknown').charCodeAt(0) || 0
-  const gradients = Object.values(GENRE_GRADIENTS)
-  const index = charCode % (gradients.length - 1) // Exclude default
-  return gradients[index]
+// Pick a palette deterministically from the title so the same book
+// always gets the same color, but different books get different ones.
+function getPalette(title: string): [string, string] {
+  let hash = 0
+  for (let i = 0; i < title.length; i++) {
+    hash = (hash * 31 + title.charCodeAt(i)) >>> 0
+  }
+  return DARK_PALETTES[hash % DARK_PALETTES.length]
 }
 
 export function ModernPlaceholder({
@@ -46,67 +49,78 @@ export function ModernPlaceholder({
 }: ModernPlaceholderProps) {
   const safeTitle = title || 'Unknown'
   const firstLetter = safeTitle.charAt(0).toUpperCase()
-  
-  // Select gradient based on genre or safeTitle
-  const gradient = genre 
-    ? GENRE_GRADIENTS[genre.toLowerCase()] || GENRE_GRADIENTS.default
-    : getTitleBasedGradient(safeTitle)
+  const [colorFrom, colorTo] = getPalette(safeTitle)
 
   const sizeClasses = {
-    small: {
-      container: 'w-24 h-36',
-      letter: 'text-4xl',
-      author: 'text-[8px]',
-    },
-    medium: {
-      container: 'w-32 h-48',
-      letter: 'text-5xl',
-      author: 'text-[10px]',
-    },
-    large: {
-      container: 'w-48 h-72',
-      letter: 'text-7xl',
-      author: 'text-xs',
-    },
+    small:  { container: 'w-24 h-36',  letter: 'text-4xl', meta: 'text-[8px]' },
+    medium: { container: 'w-32 h-48',  letter: 'text-5xl', meta: 'text-[10px]' },
+    large:  { container: 'w-48 h-72',  letter: 'text-7xl', meta: 'text-xs' },
   }
 
   const sizes = sizeClasses[size]
+  const isFullWidth  = className.includes('w-full')
+  const isFullHeight = className.includes('h-full')
 
   return (
     <div
       className={`
-        ${className.includes('w-full') ? 'w-full' : sizes.container.split(' ')[0]}
-        ${className.includes('h-full') ? 'h-full' : sizes.container.split(' ')[1]}
-        bg-gradient-to-br ${gradient}
+        ${isFullWidth  ? 'w-full' : sizes.container.split(' ')[0]}
+        ${isFullHeight ? 'h-full' : sizes.container.split(' ')[1]}
         rounded-lg shadow-lg
         flex flex-col items-center justify-center
         relative overflow-hidden
         ${className}
       `}
+      style={{ background: `linear-gradient(135deg, ${colorFrom}, ${colorTo})` }}
     >
-      {/* Subtle texture overlay */}
-      <div className="absolute inset-0 opacity-10 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNncmlkKSIvPjwvc3ZnPg==')]" />
-      
-      {/* First letter */}
-      <div className={`${sizes.letter} font-bold text-white drop-shadow-lg z-10`}>
+      {/* Subtle vertical grain lines — matches the body texture */}
+      <div
+        className="absolute inset-0 opacity-[0.06]"
+        style={{
+          backgroundImage: `repeating-linear-gradient(
+            90deg,
+            transparent,
+            transparent 2px,
+            rgba(255,255,255,1) 2px,
+            rgba(255,255,255,1) 4px
+          )`,
+        }}
+      />
+
+      {/* Amber initial — the "spine label" */}
+      <div
+        className={`${sizes.letter} font-serif font-bold z-10 drop-shadow-md select-none`}
+        style={{ color: 'var(--color-accent)' }}
+      >
         {firstLetter}
       </div>
 
-      {/* Book spine effect at bottom */}
-      {author && (
-        <div className="absolute bottom-0 left-0 right-0 bg-black/20 backdrop-blur-sm p-2 z-10">
-          <div className="text-white/90 font-medium text-[10px] sm:text-xs truncate text-center">
-            {safeTitle.length > 20 ? `${safeTitle.substring(0, 20)}...` : safeTitle}
-          </div>
-          <div className={`text-white/70 ${sizes.author} truncate text-center mt-0.5`}>
+      {/* Title + author strip at bottom */}
+      <div
+        className="absolute bottom-0 left-0 right-0 p-2 z-10"
+        style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.55), transparent)' }}
+      >
+        <div
+          className={`font-medium ${sizes.meta} truncate text-center`}
+          style={{ color: 'var(--color-lit)' }}
+        >
+          {safeTitle.length > 22 ? `${safeTitle.substring(0, 22)}…` : safeTitle}
+        </div>
+        {author && (
+          <div
+            className={`${sizes.meta} truncate text-center mt-0.5`}
+            style={{ color: 'var(--color-lit-2)' }}
+          >
             {author}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* Subtle highlight effect */}
-      <div className="absolute top-0 left-0 right-1/2 h-1/2 bg-gradient-to-br from-white/20 to-transparent rounded-tl-lg" />
+      {/* Top-left sheen — physical book highlight */}
+      <div className="absolute top-0 left-0 right-1/2 h-1/2 bg-gradient-to-br from-white/10 to-transparent rounded-tl-lg pointer-events-none" />
+
+      {/* Thin amber left edge — like a spine accent stripe */}
+      <div className="absolute left-0 top-0 bottom-0 w-[3px]" style={{ backgroundColor: 'var(--color-accent)', opacity: 0.5 }} />
     </div>
   )
 }
-

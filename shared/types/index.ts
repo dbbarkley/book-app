@@ -10,9 +10,31 @@ export interface User {
   zipcode?: string
   created_at?: string
   onboarding_completed?: boolean
+  favourite_authors?: { id: number; name: string }[]
   preferences?: {
     milestones_viewed?: string[]
     reading_goal?: number
+  }
+}
+
+export type FriendshipStatus = 'none' | 'pending_sent' | 'pending_received' | 'accepted'
+
+export interface Friendship {
+  id: number
+  status: FriendshipStatus
+  requester_id: number
+  requestee_id: number
+  created_at: string
+}
+
+export interface FriendRequest {
+  id: number
+  created_at: string
+  requester: {
+    id: number
+    username: string
+    display_name?: string
+    avatar_url?: string
   }
 }
 
@@ -28,7 +50,7 @@ export interface Author {
 }
 
 export interface Book {
-  id: number
+  id: number | null  // null when the book exists only in Google Books (not yet saved to our DB)
   title: string
   isbn?: string
   description?: string
@@ -38,7 +60,8 @@ export interface Book {
   author_name?: string
   followers_count?: number
   page_count?: number
-  google_books_id?: string // Google Books API ID (if from Google Books)
+  categories?: string[]
+  google_books_id?: string // Google Books API ID (stable canonical identifier)
 }
 
 export interface RecommendedBook {
@@ -195,8 +218,9 @@ export interface UserBook {
   pages_read?: number
   total_pages?: number
   completion_percentage?: number
-  rating?: number // 1-5 stars
-  review?: string
+  rating?: number // 0.25–5 stars in quarter increments
+  review?: string  // public review
+  notes?: string   // private personal notes, never shown to other users
   visibility?: Visibility // Private books should stay out of followers' feeds/profiles
   dnf_reason?: string // Record why the reader stopped so we can explain the DNF entry
   dnf_page?: number // Capture the last page read when a book was DNF'd

@@ -139,6 +139,47 @@ export class ApiClient {
     return response.data
   }
 
+  // Friendship endpoints
+  // If userId is provided, fetches that user's friends list; otherwise fetches current user's friends
+  async getFriends(userId?: number) {
+    if (userId) {
+      const response = await this.client.get<User[]>(`/users/${userId}/friends`)
+      return response.data
+    }
+    const response = await this.client.get<{ friends: User[] }>('/friendships')
+    return response.data.friends
+  }
+
+  async getPendingFriendRequests() {
+    const response = await this.client.get<{ requests: import('../types').FriendRequest[] }>('/friendships/pending')
+    return response.data.requests
+  }
+
+  async sendFriendRequest(userId: number) {
+    const response = await this.client.post<{ friendship: import('../types').Friendship }>('/friendships', { user_id: userId })
+    return response.data.friendship
+  }
+
+  async acceptFriendRequest(friendshipId: number) {
+    const response = await this.client.patch<{ friendship: import('../types').Friendship }>(`/friendships/${friendshipId}`)
+    return response.data.friendship
+  }
+
+  async declineFriendRequest(friendshipId: number) {
+    await this.client.delete(`/friendships/${friendshipId}`)
+  }
+
+  async removeFriend(friendshipId: number) {
+    await this.client.delete(`/friendships/${friendshipId}`)
+  }
+
+  async getFriendshipStatus(userId: number) {
+    const response = await this.client.get<{ status: import('../types').FriendshipStatus; friendship_id: number | null }>(
+      `/friendships/status/${userId}`
+    )
+    return response.data
+  }
+
   // Follow endpoints
   async follow(followableType: 'User' | 'Author' | 'Book', followableId: number) {
     const response = await this.client.post<{ follow: Follow }>('/follows', {
@@ -166,6 +207,15 @@ export class ApiClient {
   }
 
   // Author endpoints
+  async getAuthorsByIds(ids: number[]) {
+    if (!ids.length) return { authors: [] as Author[] }
+    const response = await this.client.get<{ authors: Author[] }>(
+      '/authors',
+      { params: { ids } }
+    )
+    return response.data
+  }
+
   async getAuthors(params?: { query?: string; page?: number; per_page?: number }) {
     const response = await this.client.get<{ authors: Author[]; pagination?: PaginationMeta }>(
       '/authors',
@@ -253,6 +303,18 @@ export class ApiClient {
     return response.data.book
   }
 
+  /**
+   * Fetch a book by its Google Books ID.
+   * Checks our DB first; falls back to live Google Books API.
+   * Returns id: null when the book isn't in our DB yet.
+   */
+  async getBookByGoogleId(googleBooksId: string) {
+    const response = await this.client.get<{ book: Book }>(
+      `/books/by_google/${encodeURIComponent(googleBooksId)}`
+    )
+    return response.data.book
+  }
+
   async getBookFriends(id: number) {
     const response = await this.client.get<{ 
       friends: Array<{ 
@@ -274,40 +336,50 @@ export class ApiClient {
   }
 
   async addBookToShelf(
-    bookId: number,
+    bookId: number | null,
     status: ShelfStatus,
     bookData?: Book,
-    options?: { visibility?: Visibility; dnf_reason?: string; dnf_page?: number }
+    options?: { visibility?: Visibility; dnf_reason?: string; dnf_page?: number; total_pages?: number }
   ) {
-    // TODO: Backend must persist status/visibility/dnf metadata for each user book.
-    // For Google Books results (negative IDs), include full book data
     const payload: any = {
-      book_id: bookId,
       status,
-      shelf: status, // Keep legacy param until backend drops it
+      shelf: status, // keep legacy param in sync
     }
-    if (options?.visibility) {
-      payload.visibility = options.visibility
-    }
-    if (options?.dnf_reason) {
-      payload.dnf_reason = options.dnf_reason
-    }
-    if (options?.dnf_page !== undefined) {
-      payload.dnf_page = options.dnf_page
-    }
-    
-    // If it's a Google Books result, include the book data
-    if (bookId < 0 && bookData) {
+
+    if (options?.visibility) payload.visibility = options.visibility
+    if (options?.dnf_reason) payload.dnf_reason = options.dnf_reason
+    if (options?.dnf_page !== undefined) payload.dnf_page = options.dnf_page
+    if (options?.total_pages !== undefined) payload.total_pages = options.total_pages
+
+    if (bookId && bookId > 0) {
+      // Already in our DB — just reference the internal ID
+      payload.book_id = bookId
+    } else if (bookData?.google_books_id) {
+      // Not in DB yet (or unknown) — send google_books_id + full metadata so
+      // the backend can find_or_create the book record
+      payload.google_books_id = bookData.google_books_id
       payload.title = bookData.title
       payload.author_name = bookData.author_name
       payload.isbn = bookData.isbn
       payload.description = bookData.description
       payload.cover_image_url = bookData.cover_image_url
       payload.release_date = bookData.release_date
-      payload.google_books_id = bookData.google_books_id
       payload.page_count = bookData.page_count
+      payload.categories = bookData.categories ?? []
+    } else if (bookId && bookId < 0 && bookData) {
+      // Legacy path: negative ID from old search-result caching
+      payload.book_id = bookId
+      payload.google_books_id = bookData.google_books_id
+      payload.title = bookData.title
+      payload.author_name = bookData.author_name
+      payload.isbn = bookData.isbn
+      payload.description = bookData.description
+      payload.cover_image_url = bookData.cover_image_url
+      payload.release_date = bookData.release_date
+      payload.page_count = bookData.page_count
+      payload.categories = bookData.categories ?? []
     }
-    
+
     const response = await this.client.post<{ user_book: UserBook }>('/user/books', payload)
     return response.data.user_book
   }
@@ -369,6 +441,13 @@ export class ApiClient {
     return response.data.user_book
   }
 
+  async saveBookNotes(userBookId: number, notes: string) {
+    const response = await this.client.patch<{ user_book: UserBook }>(`/user/books/${userBookId}/notes`, {
+      notes,
+    })
+    return response.data.user_book
+  }
+
   // Event endpoints
   async getEvents(params?: {
     upcoming?: boolean
@@ -399,6 +478,14 @@ export class ApiClient {
       authors?: RecommendedAuthor[]
     }>('/recommendations/authors')
     return response.data.recommended_authors ?? response.data.authors ?? []
+  }
+
+  async regenerateRecommendations() {
+    const response = await this.client.post<{ books_count: number; authors_count: number }>(
+      '/recommendations/regenerate',
+      {}
+    )
+    return response.data
   }
 
   async getRecommendedEvents() {
@@ -449,10 +536,15 @@ export class ApiClient {
       stats: {
         followers_count: number
         following_count: number
+        friends_count: number
       }
       current_user_follow?: {
         following: boolean
         follow_id?: number | null
+      }
+      friendship?: {
+        status: import('../types').FriendshipStatus
+        friendship_id: number | null
       }
     }>(`/users/${userId}/profile`)
     return response.data

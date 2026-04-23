@@ -44,13 +44,13 @@ export default function Avatar({
   name, 
   size = 'md', 
   className = '',
-  borderColor = 'ring-slate-100',
+  borderColor = 'ring-0',
   showStatus = false
 }: AvatarProps) {
   // Use UI Avatars as a consistent fallback if no avatar_url is provided
   // This looks much better than a generic placeholder icon
-  const fallbackUrl = name 
-    ? `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=6366f1&color=fff&bold=true`
+  const fallbackUrl = name
+    ? `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=C9A84C&color=1A1205&bold=true`
     : 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y';
 
   return (
@@ -58,14 +58,12 @@ export default function Avatar({
       <div className={`
         ${sizeMap[size]} 
         rounded-full 
-        overflow-hidden 
-        bg-slate-200 
-        flex 
-        items-center 
-        justify-center 
-        ring-2 
+        overflow-hidden
+        flex
+        items-center
+        justify-center
         ${borderColor}
-        shadow-sm
+        shadow-md
       `}>
         <img
           src={src || fallbackUrl}
@@ -83,10 +81,10 @@ export default function Avatar({
           bottom-0 
           right-0 
           ${statusSizeMap[size]} 
-          bg-emerald-500 
-          rounded-full 
-          border-2 
-          border-white
+          bg-success
+          rounded-full
+          border-2
+          border-canvas
           shadow-sm
         `} />
       )}

@@ -1,32 +1,19 @@
-// Forgot Password Page - Password reset request page
-// Mobile-first responsive design with TailwindCSS
-// Basic form implementation (backend endpoint not yet implemented)
-
 'use client'
 
 import { useState, FormEvent } from 'react'
 import Link from 'next/link'
+import { ChevronLeft, Mail, Check } from 'lucide-react'
 import InputField from '@/components/InputField'
 import Button from '@/components/Button'
 import { isValidEmail } from '@/shared/utils/validation'
 import { apiClient } from '@/shared/api/client'
 
-/**
- * Forgot Password page component
- * 
- * Features:
- * - Email input for password reset
- * - Client-side validation
- * - Basic form (backend endpoint needs to be implemented)
- * 
- * TODO: Implement backend endpoint for password reset
- * - POST /api/v1/auth/forgot-password
- * - Should send reset email to user
- * 
- * For React Native:
- * - Replace Next.js Link with React Navigation
- * - Keep the same form structure
- */
+const cardStyle = {
+  backgroundColor: 'var(--color-surface)',
+  border: '1px solid var(--color-rim)',
+  boxShadow: '0 8px 32px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3)',
+}
+
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -37,82 +24,59 @@ export default function ForgotPasswordPage() {
     e.preventDefault()
     setError(null)
 
-    // Validation
-    if (!email.trim()) {
-      setError('Email is required')
-      return
-    }
-
-    if (!isValidEmail(email)) {
-      setError('Please enter a valid email address')
-      return
-    }
+    if (!email.trim()) { setError('Email is required'); return }
+    if (!isValidEmail(email)) { setError('Please enter a valid email address'); return }
 
     setIsLoading(true)
-
     try {
-      // TODO: Implement backend endpoint for password reset
-      // For now, this will fail gracefully if the endpoint doesn't exist
       await apiClient.forgotPassword(email)
       setIsSubmitted(true)
     } catch (err: any) {
-      const errorMessage =
+      setError(
         err?.response?.data?.error ||
         err?.response?.data?.errors?.[0] ||
         err?.message ||
         'Failed to send reset email. Please try again.'
-      setError(errorMessage)
+      )
     } finally {
       setIsLoading(false)
     }
   }
 
+  // ── Success state ──
   if (isSubmitted) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4 sm:px-6 lg:px-8 py-12">
+      <div className="min-h-screen flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-md">
-          <div className="bg-white rounded-xl shadow-lg p-6 sm:p-8 text-center">
-            <div className="mb-4">
-              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100">
-                <svg
-                  className="h-6 w-6 text-green-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
-              </div>
+          <div className="rounded-[28px] p-8 text-center" style={cardStyle}>
+            <div
+              className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-5"
+              style={{ backgroundColor: 'var(--color-success-light)', border: '1px solid var(--color-success)' }}
+            >
+              <Check size={24} style={{ color: 'var(--color-success)' }} />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            <h1 className="font-serif text-2xl font-bold mb-2" style={{ color: 'var(--color-lit)' }}>
               Check your email
             </h1>
-            <p className="text-gray-600 mb-6">
-              We've sent a password reset link to <strong>{email}</strong>
+            <p className="text-sm mb-1" style={{ color: 'var(--color-lit-2)' }}>
+              We sent a reset link to
             </p>
-            <p className="text-sm text-gray-500 mb-6">
-              If you don't see the email, check your spam folder or try again.
+            <p className="font-semibold mb-5 text-sm" style={{ color: 'var(--color-lit)' }}>
+              {email}
+            </p>
+            <p className="text-xs mb-8" style={{ color: 'var(--color-lit-3)' }}>
+              Don't see it? Check your spam folder or try again.
             </p>
             <div className="space-y-3">
               <Button
                 variant="primary"
                 fullWidth
-                onClick={() => {
-                  setIsSubmitted(false)
-                  setEmail('')
-                }}
+                onClick={() => { setIsSubmitted(false); setEmail('') }}
               >
-                Send another email
+                Send another link
               </Button>
               <Link href="/login">
-                <Button variant="ghost" fullWidth>
-                  Back to sign in
-                </Button>
+                <Button variant="outline" fullWidth>Back to sign in</Button>
               </Link>
             </div>
           </div>
@@ -121,63 +85,58 @@ export default function ForgotPasswordPage() {
     )
   }
 
+  // ── Form state ──
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4 sm:px-6 lg:px-8 py-12">
+    <div className="min-h-screen flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
+
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">
+          <div
+            className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-5"
+            style={{ backgroundColor: 'var(--color-accent-subtle)', border: '1px solid var(--color-rim-accent)' }}
+          >
+            <Mail size={22} style={{ color: 'var(--color-accent)' }} />
+          </div>
+          <h1 className="font-serif text-3xl sm:text-4xl font-bold mb-2" style={{ color: 'var(--color-lit)' }}>
             Forgot Password?
           </h1>
-          <p className="text-gray-600 text-sm sm:text-base">
-            No worries! Enter your email and we'll send you reset instructions.
+          <p className="text-sm sm:text-base" style={{ color: 'var(--color-lit-2)' }}>
+            Enter your email and we'll send you a reset link.
           </p>
         </div>
 
-        {/* Form Card */}
-        <div className="bg-white rounded-xl shadow-lg p-6 sm:p-8">
+        {/* Card */}
+        <div className="rounded-[28px] p-6 sm:p-8" style={cardStyle}>
           <form onSubmit={handleSubmit} className="space-y-5">
             <InputField
-              label="Email"
+              label="Email address"
               type="email"
               name="email"
               id="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={e => { setEmail(e.target.value); setError(null) }}
               error={error || undefined}
               placeholder="you@example.com"
               required
               autoComplete="email"
             />
 
-            {error && (
-              <div
-                className="rounded-lg bg-red-50 border border-red-200 p-3 sm:p-4"
-                role="alert"
-              >
-                <p className="text-sm text-red-800">{error}</p>
-              </div>
-            )}
-
-            <Button
-              type="submit"
-              variant="primary"
-              size="lg"
-              fullWidth
-              isLoading={isLoading}
-              className="mt-6"
-            >
+            <Button type="submit" variant="primary" fullWidth isLoading={isLoading}>
               Send reset link
             </Button>
           </form>
 
-          {/* Back to login link */}
           <div className="mt-6 text-center">
             <Link
               href="/login"
-              className="text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline"
+              className="inline-flex items-center gap-1.5 text-sm font-medium transition-colors"
+              style={{ color: 'var(--color-lit-2)' }}
+              onMouseEnter={e => (e.currentTarget.style.color = 'var(--color-lit)')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'var(--color-lit-2)')}
             >
-              ← Back to sign in
+              <ChevronLeft size={15} />
+              Back to sign in
             </Link>
           </div>
         </div>
@@ -185,4 +144,3 @@ export default function ForgotPasswordPage() {
     </div>
   )
 }
-

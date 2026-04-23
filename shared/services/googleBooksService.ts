@@ -2,11 +2,26 @@
 // Provides access to Google Books API for searching authors and books
 // Reusable in Next.js and React Native
 
-// Google Books API v1 - Free, no API key required for basic usage
-// Rate limit: 1000 requests per day per IP
+// Google Books API v1 — proxied through /api/books/search to:
+//   • add server-side retry logic for transient 503s
+//   • avoid complex field masks that can trigger Google-side errors
+//   • enable Next.js server-side caching (60s revalidate)
 // Documentation: https://developers.google.com/books/docs/v1/using
 
-const GOOGLE_BOOKS_API_BASE = 'https://www.googleapis.com/books/v1'
+import { apiClient } from '../api/client'
+
+// Use an absolute URL when a base is available (browser) so the proxy works
+// correctly regardless of how the page is accessed (localhost vs LAN IP).
+const PROXY_BASE =
+  typeof window !== 'undefined'
+    ? `${window.location.origin}/api/books/search`
+    : '/api/books/search'
+
+/** Build auth headers for the internal Next.js proxy routes. */
+function authHeaders(): HeadersInit {
+  const token = apiClient.getToken()
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
 
 export interface GoogleBooksAuthor {
   name: string
@@ -93,29 +108,23 @@ export async function searchAuthors(
   query: string,
   maxResults: number = 20
 ): Promise<GoogleBooksAuthor[]> {
-  if (!query.trim()) {
-    return []
-  }
+  if (!query.trim()) return []
 
   try {
-    // Search for books by author
-    const searchQuery = `inauthor:"${query}"`
-    const url = `${GOOGLE_BOOKS_API_BASE}/volumes?q=${encodeURIComponent(searchQuery)}&maxResults=${Math.min(maxResults * 2, 40)}&fields=items(id,volumeInfo(title,authors,description,imageLinks,publishedDate,industryIdentifiers,pageCount))`
+    const params = new URLSearchParams({
+      q: query,
+      maxResults: String(Math.min(maxResults * 2, 40)),
+      type: 'authors',
+    })
+    const response = await fetch(`${PROXY_BASE}?${params}`, { headers: authHeaders() })
 
-    const response = await fetch(url)
-    
     if (!response.ok) {
       throw new Error(`Google Books API error: ${response.status}`)
     }
 
     const data = await response.json()
     const books = data.items || []
-
-    // Extract unique authors from the books
-    const authors = extractAuthorsFromBooks(books)
-
-    // Limit results
-    return authors.slice(0, maxResults)
+    return extractAuthorsFromBooks(books).slice(0, maxResults)
   } catch (error) {
     console.error('Error searching Google Books API:', error)
     throw error
@@ -133,23 +142,22 @@ export async function searchBooks(
   query: string,
   maxResults: number = 20
 ): Promise<GoogleBooksBook[]> {
-  if (!query.trim()) {
-    return []
-  }
+  if (!query.trim()) return []
 
   try {
-    const url = `${GOOGLE_BOOKS_API_BASE}/volumes?q=${encodeURIComponent(query)}&maxResults=${Math.min(maxResults, 40)}&fields=items(id,volumeInfo(title,authors,description,imageLinks,publishedDate,industryIdentifiers,pageCount))`
+    const params = new URLSearchParams({
+      q: query,
+      maxResults: String(Math.min(maxResults, 40)),
+      type: 'books',
+    })
+    const response = await fetch(`${PROXY_BASE}?${params}`, { headers: authHeaders() })
 
-    const response = await fetch(url)
-    
     if (!response.ok) {
       throw new Error(`Google Books API error: ${response.status}`)
     }
 
     const data = await response.json()
-    const books = data.items || []
-
-    return books.map(transformBook)
+    return (data.items || []).map(transformBook)
   } catch (error) {
     console.error('Error searching Google Books API:', error)
     throw error

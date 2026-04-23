@@ -1,25 +1,15 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { 
-  CheckCircle, 
-  BookOpen, 
-  Clock, 
-  XCircle, 
-  Lock, 
-  Globe,
-} from 'lucide-react'
-import { 
-  useBookProgress, 
-  useUpdateBookShelf, 
+import { CheckCircle, BookOpen, Clock, XCircle, Lock, Globe, NotebookPen } from 'lucide-react'
+import {
+  useBookProgress,
+  useUpdateBookShelf,
   useUpdateBookVisibility,
-  useBookShelf
+  useBookShelf,
+  useBookNotes,
 } from '@book-app/shared/hooks'
-import type { 
-  UserBook,
-  ShelfStatus,
-  Visibility
-} from '@book-app/shared/types'
+import type { UserBook, ShelfStatus, Visibility } from '@book-app/shared/types'
 import Button from './Button'
 import { BookCoverImage } from './BookCoverImage'
 import SlideOver from './SlideOver'
@@ -31,28 +21,32 @@ interface QuickUpdateModalProps {
   onUpdate?: () => void
 }
 
-export default function QuickUpdateModal({ 
-  userBook, 
-  isOpen, 
-  onClose, 
-  onUpdate 
-}: QuickUpdateModalProps) {
-  const { updateProgress, loading: progressLoading } = useBookProgress()
-  const { updateShelf, loading: updateShelfLoading } = useUpdateBookShelf()
-  const { addToShelf, loading: addShelfLoading } = useBookShelf()
-  const { setVisibility, loading: visibilityLoading } = useUpdateBookVisibility()
+const STATUS_COLOR: Record<ShelfStatus, string> = {
+  to_read:  'var(--color-lit-2)',
+  reading:  'var(--color-accent)',
+  read:     '#4ade80',
+  dnf:      '#f87171',
+}
 
-  const [status, setStatus] = useState<ShelfStatus>(userBook?.status || 'to_read')
-  const [visibility, setVisibilityState] = useState<Visibility>(userBook?.visibility || 'public')
-  const [pagesRead, setPagesRead] = useState(userBook?.pages_read?.toString() || '0')
-  const [totalPages, setTotalPages] = useState(
+export default function QuickUpdateModal({ userBook, isOpen, onClose, onUpdate }: QuickUpdateModalProps) {
+  const { updateProgress, loading: progressLoading }   = useBookProgress()
+  const { updateShelf,   loading: updateShelfLoading } = useUpdateBookShelf()
+  const { addToShelf,    loading: addShelfLoading }    = useBookShelf()
+  const { setVisibility, loading: visibilityLoading }  = useUpdateBookVisibility()
+  const { saveNotes,     loading: notesLoading }       = useBookNotes()
+
+  const [status,      setStatus]          = useState<ShelfStatus>(userBook?.status || 'to_read')
+  const [visibility,  setVisibilityState] = useState<Visibility>(userBook?.visibility || 'public')
+  const [pagesRead,   setPagesRead]       = useState(userBook?.pages_read?.toString() || '0')
+  const [totalPages,  setTotalPages]      = useState(
     userBook?.total_pages?.toString() || userBook?.book?.page_count?.toString() || '0'
   )
   const [percentage, setPercentage] = useState(userBook?.completion_percentage || 0)
-  const [dnfPage, setDnfPage] = useState(userBook?.dnf_page?.toString() || '')
-  const [dnfReason, setDnfReason] = useState(userBook?.dnf_reason || '')
+  const [dnfPage,    setDnfPage]    = useState(userBook?.dnf_page?.toString() || '')
+  const [dnfReason,  setDnfReason]  = useState(userBook?.dnf_reason || '')
+  const [notes,      setNotes]      = useState(userBook?.notes || '')
 
-  const isBusy = progressLoading || updateShelfLoading || addShelfLoading || visibilityLoading
+  const isBusy = progressLoading || updateShelfLoading || addShelfLoading || visibilityLoading || notesLoading
 
   useEffect(() => {
     if (isOpen && userBook) {
@@ -63,52 +57,53 @@ export default function QuickUpdateModal({
       setPercentage(userBook.completion_percentage || 0)
       setDnfPage(userBook.dnf_page?.toString() || '')
       setDnfReason(userBook.dnf_reason || '')
+      setNotes(userBook.notes || '')
     }
   }, [isOpen, userBook])
 
   if (!isOpen) return null
 
+  // ── Save handler ─────────────────────────────────────────────────────────────
+
   const handleSave = async () => {
     try {
       let activeUserBookId = userBook.id
 
-      // 1. Create or Update Status & Visibility
       if (activeUserBookId === 0) {
-        // Create new entry
         const newBook = await addToShelf(userBook.book_id, status, userBook.book, {
           visibility,
-          dnf_page: status === 'dnf' ? parseInt(dnfPage) : undefined,
-          dnf_reason: status === 'dnf' ? dnfReason : undefined,
-          total_pages: parseInt(totalPages) > 0 ? parseInt(totalPages) : undefined
+          dnf_page:    status === 'dnf' ? parseInt(dnfPage)  : undefined,
+          dnf_reason:  status === 'dnf' ? dnfReason          : undefined,
+          total_pages: parseInt(totalPages) > 0 ? parseInt(totalPages) : undefined,
         })
         activeUserBookId = newBook.id
       } else {
-        // Update existing
         await updateShelf({
           userBookId: activeUserBookId,
           status,
           visibility,
-          dnf_page: status === 'dnf' ? parseInt(dnfPage) : undefined,
-          dnf_reason: status === 'dnf' ? dnfReason : undefined,
+          dnf_page:   status === 'dnf' ? parseInt(dnfPage) : undefined,
+          dnf_reason: status === 'dnf' ? dnfReason         : undefined,
         })
       }
 
-      // 2. Update Progress if Reading (and we have an ID now)
       if (status === 'reading' && activeUserBookId > 0) {
-        const pRead = parseInt(pagesRead)
+        const pRead  = parseInt(pagesRead)
         const tPages = parseInt(totalPages)
-        
         if (tPages > 0) {
           await updateProgress(activeUserBookId, {
-            pages_read: pRead,
-            total_pages: tPages,
-            completion_percentage: Math.round((pRead / tPages) * 100)
+            pages_read:            pRead,
+            total_pages:           tPages,
+            completion_percentage: Math.round((pRead / tPages) * 100),
           })
         } else {
-          await updateProgress(activeUserBookId, {
-            completion_percentage: percentage
-          })
+          await updateProgress(activeUserBookId, { completion_percentage: percentage })
         }
+      }
+
+      // Save notes if the book is on the shelf (id > 0)
+      if (activeUserBookId > 0) {
+        await saveNotes(activeUserBookId, notes)
       }
 
       onUpdate?.()
@@ -126,27 +121,63 @@ export default function QuickUpdateModal({
     }
   }
 
-  const statusOptions: { id: ShelfStatus; label: string; icon: any; color: string }[] = [
-    { id: 'to_read', label: 'To Read', icon: Clock, color: 'text-amber-600' },
-    { id: 'reading', label: 'Reading', icon: BookOpen, color: 'text-blue-600' },
-    { id: 'read', label: 'Completed', icon: CheckCircle, color: 'text-green-600' },
-    { id: 'dnf', label: 'DNF', icon: XCircle, color: 'text-rose-600' },
+  const statusOptions: { id: ShelfStatus; label: string; icon: React.ElementType }[] = [
+    { id: 'to_read',  label: 'To Read',   icon: Clock       },
+    { id: 'reading',  label: 'Reading',   icon: BookOpen    },
+    { id: 'read',     label: 'Completed', icon: CheckCircle },
+    { id: 'dnf',      label: 'DNF',       icon: XCircle     },
   ]
 
+  // ── Styling helpers ───────────────────────────────────────────────────────────
+
+  const inputStyle: React.CSSProperties = {
+    backgroundColor: 'var(--color-grove)',
+    border:          '1px solid var(--color-rim)',
+    color:           'var(--color-lit)',
+    borderRadius:    12,
+    padding:         '8px 12px',
+    fontSize:        13,
+    width:           '100%',
+    outline:         'none',
+    transition:      'border-color 0.15s',
+  }
+
+  const focusBorder = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    (e.currentTarget.style.borderColor = 'var(--color-accent)')
+  const blurBorder  = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    (e.currentTarget.style.borderColor = 'var(--color-rim)')
+
+  const sectionCard: React.CSSProperties = {
+    backgroundColor: 'var(--color-grove)',
+    border:          '1px solid var(--color-rim)',
+    borderRadius:    16,
+    padding:         16,
+  }
+
+  const labelStyle: React.CSSProperties = {
+    fontSize:      10,
+    fontWeight:    700,
+    letterSpacing: '0.1em',
+    textTransform: 'uppercase',
+    color:         'var(--color-lit-3)',
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────────
+
   return (
-    <SlideOver 
-      isOpen={isOpen} 
-      onClose={onClose}
-      title="Update Progress"
-    >
+    <SlideOver isOpen={isOpen} onClose={onClose} title="Update Progress">
       <div className="space-y-5">
-        {/* Book Summary Card */}
-        <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-100">
-          <div className="w-12 h-18 flex-none shadow-md rounded overflow-hidden bg-white">
+
+        {/* ── Book summary ─────────────────────────────────────────────── */}
+        <div
+          className="flex items-center gap-3 rounded-2xl p-3"
+          style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-rim)' }}
+        >
+          <div className="w-10 flex-none rounded-lg overflow-hidden shadow-md" style={{ aspectRatio: '2/3' }}>
             {userBook.book && (
-              <BookCoverImage 
-                src={userBook.book.cover_image_url} 
-                title={userBook.book.title} 
+              <BookCoverImage
+                src={userBook.book.cover_image_url}
+                title={userBook.book.title}
                 size="small"
                 className="w-full h-full object-cover"
                 layoutId={`book-cover-${userBook.book.id}-modal`}
@@ -154,55 +185,66 @@ export default function QuickUpdateModal({
             )}
           </div>
           <div className="min-w-0">
-            <h3 className="font-bold text-slate-900 leading-tight mb-0.5 truncate">{userBook.book?.title}</h3>
-            <p className="text-xs text-slate-500 truncate">by {userBook.book?.author_name}</p>
+            <p className="font-bold leading-snug truncate" style={{ color: 'var(--color-lit)', fontSize: 14 }}>
+              {userBook.book?.title}
+            </p>
+            <p className="truncate italic" style={{ color: 'var(--color-lit-3)', fontSize: 12 }}>
+              by {userBook.book?.author_name}
+            </p>
           </div>
         </div>
 
-        {/* Status Selection */}
+        {/* ── Shelf status ──────────────────────────────────────────────── */}
         <div className="space-y-2">
-          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Shelf Status</label>
+          <p style={labelStyle}>Shelf Status</p>
           <div className="grid grid-cols-2 gap-2">
-            {statusOptions.map((opt) => (
-              <button
-                key={opt.id}
-                onClick={() => setStatus(opt.id)}
-                className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${
-                  status === opt.id 
-                    ? `border-primary-600 bg-primary-50 ${opt.color}` 
-                    : 'border-slate-100 bg-white text-slate-400 hover:border-slate-200'
-                }`}
-              >
-                <opt.icon className="w-4 h-4 flex-none" />
-                <span className="text-xs font-bold">{opt.label}</span>
-              </button>
-            ))}
+            {statusOptions.map((opt) => {
+              const active = status === opt.id
+              const accentColor = STATUS_COLOR[opt.id]
+              return (
+                <button
+                  key={opt.id}
+                  onClick={() => setStatus(opt.id)}
+                  className="flex items-center gap-2.5 rounded-xl transition-all"
+                  style={{
+                    padding:         '10px 14px',
+                    border:          `2px solid ${active ? accentColor : 'var(--color-rim)'}`,
+                    backgroundColor: active ? `color-mix(in srgb, ${accentColor} 12%, var(--color-grove))` : 'var(--color-grove)',
+                    color:           active ? accentColor : 'var(--color-lit-3)',
+                  }}
+                >
+                  <opt.icon className="w-4 h-4 flex-none" />
+                  <span style={{ fontSize: 13, fontWeight: 700 }}>{opt.label}</span>
+                </button>
+              )
+            })}
           </div>
         </div>
 
-        {/* Progress (Only if Reading) */}
+        {/* ── Progress (reading only) ───────────────────────────────────── */}
         {status === 'reading' && (
-          <div className="space-y-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+          <div className="space-y-4" style={sectionCard}>
             <div className="space-y-3">
-              <div className="flex justify-between items-end">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Progress</label>
-                <span className="text-xl font-black text-primary-600">{percentage}%</span>
+              <div className="flex justify-between items-center">
+                <p style={labelStyle}>Progress</p>
+                <span style={{ fontSize: 20, fontWeight: 900, color: 'var(--color-accent)' }}>
+                  {percentage}%
+                </span>
               </div>
-              
-              <input 
-                type="range" 
-                min="0" 
-                max="100" 
+              <input
+                type="range"
+                min="0"
+                max="100"
                 value={percentage}
                 onChange={handlePercentageChange}
-                className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-primary-600"
+                className="w-full cursor-pointer"
+                style={{ accentColor: 'var(--color-accent)', height: 6, borderRadius: 9999 }}
               />
             </div>
-
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Pages Read</label>
-                <input 
+              <div className="space-y-1.5">
+                <p style={{ ...labelStyle, fontSize: 9 }}>Pages Read</p>
+                <input
                   type="number"
                   value={pagesRead}
                   onChange={(e) => {
@@ -211,12 +253,14 @@ export default function QuickUpdateModal({
                     const t = parseInt(totalPages)
                     if (t > 0) setPercentage(Math.min(100, Math.round((p / t) * 100)))
                   }}
-                  className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-primary-500 outline-none"
+                  onFocus={focusBorder}
+                  onBlur={blurBorder}
+                  style={inputStyle}
                 />
               </div>
-              <div className="space-y-1">
-                <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Total Pages</label>
-                <input 
+              <div className="space-y-1.5">
+                <p style={{ ...labelStyle, fontSize: 9 }}>Total Pages</p>
+                <input
                   type="number"
                   value={totalPages}
                   onChange={(e) => {
@@ -225,80 +269,120 @@ export default function QuickUpdateModal({
                     const t = parseInt(e.target.value)
                     if (t > 0) setPercentage(Math.min(100, Math.round((p / t) * 100)))
                   }}
-                  className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-primary-500 outline-none"
+                  onFocus={focusBorder}
+                  onBlur={blurBorder}
+                  style={inputStyle}
                 />
               </div>
             </div>
           </div>
         )}
 
-        {/* DNF Details */}
+        {/* ── DNF details ───────────────────────────────────────────────── */}
         {status === 'dnf' && (
-          <div className="space-y-3 bg-rose-50/50 p-4 rounded-2xl border border-rose-100">
-            <div className="space-y-1">
-              <label className="text-[9px] font-bold text-rose-400 uppercase tracking-wider">Stopped at Page</label>
-              <input 
+          <div
+            className="space-y-3 rounded-2xl p-4"
+            style={{
+              backgroundColor: 'color-mix(in srgb, #f87171 8%, var(--color-grove))',
+              border: '1px solid color-mix(in srgb, #f87171 30%, var(--color-rim))',
+            }}
+          >
+            <div className="space-y-1.5">
+              <p style={{ ...labelStyle, color: '#f87171' }}>Stopped at Page</p>
+              <input
                 type="number"
                 value={dnfPage}
                 onChange={(e) => setDnfPage(e.target.value)}
                 placeholder="Optional"
-                className="w-full bg-white border border-rose-100 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-rose-500 outline-none"
+                onFocus={e => (e.currentTarget.style.borderColor = '#f87171')}
+                onBlur={blurBorder}
+                style={{ ...inputStyle, border: '1px solid color-mix(in srgb, #f87171 30%, var(--color-rim))' }}
               />
             </div>
-            <div className="space-y-1">
-              <label className="text-[9px] font-bold text-rose-400 uppercase tracking-wider">Reason (Optional)</label>
-              <textarea 
+            <div className="space-y-1.5">
+              <p style={{ ...labelStyle, color: '#f87171' }}>Reason (Optional)</p>
+              <textarea
                 value={dnfReason}
                 onChange={(e) => setDnfReason(e.target.value)}
                 placeholder="Why did you stop?"
-                className="w-full bg-white border border-rose-100 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-rose-500 outline-none min-h-[60px]"
+                rows={3}
+                onFocus={e => (e.currentTarget.style.borderColor = '#f87171')}
+                onBlur={blurBorder}
+                style={{
+                  ...inputStyle,
+                  resize: 'none',
+                  border: '1px solid color-mix(in srgb, #f87171 30%, var(--color-rim))',
+                } as React.CSSProperties}
               />
             </div>
           </div>
         )}
 
-        {/* Visibility & Privacy */}
+        {/* ── Personal Notes ────────────────────────────────────────────── */}
         <div className="space-y-2">
-          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Privacy</label>
-          <div className="flex p-1 bg-slate-100 rounded-xl">
-            <button
-              onClick={() => setVisibilityState('public')}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all ${
-                visibility === 'public' 
-                  ? 'bg-white text-slate-900 shadow-sm' 
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <Globe className="w-3.5 h-3.5" />
-              Public
-            </button>
-            <button
-              onClick={() => setVisibilityState('private')}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all ${
-                visibility === 'private' 
-                  ? 'bg-white text-slate-900 shadow-sm' 
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <Lock className="w-3.5 h-3.5" />
-              Private
-            </button>
+          <div className="flex items-center gap-1.5">
+            <NotebookPen className="w-3.5 h-3.5" style={{ color: 'var(--color-lit-3)' }} />
+            <p style={labelStyle}>Personal Notes</p>
+            <span style={{ ...labelStyle, color: 'var(--color-lit-3)', opacity: 0.6, textTransform: 'none', letterSpacing: 0, fontSize: 10 }}>
+              · only you
+            </span>
+          </div>
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Thoughts, quotes, anything you want to remember…"
+            rows={4}
+            onFocus={focusBorder}
+            onBlur={blurBorder}
+            style={{ ...inputStyle, resize: 'none', lineHeight: 1.6 } as React.CSSProperties}
+          />
+        </div>
+
+        {/* ── Privacy toggle ────────────────────────────────────────────── */}
+        <div className="space-y-2">
+          <p style={labelStyle}>Privacy</p>
+          <div
+            className="flex rounded-xl p-1 gap-1"
+            style={{ backgroundColor: 'var(--color-grove)' }}
+          >
+            {(['public', 'private'] as Visibility[]).map((v) => {
+              const selected = visibility === v
+              return (
+                <button
+                  key={v}
+                  onClick={() => setVisibilityState(v)}
+                  className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg transition-all"
+                  style={{
+                    backgroundColor: selected ? 'var(--color-surface)' : 'transparent',
+                    color:           selected ? 'var(--color-lit)' : 'var(--color-lit-3)',
+                    fontWeight:      700,
+                    fontSize:        13,
+                    boxShadow:       selected ? '0 1px 4px rgba(0,0,0,0.3)' : 'none',
+                    border:          selected ? '1px solid var(--color-rim)' : '1px solid transparent',
+                  }}
+                >
+                  {v === 'public' ? <Globe className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
+                  {v === 'public' ? 'Public' : 'Private'}
+                </button>
+              )
+            })}
           </div>
         </div>
 
-        <div className="pt-2 pb-4">
-          <Button 
-            onClick={handleSave} 
-            isLoading={isBusy} 
-            fullWidth 
+        {/* ── Save ─────────────────────────────────────────────────────── */}
+        <div className="pt-1 pb-3">
+          <Button
+            onClick={handleSave}
+            isLoading={isBusy}
+            fullWidth
             size="md"
-            className="rounded-xl shadow-lg shadow-primary-600/20 py-3 font-bold"
+            className="rounded-xl py-3 font-bold"
           >
             Save Updates
           </Button>
         </div>
+
       </div>
     </SlideOver>
   )
 }
-

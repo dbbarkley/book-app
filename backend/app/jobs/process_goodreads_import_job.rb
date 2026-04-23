@@ -4,37 +4,38 @@ require 'csv'
 
 # ProcessGoodreadsImportJob handles the async processing of Goodreads CSV imports
 #
-# This job:
-# 1. Parses the CSV file
-# 2. Creates/matches Authors
-# 3. Creates/matches Books
-# 4. Creates UserBooks with reading status and ratings
-# 5. Updates import progress in real-time
-#
-# Idempotency: 
-# - Books are matched by ISBN or title+author to avoid duplicates
-# - UserBooks use upsert logic to prevent duplicate shelf entries
+# Performance design:
+# - @author_cache    : in-memory hash keyed by lowercase name.  Eliminates one
+#                      SELECT per author per row; most imports share 200-500 authors.
+# - @isbn_book_cache : bulk-preloaded from every ISBN in the CSV before the loop
+#                      starts.  Turns 2-3 DB hits per row into an O(1) Hash lookup
+#                      for the common case where the book already exists.
+# - No synchronous API calls in the loop.  Metadata (categories, page_count,
+#   google_books_id) is populated by EnrichBookCoversJob which runs in the
+#   background after the import completes.
 class ProcessGoodreadsImportJob < ApplicationJob
   queue_as :default
 
-  # Goodreads CSV columns we care about
-  # Title, Author, ISBN, ISBN13, My Rating, Average Rating, 
-  # Publisher, Year Published, Date Read, Date Added, Bookshelves, Exclusive Shelf
-  
   def perform(import_id, csv_file_path)
     import = Import.find(import_id)
     import.mark_as_processing!
 
     csv_content = File.read(csv_file_path)
-    csv_data = CSV.parse(csv_content, headers: true)
+    csv_data    = CSV.parse(csv_content, headers: true)
+
+    # ── In-memory caches (scoped to this job run) ───────────────────────────
+    @author_cache    = {}
+    @isbn_book_cache = build_isbn_book_cache(csv_data)
 
     successful = 0
-    failed = 0
-    errors = []
+    failed     = 0
+    errors     = []
+    book_ids   = []
 
     csv_data.each_with_index do |row, index|
       begin
-        process_book_row(row, import.user)
+        book = process_book_row(row, import.user)
+        book_ids << book.id if book
         successful += 1
       rescue StandardError => e
         failed += 1
@@ -47,197 +48,216 @@ class ProcessGoodreadsImportJob < ApplicationJob
       # Update progress every 10 books
       if (index + 1) % 10 == 0
         import.update_progress!(
-          processed: index + 1,
+          processed:  index + 1,
           successful: successful,
-          failed: failed
+          failed:     failed
         )
       end
     end
 
-    # Final progress update
     import.update_progress!(
-      processed: csv_data.length,
+      processed:  csv_data.length,
       successful: successful,
-      failed: failed
+      failed:     failed
     )
 
-    # Store any errors in metadata
-    if errors.any?
-      import.update!(metadata: import.metadata.merge(errors: errors.first(10)))
-    end
-
+    import.update!(metadata: import.metadata.merge(errors: errors.first(10))) if errors.any?
     import.mark_as_completed!
 
-    # Clean up temp file
     File.delete(csv_file_path) if File.exist?(csv_file_path)
 
-    # Enrich book covers in background (non-blocking)
-    # This will fetch high-quality covers from Open Library or Google Books
-    book_ids = import.user.user_books.pluck(:book_id).uniq
-    EnrichBookCoversJob.perform_later(book_ids) if book_ids.any?
+    # Enrich covers and genres in the background for just the books touched by
+    # this import. EnrichBookGenresJob skips any that already have good categories.
+    book_ids.uniq!
+    if book_ids.any?
+      EnrichBookCoversJob.perform_later(book_ids)
+      EnrichBookGenresJob.perform_later(book_ids)
+    end
 
   rescue StandardError => e
     Rails.logger.error("Import #{import_id} failed: #{e.message}")
     Rails.logger.error(e.backtrace.join("\n"))
     import.mark_as_failed!(e.message)
-    
-    # Clean up temp file even on failure
     File.delete(csv_file_path) if File.exist?(csv_file_path)
   end
 
   private
 
+  # ── Cache setup ─────────────────────────────────────────────────────────────
+
+  # Collect every ISBN from the CSV, then load matching DB books in one query.
+  # Returns a Hash { isbn_string => Book } used by find_or_create_book.
+  def build_isbn_book_cache(csv_data)
+    isbns = csv_data.flat_map { |row| [clean_isbn(row['ISBN']), clean_isbn(row['ISBN13'])] }
+                    .compact
+                    .uniq
+    return {} if isbns.empty?
+
+    Book.where(isbn: isbns).index_by(&:isbn)
+  end
+
+  # ── Row processing ──────────────────────────────────────────────────────────
+
   def process_book_row(row, user)
-    # Extract book data
-    title = row['Title']&.strip
+    title       = row['Title']&.strip
     author_name = row['Author']&.strip
-    
-    # Goodreads sometimes wraps ISBNs in ="..." format to preserve leading zeros
-    # Clean them by removing =, quotes, dashes, and spaces
-    isbn = clean_isbn(row['ISBN'])
-    isbn13 = clean_isbn(row['ISBN13'])
-    
-    my_rating = row['My Rating']&.to_i || 0
-    avg_rating = row['Average Rating']&.to_f || 0.0
-    publisher = row['Publisher']&.strip
-    page_count = row['Number of Pages']&.to_i
-    
-    # Parse year - handle both "Year Published" and "Original Publication Year"
-    year_str = row['Year Published'] || row['Original Publication Year']
-    year = year_str&.strip&.to_i
-    year = nil if year && year < 1000 # Invalid year
-    
-    date_read = parse_date(row['Date Read'])
-    date_added = parse_date(row['Date Added'])
-    exclusive_shelf = row['Exclusive Shelf']&.strip # read, currently-reading, to-read
-    
     return if title.blank? || author_name.blank?
 
-    # Find or create author
-    author = find_or_create_author(author_name)
+    isbn   = clean_isbn(row['ISBN'])
+    isbn13 = clean_isbn(row['ISBN13'])
 
-    # Find or create book
-    book = find_or_create_book(
-      title: title,
-      author: author,
-      isbn: isbn,
-      isbn13: isbn13,
-      publisher: publisher,
-      year: year,
+    my_rating  = row['My Rating']&.to_i || 0
+    avg_rating = row['Average Rating']&.to_f || 0.0
+    publisher  = row['Publisher']&.strip
+    page_count = row['Number of Pages']&.to_i.presence  # nil if 0 or blank
+
+    year_str = row['Year Published'] || row['Original Publication Year']
+    year     = year_str&.strip&.to_i
+    year     = nil if year && year < 1000
+
+    date_read   = parse_date(row['Date Read'])
+    date_added  = parse_date(row['Date Added'])
+    exclusive_shelf = row['Exclusive Shelf']&.strip
+
+    author = find_or_create_author(author_name)
+    book   = find_or_create_book(
+      title:      title,
+      author:     author,
+      isbn:       isbn,
+      isbn13:     isbn13,
+      publisher:  publisher,
+      year:       year,
       avg_rating: avg_rating,
       page_count: page_count
     )
 
-    # Convert Goodreads shelf to our shelf status
     status = convert_shelf_to_status(exclusive_shelf, row)
 
-    # Create or update user book
     user_book = UserBook.find_or_initialize_by(user: user, book: book)
     user_book.assign_attributes(
-      status: status,
-      shelf: status,
-      rating: my_rating > 0 ? my_rating : nil,
-      total_pages: page_count || (book.respond_to?(:page_count) ? book.page_count : nil),
-      started_at: date_added,
+      status:      status,
+      shelf:       status,
+      rating:      my_rating > 0 ? my_rating : nil,
+      total_pages: page_count || book.page_count,
+      started_at:  date_added,
       finished_at: date_read
     )
     user_book.save!
 
-    # Trigger enrichment if book is missing details
-    BookEnrichmentService.enrich_book(book) if book.page_count.blank? || book.categories.blank?
+    # Set cover from ISBN immediately (no network call).
+    # Books created fresh in find_or_create_book already have cover_image_url
+    # set; this call only fires for pre-existing books that had no cover.
+    populate_cover_from_isbn(book, isbn13 || isbn)
 
     book
   end
 
-  def find_or_create_author(name)
-    # Try to find by exact name
-    author = Author.find_by('LOWER(name) = ?', name.downcase)
-    return author if author
+  # ── Author handling ─────────────────────────────────────────────────────────
 
-    # Create new author
-    Author.create!(name: name)
+  # Uses @author_cache to avoid a SELECT for every row.
+  # First encounter: hits the DB (find or create). All subsequent rows with the
+  # same author name are served from the hash — no extra queries.
+  def find_or_create_author(name)
+    key = name.downcase
+    return @author_cache[key] if @author_cache.key?(key)
+
+    author = Author.find_by('LOWER(name) = ?', key) || Author.create!(name: name)
+    @author_cache[key] = author
+    author
   end
 
-  def find_or_create_book(title:, author:, isbn: nil, isbn13: nil, publisher: nil, year: nil, avg_rating: 0.0, page_count: nil)
-    # Try to find by ISBN13 first (most reliable)
-    if isbn13.present? && isbn13.length == 13
-      book = Book.find_by(isbn: isbn13)
-      if book && page_count.present? && (!book.respond_to?(:page_count) || book.page_count.blank?)
-        book.update(page_count: page_count) if book.respond_to?(:page_count=)
+  # ── Book handling ───────────────────────────────────────────────────────────
+
+  def find_or_create_book(title:, author:, isbn: nil, isbn13: nil,
+                           publisher: nil, year: nil, avg_rating: 0.0, page_count: nil)
+    # 1. ISBN13 cache hit (no DB query)
+    if isbn13.present?
+      book = @isbn_book_cache[isbn13]
+      if book
+        book.update_column(:page_count, page_count) if page_count.present? && book.page_count.blank?
+        return book
       end
-      return book if book
     end
 
-    # Try ISBN10
-    if isbn.present? && (isbn.length == 10 || isbn.length == 13)
-      book = Book.find_by(isbn: isbn)
-      if book && page_count.present? && (!book.respond_to?(:page_count) || book.page_count.blank?)
-        book.update(page_count: page_count) if book.respond_to?(:page_count=)
+    # 2. ISBN10 cache hit (no DB query)
+    if isbn.present?
+      book = @isbn_book_cache[isbn]
+      if book
+        book.update_column(:page_count, page_count) if page_count.present? && book.page_count.blank?
+        return book
       end
-      return book if book
     end
 
-    # Try by title and author
+    # 3. Title + author (cache missed — book may not have an ISBN or wasn't in DB at start)
     book = Book.joins(:author).where(
-      'LOWER(books.title) = ? AND authors.id = ?', 
-      title.downcase, 
+      'LOWER(books.title) = ? AND authors.id = ?',
+      title.downcase,
       author.id
     ).first
-    if book && page_count.present? && (!book.respond_to?(:page_count) || book.page_count.blank?)
-      book.update(page_count: page_count) if book.respond_to?(:page_count=)
+    if book
+      book.update_column(:page_count, page_count) if page_count.present? && book.page_count.blank?
+      return book
     end
-    return book if book
 
-    # Create new book
-    # Note: Publisher isn't in the schema, can be added later
-    # Using release_date (not published_date) as per schema
-    # If no year, use a placeholder date (Jan 1, 1900) to satisfy NOT NULL constraint
-    release_date = if year && year > 1000
-                     Date.new(year, 1, 1)
-                   else
-                     Date.new(1900, 1, 1) # Placeholder for unknown release dates
-                   end
-    
+    # 4. Create new book
+    release_date = (year && year > 1000) ? Date.new(year, 1, 1) : Date.new(1900, 1, 1)
+
+    best_isbn    = isbn13.presence || isbn.presence
+    ol_cover_url = best_isbn.present? \
+      ? "https://covers.openlibrary.org/b/isbn/#{best_isbn}-L.jpg" \
+      : nil
+
     create_params = {
-      title: title,
-      author: author,
-      isbn: isbn13 || isbn,
-      release_date: release_date,
-      description: nil, # Can be enriched later via Google Books API
-      cover_image_url: nil
+      title:                  title,
+      author:                 author,
+      isbn:                   isbn13 || isbn,
+      release_date:           release_date,
+      description:            nil,
+      cover_image_url:        ol_cover_url,
+      cover_image_quality:    ol_cover_url ? 5 : 0,
+      cover_image_source:     ol_cover_url ? 'open_library' : nil,
+      cover_last_enriched_at: ol_cover_url ? Time.current : nil,
     }
-    
-    # Add page_count if the model supports it
-    create_params[:page_count] = page_count if Book.column_names.include?('page_count')
-    
+    create_params[:page_count] = page_count if Book.column_names.include?('page_count') && page_count.present?
+
     Book.create!(create_params)
   end
 
+  # ── Cover handling ──────────────────────────────────────────────────────────
+
+  # Constructs an Open Library cover URL from the ISBN and saves it.
+  # No network call — onError in BookCoverImage handles missing covers gracefully.
+  # Skips if the book already has a cover or has no ISBN.
+  def populate_cover_from_isbn(book, isbn)
+    return if isbn.blank?
+    return if book.cover_image_url.present?
+
+    book.update_columns(
+      cover_image_url:        "https://covers.openlibrary.org/b/isbn/#{isbn}-L.jpg",
+      cover_image_quality:    5,
+      cover_image_source:     'open_library',
+      cover_last_enriched_at: Time.current
+    )
+  rescue ActiveRecord::ActiveRecordError => e
+    Rails.logger.warn("populate_cover_from_isbn failed for book #{book.id}: #{e.message}")
+  end
+
+  # ── Status / date helpers ───────────────────────────────────────────────────
+
   def convert_shelf_to_status(shelf, row = nil)
     status = case shelf&.downcase&.strip
-             when 'read'
-               'read'
-             when 'currently-reading', 'reading', 'currently reading'
-               'reading'
-             when 'to-read', 'to read', 'wishlist'
-               'to_read'
-             when 'dnf', 'did-not-finish', 'dropped'
-               'dnf'
-             else
-               nil
+             when 'read'                                          then 'read'
+             when 'currently-reading', 'reading', 'currently reading' then 'reading'
+             when 'to-read', 'to read', 'wishlist'               then 'to_read'
+             when 'dnf', 'did-not-finish', 'dropped'             then 'dnf'
              end
 
-    # Fallback: If status is still unclear but there's a Date Read, it's definitely 'read'
-    if status.nil? && row && row['Date Read'].present?
-      status = 'read'
-    end
-
+    status = 'read' if status.nil? && row && row['Date Read'].present?
     status || 'to_read'
   end
 
   def parse_date(date_string)
     return nil if date_string.blank?
-    
     Date.parse(date_string)
   rescue ArgumentError
     nil
@@ -245,15 +265,11 @@ class ProcessGoodreadsImportJob < ApplicationJob
 
   def clean_isbn(isbn_string)
     return nil if isbn_string.blank?
-    
-    # Goodreads exports sometimes use ="1234567890" format
-    # Remove =, quotes, dashes, spaces, and keep only digits and X (for ISBN-10)
+
     cleaned = isbn_string.to_s.strip
-    cleaned = cleaned.gsub(/^=["']?/, '').gsub(/["']$/, '') # Remove ="..." wrapper
-    cleaned = cleaned.gsub(/[^0-9X]/i, '') # Keep only numbers and X
-    
-    return nil if cleaned.blank?
-    cleaned
+    cleaned = cleaned.gsub(/^=["']?/, '').gsub(/["']$/, '')  # strip ="..." wrapper
+    cleaned = cleaned.gsub(/[^0-9X]/i, '')                   # keep digits and X
+
+    cleaned.blank? ? nil : cleaned
   end
 end
-

@@ -1,36 +1,37 @@
 'use client'
 
-import React, { useRef, useState } from 'react'
+import React, { useRef, useState, useMemo } from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { ChevronLeft, ChevronRight, Edit2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Edit2, ArrowUpDown } from 'lucide-react'
 import type { UserBook } from '@book-app/shared'
 import BookCard from './BookCard'
-import Button from './Button'
 import QuickUpdateModal from './QuickUpdateModal'
 
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-    },
+    transition: { staggerChildren: 0.08 },
   },
 }
 
 const itemVariants = {
   hidden: { opacity: 0, y: 20 },
-  visible: { 
-    opacity: 1, 
+  visible: {
+    opacity: 1,
     y: 0,
-    transition: {
-      type: 'spring',
-      stiffness: 300,
-      damping: 24,
-    }
+    transition: { type: 'spring', stiffness: 300, damping: 24 },
   },
 }
+
+type SortKey = 'default' | 'title' | 'author' | 'date_added'
+
+const SORT_OPTIONS: { key: SortKey; label: string }[] = [
+  { key: 'default',    label: 'Date Added' },
+  { key: 'title',      label: 'Title A–Z'  },
+  { key: 'author',     label: 'Author A–Z' },
+]
 
 interface ShelfProps {
   title: string
@@ -40,6 +41,7 @@ interface ShelfProps {
   viewAllHref?: string
   shelfId: string
   onUpdate?: () => void
+  searchQuery?: string
 }
 
 export default function Shelf({
@@ -50,16 +52,18 @@ export default function Shelf({
   viewAllHref,
   shelfId,
   onUpdate,
+  searchQuery = '',
 }: ShelfProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedBook, setSelectedBook] = useState<UserBook | null>(null)
+  const [sortKey, setSortKey] = useState<SortKey>('default')
+  const [sortOpen, setSortOpen] = useState(false)
 
   const scroll = (direction: 'left' | 'right') => {
     if (scrollContainerRef.current) {
-      const scrollAmount = 400
       scrollContainerRef.current.scrollBy({
-        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        left: direction === 'left' ? -420 : 420,
         behavior: 'smooth',
       })
     }
@@ -70,93 +74,204 @@ export default function Shelf({
     setIsModalOpen(true)
   }
 
+  // Filter by search query
+  const filteredBooks = useMemo(() => {
+    if (!searchQuery.trim()) return books
+    const q = searchQuery.toLowerCase()
+    return books.filter(ub => {
+      const title = ub.book?.title?.toLowerCase() || ''
+      const author = ub.book?.author_name?.toLowerCase() || ''
+      return title.includes(q) || author.includes(q)
+    })
+  }, [books, searchQuery])
+
+  // Sort
+  const sortedBooks = useMemo(() => {
+    const arr = [...filteredBooks]
+    if (sortKey === 'title') {
+      arr.sort((a, b) => (a.book?.title || '').localeCompare(b.book?.title || ''))
+    } else if (sortKey === 'author') {
+      arr.sort((a, b) => (a.book?.author_name || '').localeCompare(b.book?.author_name || ''))
+    }
+    // 'default' = server order (date added)
+    return arr
+  }, [filteredBooks, sortKey])
+
   if (books.length === 0) return null
+  // If searching and nothing matches, still show header so user knows this shelf exists
+  const showEmpty = searchQuery.trim() && filteredBooks.length === 0
+
+  const currentSortLabel = SORT_OPTIONS.find(o => o.key === sortKey)?.label ?? 'Sort'
 
   return (
     <section id={shelfId} className="mb-12 relative group scroll-mt-40">
-      {/* Shelf Header ... */}
+      {/* Shelf Header */}
       <div className="flex items-end justify-between mb-6 px-1">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-            <span className="flex items-center justify-center">
-              {icon}
-            </span>
+          <h2 className="text-2xl font-bold flex items-center gap-2" style={{ color: 'var(--color-lit)' }}>
+            <span className="flex items-center justify-center">{icon}</span>
             {title}
+            {books.length > 0 && (
+              <span className="text-sm font-medium ml-1" style={{ color: 'var(--color-lit-3)' }}>
+                ({books.length})
+              </span>
+            )}
           </h2>
           {subtitle && (
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-500 mt-1 font-medium">
+            <p className="text-xs uppercase tracking-[0.2em] mt-1 font-medium" style={{ color: 'var(--color-lit-3)' }}>
               {subtitle}
             </p>
           )}
         </div>
-        {viewAllHref && (
-          <Link
-            href={viewAllHref}
-            className="text-sm font-semibold text-primary-600 hover:text-primary-700 transition-colors"
-          >
-            View All ({books.length})
-          </Link>
-        )}
-      </div>
 
-      {/* Carousel Container */}
-      <div className="relative">
-        {/* Scroll Buttons - Desktop Only */}
-        <button
-          onClick={() => scroll('left')}
-          className="absolute left-[-20px] top-[40%] -translate-y-1/2 z-10 bg-white/90 shadow-lg rounded-full p-2 text-slate-700 opacity-0 group-hover:opacity-100 transition-opacity hidden md:block hover:bg-white"
-          aria-label="Scroll left"
-        >
-          <ChevronLeft className="w-6 h-6" />
-        </button>
-        <button
-          onClick={() => scroll('right')}
-          className="absolute right-[-20px] top-[40%] -translate-y-1/2 z-10 bg-white/90 shadow-lg rounded-full p-2 text-slate-700 opacity-0 group-hover:opacity-100 transition-opacity hidden md:block hover:bg-white"
-          aria-label="Scroll right"
-        >
-          <ChevronRight className="w-6 h-6" />
-        </button>
-
-        {/* The "Shelf" visual effect */}
-        <div className="absolute bottom-0 left-0 right-0 h-1 bg-slate-200/50 rounded-full -mb-2" />
-
-        <motion.div
-          ref={scrollContainerRef}
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
-          className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x snap-mandatory"
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-        >
-          {books.map((userBook) => (
-            <motion.div
-              key={userBook.id}
-              variants={itemVariants}
-              className="flex-none w-[160px] sm:w-[200px] snap-start relative group/item"
+        <div className="flex items-center gap-2">
+          {/* Sort dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setSortOpen(o => !o)}
+              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all"
+              style={{
+                backgroundColor: 'var(--color-grove)',
+                border: '1px solid var(--color-rim)',
+                color: 'var(--color-lit-2)',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.color = 'var(--color-lit)')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'var(--color-lit-2)')}
             >
-              {userBook.book && (
-                <>
-                  <BookCard
-                    book={userBook.book}
-                    showDescription={false}
-                    userBook={userBook}
-                    coverSize="medium"
-                  />
-                  {/* Quick Edit Overlay */}
+              <ArrowUpDown size={12} />
+              {currentSortLabel}
+            </button>
+
+            {sortOpen && (
+              <div
+                className="absolute right-0 top-full mt-1 z-20 rounded-xl py-1 min-w-[130px]"
+                style={{
+                  backgroundColor: 'var(--color-surface)',
+                  border: '1px solid var(--color-rim)',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+                }}
+              >
+                {SORT_OPTIONS.map(opt => (
                   <button
-                    onClick={() => handleOpenModal(userBook)}
-                    className="absolute top-2 right-2 p-2 bg-white/90 hover:bg-white shadow-md rounded-full text-slate-700 opacity-0 group-hover/item:opacity-100 transition-all scale-75 hover:scale-100"
-                    title="Quick Update"
+                    key={opt.key}
+                    onClick={() => { setSortKey(opt.key); setSortOpen(false) }}
+                    className="w-full text-left px-4 py-2 text-xs font-medium transition-colors"
+                    style={{
+                      color: sortKey === opt.key ? 'var(--color-accent)' : 'var(--color-lit-2)',
+                      backgroundColor: sortKey === opt.key ? 'var(--color-grove)' : 'transparent',
+                    }}
+                    onMouseEnter={e => { if (sortKey !== opt.key) e.currentTarget.style.backgroundColor = 'var(--color-grove)' }}
+                    onMouseLeave={e => { if (sortKey !== opt.key) e.currentTarget.style.backgroundColor = 'transparent' }}
                   >
-                    <Edit2 className="w-4 h-4" />
+                    {opt.label}
                   </button>
-                </>
-              )}
-            </motion.div>
-          ))}
-        </motion.div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {viewAllHref && (
+            <Link
+              href={viewAllHref}
+              className="text-sm font-semibold transition-colors"
+              style={{ color: 'var(--color-accent)' }}
+            >
+              View All
+            </Link>
+          )}
+        </div>
       </div>
+
+      {/* Empty search state */}
+      {showEmpty && (
+        <div
+          className="rounded-2xl px-6 py-8 text-center"
+          style={{ backgroundColor: 'var(--color-grove)', border: '1px dashed var(--color-rim)' }}
+        >
+          <p className="text-sm font-medium" style={{ color: 'var(--color-lit-2)' }}>
+            No books in this shelf match "{searchQuery}"
+          </p>
+        </div>
+      )}
+
+      {/* Carousel */}
+      {!showEmpty && (
+        <div className="relative">
+          {/* Scroll buttons */}
+          <button
+            onClick={() => scroll('left')}
+            className="absolute left-[-18px] top-[40%] -translate-y-1/2 z-10 rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity hidden md:flex items-center justify-center shadow-lg"
+            style={{
+              backgroundColor: 'var(--color-surface)',
+              border: '1px solid var(--color-rim)',
+              color: 'var(--color-lit)',
+            }}
+            aria-label="Scroll left"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <button
+            onClick={() => scroll('right')}
+            className="absolute right-[-18px] top-[40%] -translate-y-1/2 z-10 rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity hidden md:flex items-center justify-center shadow-lg"
+            style={{
+              backgroundColor: 'var(--color-surface)',
+              border: '1px solid var(--color-rim)',
+              color: 'var(--color-lit)',
+            }}
+            aria-label="Scroll right"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
+
+          {/* Subtle shelf ledge */}
+          <div
+            className="absolute bottom-0 left-0 right-0 h-px -mb-2 rounded-full"
+            style={{ backgroundColor: 'var(--color-rim)' }}
+          />
+
+          <motion.div
+            ref={scrollContainerRef}
+            variants={containerVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: '-100px' }}
+            className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x snap-mandatory"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          >
+            {sortedBooks.map((userBook) => (
+              <motion.div
+                key={userBook.id}
+                variants={itemVariants}
+                className="flex-none w-[160px] sm:w-[190px] snap-start relative group/item"
+              >
+                {userBook.book && (
+                  <>
+                    <BookCard
+                      book={userBook.book}
+                      showDescription={false}
+                      userBook={userBook}
+                      coverSize="medium"
+                    />
+                    {/* Quick Edit overlay */}
+                    <button
+                      onClick={() => handleOpenModal(userBook)}
+                      className="absolute top-2 right-2 p-1.5 rounded-full opacity-0 group-hover/item:opacity-100 transition-all scale-75 hover:scale-100 shadow-md"
+                      style={{
+                        backgroundColor: 'var(--color-surface)',
+                        border: '1px solid var(--color-rim)',
+                        color: 'var(--color-lit)',
+                      }}
+                      title="Quick Update"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+                  </>
+                )}
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+      )}
 
       <QuickUpdateModal
         userBook={selectedBook || { id: 0, book_id: 0, status: 'to_read' } as any}
@@ -167,4 +282,3 @@ export default function Shelf({
     </section>
   )
 }
-

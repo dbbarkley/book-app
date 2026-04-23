@@ -11,7 +11,7 @@ import {
   ResponsiveContainer,
   Cell,
 } from 'recharts'
-import { Award } from 'lucide-react'
+import { User } from 'lucide-react'
 
 interface AuthorData extends Record<string, any> {
   name: string
@@ -23,69 +23,99 @@ interface TopAuthorsChartProps {
   data: AuthorData[]
 }
 
-const COLORS = [
-  '#4f46e5', // Indigo
-  '#6366f1',
-  '#818cf8',
-  '#a5b4fc',
-  '#c7d2fe',
+// Amber gradient — most-read gets full accent, others fade
+const BAR_COLORS = [
+  '#C9A84C',
+  '#B8963E',
+  '#A07830',
+  '#8B6828',
+  '#755820',
 ]
 
-export default function TopAuthorsChart({ data }: TopAuthorsChartProps) {
-  if (!data || data.length === 0) {
+// Truncate long names in the axis label; full name is always visible in the tooltip
+const CustomTick = ({ x, y, payload }: any) => {
+  if (!payload?.value) return null
+  const MAX = 20
+  const label = payload.value.length > MAX
+    ? payload.value.slice(0, MAX).trimEnd() + '…'
+    : payload.value
+  return (
+    <text
+      x={x}
+      y={y}
+      dy={4}
+      textAnchor="end"
+      fontSize={12}
+      fontWeight={600}
+      fill="rgba(237, 224, 196, 0.65)"
+    >
+      {label}
+    </text>
+  )
+}
+
+const CustomTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const { name, count, percentage } = payload[0].payload
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-slate-500">
-        <p>No reading data available for authors yet.</p>
+      <div
+        className="px-3 py-2 rounded-xl text-sm"
+        style={{
+          backgroundColor: 'var(--color-surface)',
+          border: '1px solid var(--color-rim-accent)',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+          color: 'var(--color-lit)',
+        }}
+      >
+        <p className="font-bold mb-1">{name}</p>
+        <p style={{ color: 'var(--color-accent)' }}>
+          {count} book{count !== 1 ? 's' : ''}
+          {percentage ? ` · ${percentage}% of library` : ''}
+        </p>
       </div>
     )
   }
+  return null
+}
+
+export default function TopAuthorsChart({ data }: TopAuthorsChartProps) {
+  if (!data || data.length === 0) return null
 
   return (
     <div className="w-full">
       <div className="flex items-center gap-2 mb-6">
-        <div className="p-2 bg-indigo-50 rounded-lg">
-          <Award className="w-5 h-5 text-indigo-600" />
-        </div>
-        <div>
-          <h3 className="font-semibold text-slate-900">Top Authors</h3>
-          <p className="text-xs text-slate-500">
-            Authors you've read the most books from.
-          </p>
-        </div>
+        <User size={18} style={{ color: 'var(--color-accent)' }} />
+        <h3 className="font-serif text-lg font-bold" style={{ color: 'var(--color-lit)' }}>
+          Top Authors
+        </h3>
       </div>
 
-      <div className="h-[300px] w-full">
+      <div style={{ height: Math.max(240, data.length * 36) }} className="w-full">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={data}
             layout="vertical"
-            margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
+            margin={{ top: 0, right: 16, left: 0, bottom: 0 }}
           >
-            <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
+            <CartesianGrid
+              strokeDasharray="3 3"
+              horizontal={false}
+              stroke="rgba(237, 224, 196, 0.06)"
+            />
             <XAxis type="number" hide />
             <YAxis
               dataKey="name"
               type="category"
               axisLine={false}
               tickLine={false}
-              width={100}
-              tick={{ fontSize: 12, fill: '#475569', fontWeight: 500 }}
+              width={130}
+              interval={0}
+              tick={<CustomTick />}
             />
-            <Tooltip
-              cursor={{ fill: 'transparent' }}
-              contentStyle={{
-                borderRadius: '8px',
-                border: 'none',
-                boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-              }}
-              formatter={(value, name, props) => {
-                const percentage = props.payload.percentage
-                return [`${value} books (${percentage}% of library)`, 'Count']
-              }}
-            />
-            <Bar dataKey="count" radius={[0, 4, 4, 0]} barSize={20}>
-              {data.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(201, 168, 76, 0.06)' }} />
+            <Bar dataKey="count" radius={[0, 6, 6, 0]} barSize={18}>
+              {data.map((_, index) => (
+                <Cell key={`cell-${index}`} fill={BAR_COLORS[index % BAR_COLORS.length]} />
               ))}
             </Bar>
           </BarChart>
@@ -94,4 +124,3 @@ export default function TopAuthorsChart({ data }: TopAuthorsChartProps) {
     </div>
   )
 }
-

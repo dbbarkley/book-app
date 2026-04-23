@@ -9,20 +9,6 @@ import Link from 'next/link'
 import AuthForm, { type AuthFormData } from '@/components/AuthForm'
 import { useAuth } from '@/shared/hooks/useAuth'
 
-/**
- * Signup page component
- * 
- * Features:
- * - Username, email, and password registration
- * - Client-side validation
- * - Error handling
- * - Redirects to home page on success
- * 
- * For React Native:
- * - Replace Next.js Link with React Navigation
- * - Replace useRouter with navigation.navigate()
- * - Keep the same AuthForm component (with React Native adaptations)
- */
 export default function SignupPage() {
   const router = useRouter()
   const { signup, loading } = useAuth()
@@ -30,7 +16,7 @@ export default function SignupPage() {
 
   const handleSignup = async (data: AuthFormData) => {
     setError(null)
-    
+
     if (!data.name) {
       setError('Username is required')
       return
@@ -38,14 +24,17 @@ export default function SignupPage() {
 
     try {
       await signup(data.name, data.email, data.password)
-      // Redirect to home page on successful signup
       router.push('/')
-      router.refresh() // Refresh to update navigation/auth state
+      router.refresh()
     } catch (err: any) {
-      // Handle API errors
+      const data = err?.response?.data
       const errorMessage =
-        err?.response?.data?.error ||
-        err?.response?.data?.errors?.[0] ||
+        // Rails validation errors come back as { errors: ["Email has already been taken", ...] }
+        (Array.isArray(data?.errors) && data.errors.length > 0
+          ? data.errors.join('. ')
+          : null) ||
+        // Single-string error field
+        (typeof data?.error === 'string' ? data.error : null) ||
         err?.message ||
         'Failed to create account. Please try again.'
       setError(errorMessage)
@@ -53,20 +42,20 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4 sm:px-6 lg:px-8 py-12">
+    <div className="min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 py-12">
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">
+          <h1 className="font-serif text-3xl sm:text-4xl font-bold text-lit mb-2">
             Create Account
           </h1>
-          <p className="text-gray-600 text-sm sm:text-base">
+          <p className="text-lit-2 text-sm sm:text-base">
             Join our community of book lovers
           </p>
         </div>
 
         {/* Auth Form Card */}
-        <div className="bg-white rounded-xl shadow-lg p-6 sm:p-8">
+        <div className="rounded-[28px] p-6 sm:p-8" style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-rim)', boxShadow: '0 8px 32px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3)' }}>
           <AuthForm
             mode="signup"
             onSubmit={handleSignup}
@@ -76,11 +65,11 @@ export default function SignupPage() {
 
           {/* Sign in link */}
           <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-ink-2">
               Already have an account?{' '}
               <Link
                 href="/login"
-                className="font-medium text-blue-600 hover:text-blue-700 hover:underline"
+                className="font-medium text-accent hover:text-accent-hover hover:underline"
               >
                 Sign in
               </Link>
@@ -89,7 +78,7 @@ export default function SignupPage() {
         </div>
 
         {/* Footer */}
-        <p className="mt-6 text-center text-xs text-gray-500">
+        <p className="mt-6 text-center text-xs text-lit-3">
           By creating an account, you agree to our Terms of Service and Privacy Policy
         </p>
       </div>

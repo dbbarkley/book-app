@@ -11,21 +11,20 @@ interface GoalSettingModalProps {
   isLoading?: boolean
 }
 
-export default function GoalSettingModal({ 
-  isOpen, 
-  onClose, 
+export default function GoalSettingModal({
+  isOpen,
+  onClose,
   onSave,
-  isLoading 
+  isLoading,
 }: GoalSettingModalProps) {
   const [goal, setGoal] = useState(12)
   const [isSuccess, setIsSuccess] = useState(false)
+  const year = new Date().getFullYear()
 
   const handleSave = async () => {
     await onSave(goal)
     setIsSuccess(true)
-    setTimeout(() => {
-      onClose()
-    }, 2000)
+    setTimeout(() => onClose(), 2000)
   }
 
   const increment = () => setGoal(prev => prev + 1)
@@ -34,106 +33,125 @@ export default function GoalSettingModal({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}>
           <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            initial={{ opacity: 0, scale: 0.92, y: 16 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="bg-white rounded-3xl shadow-2xl overflow-hidden w-full max-w-md"
+            exit={{ opacity: 0, scale: 0.92, y: 16 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+            className="w-full max-w-sm rounded-[28px] overflow-hidden"
+            style={{
+              backgroundColor: 'var(--color-surface)',
+              border: '1px solid var(--color-rim)',
+              boxShadow: '0 24px 64px rgba(0,0,0,0.6)',
+            }}
           >
             {isSuccess ? (
-              <div className="p-12 text-center space-y-6">
+              /* ── Success state ── */
+              <div className="p-10 text-center space-y-5 relative overflow-hidden">
                 <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1, rotate: 360 }}
-                  className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto"
+                  initial={{ scale: 0, rotate: -180 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ type: 'spring', stiffness: 260, damping: 20 }}
+                  className="w-20 h-20 rounded-full flex items-center justify-center mx-auto"
+                  style={{ backgroundColor: 'rgba(201,168,76,0.15)', border: '1px solid rgba(201,168,76,0.3)' }}
                 >
-                  <Sparkles size={40} />
+                  <Sparkles size={36} style={{ color: 'var(--color-accent)' }} />
                 </motion.div>
-                <div className="space-y-2">
-                  <h2 className="text-2xl font-bold text-slate-900">Goal Set!</h2>
-                  <p className="text-slate-500">
-                    Let's make 2026 your best reading year yet.
+                <div>
+                  <h2 className="font-serif text-2xl font-bold mb-1" style={{ color: 'var(--color-lit)' }}>
+                    Goal Set!
+                  </h2>
+                  <p className="text-sm" style={{ color: 'var(--color-lit-3)' }}>
+                    Let's make {year} your best reading year yet.
                   </p>
                 </div>
-                {/* Confetti effect placeholder */}
+                {/* Confetti particles */}
                 <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                  {[...Array(20)].map((_, i) => (
+                  {[...Array(18)].map((_, i) => (
                     <motion.div
                       key={i}
-                      initial={{ 
-                        top: '50%', 
-                        left: '50%',
-                        opacity: 1,
-                        scale: 0
-                      }}
-                      animate={{ 
+                      initial={{ top: '50%', left: '50%', opacity: 1, scale: 0 }}
+                      animate={{
                         top: `${Math.random() * 100}%`,
                         left: `${Math.random() * 100}%`,
                         opacity: 0,
-                        scale: Math.random() * 1.5
+                        scale: Math.random() * 1.2 + 0.3,
                       }}
-                      transition={{ duration: 1.5, ease: "easeOut" }}
+                      transition={{ duration: 1.4, ease: 'easeOut', delay: i * 0.03 }}
                       className="absolute w-2 h-2 rounded-full"
-                      style={{ 
-                        backgroundColor: ['#6366f1', '#f43f5e', '#eab308', '#22c55e'][Math.floor(Math.random() * 4)] 
+                      style={{
+                        backgroundColor: ['var(--color-accent)', '#c97c5d', '#7c9e87', '#8fa8c8'][i % 4],
                       }}
                     />
                   ))}
                 </div>
               </div>
             ) : (
+              /* ── Goal picker ── */
               <div className="p-8 space-y-8">
-                <div className="text-center space-y-2">
-                  <div className="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                    <Target size={32} />
+                {/* Header */}
+                <div className="text-center">
+                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
+                    style={{ backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-rim)' }}>
+                    <Target size={26} style={{ color: 'var(--color-accent)' }} />
                   </div>
-                  <h2 className="text-2xl font-bold text-slate-900">2026 Reading Goal</h2>
-                  <p className="text-slate-500">
+                  <h2 className="font-serif text-2xl font-bold mb-1" style={{ color: 'var(--color-lit)' }}>
+                    {year} Reading Goal
+                  </h2>
+                  <p className="text-sm" style={{ color: 'var(--color-lit-3)' }}>
                     How many books do you want to read this year?
                   </p>
                 </div>
 
+                {/* Number picker */}
                 <div className="flex items-center justify-center gap-8">
-                  <button 
+                  <button
                     onClick={decrement}
-                    className="p-4 hover:bg-slate-100 rounded-2xl transition-colors text-slate-400 hover:text-indigo-600"
+                    className="w-12 h-12 rounded-2xl flex items-center justify-center transition-all hover:opacity-80 active:scale-95"
+                    style={{ backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-rim)', color: 'var(--color-lit-2)' }}
                   >
-                    <ChevronDown size={32} />
+                    <ChevronDown size={22} />
                   </button>
-                  
-                  <div className="text-center">
-                    <span className="text-7xl font-black text-slate-900 tabular-nums">
+
+                  <div className="text-center min-w-[80px]">
+                    <span className="text-7xl font-black tabular-nums" style={{ color: 'var(--color-lit)' }}>
                       {goal}
                     </span>
-                    <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mt-1">
+                    <p className="text-xs font-bold uppercase tracking-widest mt-1" style={{ color: 'var(--color-lit-3)' }}>
                       Books
                     </p>
                   </div>
 
-                  <button 
+                  <button
                     onClick={increment}
-                    className="p-4 hover:bg-slate-100 rounded-2xl transition-colors text-slate-400 hover:text-indigo-600"
+                    className="w-12 h-12 rounded-2xl flex items-center justify-center transition-all hover:opacity-80 active:scale-95"
+                    style={{ backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-rim)', color: 'var(--color-lit-2)' }}
                   >
-                    <ChevronUp size={32} />
+                    <ChevronUp size={22} />
                   </button>
                 </div>
 
-                <div className="space-y-3 pt-4">
+                {/* Actions */}
+                <div className="space-y-3">
                   <button
                     onClick={handleSave}
                     disabled={isLoading}
-                    className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold text-lg hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="w-full py-3.5 rounded-2xl font-bold text-base transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-40 flex items-center justify-center gap-2"
+                    style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-accent-on)' }}
                   >
                     {isLoading ? (
-                      <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                      <div className="w-5 h-5 rounded-full border-2 animate-spin"
+                        style={{ borderColor: 'var(--color-accent-on)', borderTopColor: 'transparent' }} />
                     ) : (
                       'Set My Goal'
                     )}
                   </button>
                   <button
                     onClick={onClose}
-                    className="w-full py-3 text-slate-400 font-medium hover:text-slate-600 transition-colors"
+                    className="w-full py-3 text-sm font-medium transition-all hover:opacity-70"
+                    style={{ color: 'var(--color-lit-3)' }}
                   >
                     Maybe later
                   </button>
@@ -146,4 +164,3 @@ export default function GoalSettingModal({
     </AnimatePresence>
   )
 }
-

@@ -117,7 +117,7 @@ const EventRecommendation = (item: FeedItem) => {
         </p>
         <p className="text-sm text-text-muted mb-4">{reason}</p>
         
-        <div className="bg-slate-50 rounded-2xl p-4 space-y-2">
+        <div className="rounded-2xl p-4 space-y-2" style={{ backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-rim)' }}>
           <div className="flex items-center gap-2 text-sm text-text-secondary">
             <span className="text-base">📅</span>
             <span>
@@ -208,7 +208,8 @@ const FollowActivity = (item: FeedItem, currentUser: User | null) => {
           <div className="mt-3">
             <Link
               href={targetPath}
-              className="inline-flex items-center justify-center rounded-xl border border-border-default bg-white px-4 py-1.5 text-xs font-bold text-text-secondary transition hover:border-brand-indigo hover:text-brand-indigo shadow-sm"
+              className="inline-flex items-center justify-center rounded-xl px-4 py-1.5 text-xs font-bold text-ink-2 transition hover:text-accent shadow-sm"
+              style={{ border: '1px solid var(--color-rim)', backgroundColor: 'var(--color-grove)' }}
             >
               View {isAuthor ? 'Author' : 'Profile'}
             </Link>
@@ -256,7 +257,7 @@ const UserBookActivity = (item: FeedItem, currentUser: User | null) => {
         </div>
       </div>
 
-      <div className="flex gap-4 ml-14 bg-slate-50/50 p-3 rounded-2xl border border-slate-100/50">
+      <div className="flex gap-4 ml-14 p-3 rounded-2xl" style={{ backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-rim)' }}>
         {book.cover_image_url && (
           <Link href={`/books/${book.id}`} className="flex-shrink-0 group">
             <img
@@ -427,10 +428,13 @@ export default function FeedItemComponent({ item }: FeedItemProps) {
   }
 
   return (
-    <article className="bg-background-card rounded-[2rem] border border-border-default p-5 sm:p-6 shadow-sm hover:shadow-xl transition-all duration-300 group">
+    <article
+      className="rounded-[2rem] p-5 sm:p-6 transition-all duration-300 group"
+      style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-rim)', boxShadow: '0 8px 32px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3)' }}
+    >
       {renderContent()}
-      <div className="mt-4 pt-4 border-t border-slate-50 flex items-center justify-between">
-        <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">
+      <div className="mt-4 pt-4 flex items-center justify-between" style={{ borderTop: '1px solid var(--color-rim)' }}>
+        <span className="text-[10px] font-bold text-ink-3 uppercase tracking-widest">
           {formatRelativeTime(item.created_at)}
         </span>
       </div>

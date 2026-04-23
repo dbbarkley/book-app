@@ -4,7 +4,7 @@ class Notification < ApplicationRecord
   validates :notifiable_id, presence: true
   validates :notification_type, presence: true
 
-  NOTIFICATION_TYPES = %w[new_follower book_release event_reminder author_announcement].freeze
+  NOTIFICATION_TYPES = %w[new_follower book_release event_reminder author_announcement friend_request friend_accepted].freeze
 
   validates :notification_type, inclusion: { in: NOTIFICATION_TYPES }
 

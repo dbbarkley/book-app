@@ -1,5 +1,6 @@
 'use client'
 
+import { BookOpen } from 'lucide-react'
 import type { UserBook } from '@book-app/shared'
 import BookCard from './BookCard'
 
@@ -9,23 +10,22 @@ interface UserLibraryShelfProps {
   shelfName: string
 }
 
-export default function UserLibraryShelf({
-  userBooks,
-  emptyMessage,
-  shelfName,
-}: UserLibraryShelfProps) {
+export default function UserLibraryShelf({ userBooks, emptyMessage }: UserLibraryShelfProps) {
   if (userBooks.length === 0) {
     return (
-      <div className="py-12 text-center bg-slate-50 rounded-xl border border-dashed border-slate-300">
-        <div className="mb-3 text-4xl">📚</div>
-        <p className="text-slate-500 font-medium">{emptyMessage}</p>
+      <div
+        className="py-12 text-center rounded-2xl"
+        style={{ backgroundColor: 'var(--color-grove)', border: '1px dashed var(--color-rim)' }}
+      >
+        <BookOpen size={28} className="mx-auto mb-3" style={{ color: 'var(--color-lit-3)' }} />
+        <p className="text-sm font-medium" style={{ color: 'var(--color-lit-2)' }}>{emptyMessage}</p>
       </div>
     )
   }
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
-      {userBooks.map((ub) => (
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+      {userBooks.map(ub => (
         <BookCard
           key={ub.id}
           book={ub.book!}
@@ -37,4 +37,3 @@ export default function UserLibraryShelf({
     </div>
   )
 }
-

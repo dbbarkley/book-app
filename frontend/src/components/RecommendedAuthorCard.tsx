@@ -26,7 +26,7 @@ export default function RecommendedAuthorCard({ recommendation }: RecommendedAut
 
   return (
     <Link href={`/authors/${author.id}`} className="block h-full group">
-      <article className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 flex flex-col gap-3 w-full h-full transition-all hover:shadow-md hover:border-brand-indigo/30">
+      <article className="rounded-2xl p-5 flex flex-col gap-3 w-full h-full transition-all" style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-rim)', boxShadow: '0 4px 16px rgba(0,0,0,0.35)' }}>
         <div className="flex items-center gap-3">
           <Avatar
             src={author.avatar_url}
@@ -35,14 +35,14 @@ export default function RecommendedAuthorCard({ recommendation }: RecommendedAut
             className="group-hover:scale-105 transition-transform"
           />
           <div className="min-w-0">
-            <h3 className="text-base font-bold text-slate-900 leading-tight truncate group-hover:text-brand-indigo transition-colors">
+            <h3 className="text-base font-bold text-ink leading-tight truncate group-hover:text-accent-hover transition-colors">
               {author.name}
             </h3>
-            <p className="text-xs text-slate-500 font-medium truncate">Author</p>
+            <p className="text-xs text-ink-2 font-medium truncate">Author</p>
           </div>
         </div>
 
-        <p className="text-xs text-slate-600 line-clamp-3 italic flex-1">
+        <p className="text-xs text-ink-2 line-clamp-3 italic flex-1">
           &ldquo;{reason}&rdquo;
         </p>
 

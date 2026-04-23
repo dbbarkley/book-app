@@ -25,43 +25,57 @@ Rails.application.routes.draw do
         get 'followers', on: :member
         get 'library', on: :member
         get 'stats', on: :member
-        get 'genre/:genre/books', on: :member, action: :genre_books, constraints: { genre: /[^\/]+/ }
+        get 'friends', on: :member
+        # get 'genre/:genre/books', on: :member, action: :genre_books, constraints: { genre: /[^\/]+/ }  # disabled: gamification hidden
       end
       
       # Follows
       resources :follows, only: [:create, :index, :destroy]
+
+      # Friendships
+      resources :friendships, only: [:index, :create, :update, :destroy] do
+        collection do
+          get  :pending
+          get  'status/:user_id', action: :status
+        end
+      end
       
       # Feed
       get 'feed', to: 'feed#index'
 
       # Recommendations
-      get 'recommendations/books', to: 'recommendations#books'
-      get 'recommendations/authors', to: 'recommendations#authors'
-      get 'recommendations/events', to: 'recommendations#events'
+      get  'recommendations/books',      to: 'recommendations#books'
+      get  'recommendations/authors',    to: 'recommendations#authors'
+      post 'recommendations/regenerate', to: 'recommendations#regenerate'
+      # get 'recommendations/events', to: 'recommendations#events'  # disabled: events hidden
       get 'recommendations/new_releases', to: 'recommendations#new_releases'
-      get 'recommendations/coming_soon', to: 'recommendations#coming_soon'
+      get 'recommendations/coming_soon',  to: 'recommendations#coming_soon'
       
       # Authors
       resources :authors, only: [:index, :show, :create] do
         get 'books', on: :member
-        get 'events', on: :member
+        # get 'events', on: :member  # disabled: events hidden
         get 'followers', on: :member
       end
       
       # Books
       resources :books, only: [:index, :show] do
         get 'friends', on: :member
+        collection do
+          get 'by_google/:google_books_id', action: :show_by_google, constraints: { google_books_id: /[^\/]+/ }
+        end
       end
       
       # User Books (shelves, reading progress)
       resources :user_books, only: [:index, :create, :show, :update], path: 'user/books' do
         get 'by_book/:book_id', on: :collection, action: :show_by_book
         post 'review', on: :member
+        patch 'notes', on: :member
       end
       
-      # Events & Venues
-      resources :events, only: [:index, :show]
-      resources :venues, only: [:index, :show]
+      # Events & Venues (disabled: events hidden)
+      # resources :events, only: [:index, :show]
+      # resources :venues, only: [:index, :show]
       
       # Notifications
       resources :notifications, only: [:index] do
@@ -77,32 +91,32 @@ Rails.application.routes.draw do
         end
       end
 
-      # Forums & Discussions
-      resources :forums do
-        member do
-          post 'follow'
-          delete 'unfollow'
-        end
-        resources :forum_posts, path: 'posts', only: [:index, :create]
-      end
+      # Forums & Discussions (disabled: forums hidden)
+      # resources :forums do
+      #   member do
+      #     post 'follow'
+      #     delete 'unfollow'
+      #   end
+      #   resources :forum_posts, path: 'posts', only: [:index, :create]
+      # end
 
-      resources :forum_posts, only: [:show, :update, :destroy] do
-        member do
-          post 'heart'
-          delete 'unheart'
-          post 'report'
-        end
-        resources :forum_replies, path: 'replies', only: [:index, :create]
-      end
+      # resources :forum_posts, only: [:show, :update, :destroy] do
+      #   member do
+      #     post 'heart'
+      #     delete 'unheart'
+      #     post 'report'
+      #   end
+      #   resources :forum_replies, path: 'replies', only: [:index, :create]
+      # end
 
-      resources :forum_replies, only: [:update, :destroy] do
-        member do
-          get 'thread'
-          post 'heart'
-          delete 'unheart'
-          post 'report'
-        end
-      end
+      # resources :forum_replies, only: [:update, :destroy] do
+      #   member do
+      #     get 'thread'
+      #     post 'heart'
+      #     delete 'unheart'
+      #     post 'report'
+      #   end
+      # end
     end
   end
 end

@@ -3,4 +3,5 @@
 export * from './format'
 export * from './validation'
 export * from './debounce'
+export * from './genres'
 

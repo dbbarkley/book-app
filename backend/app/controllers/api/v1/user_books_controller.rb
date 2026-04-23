@@ -53,12 +53,19 @@ module Api
       # POST /api/v1/user/books
       def create
         book_id = params[:book_id]
-        return render_error('Missing book_id') unless book_id.present?
+        google_books_id = params[:google_books_id]
 
-        if book_id.to_i < 0
+        # New preferred path: google_books_id passed directly (no valid internal book_id)
+        if google_books_id.present? && (book_id.blank? || book_id.to_i <= 0)
+          book = find_or_create_book_from_google_books(params)
+          book_id = book.id
+        # Legacy path: negative book_id indicates a Google Books result
+        elsif book_id.to_i < 0
           book = find_or_create_book_from_google_books(params)
           book_id = book.id
         end
+
+        return render_error('Missing book_id') unless book_id.present?
 
         status = normalize_status(params[:status] || params[:shelf]) || 'to_read'
         visibility = normalize_visibility(params[:visibility])
@@ -118,13 +125,20 @@ module Api
         render json: { user_book: serialize_user_book(@user_book) }, status: :ok
       end
 
-      # POST /api/v1/user/books/:book_id/review
+      # POST /api/v1/user/books/:id/review
       def review
-        @user_book = current_user.user_books.find_by!(book_id: params[:id])
+        @user_book = current_user.user_books.find(params[:id])
         @user_book.update!(
           rating: params[:rating],
           review: params[:review]
         )
+        render json: { user_book: serialize_user_book(@user_book) }, status: :ok
+      end
+
+      # PATCH /api/v1/user/books/:id/notes
+      def notes
+        @user_book = current_user.user_books.find(params[:id])
+        @user_book.update!(notes: params[:notes])
         render json: { user_book: serialize_user_book(@user_book) }, status: :ok
       end
 
@@ -144,6 +158,7 @@ module Api
           :completion_percentage,
           :rating,
           :review,
+          :notes,
           :dnf_reason,
           :dnf_page,
           :started_at,
@@ -168,16 +183,23 @@ module Api
         end
 
         # Create book
+        raw_categories = google_books_data[:categories]
+        parsed_categories = case raw_categories
+                            when String then raw_categories.split(',').map(&:strip)
+                            when Array  then raw_categories
+                            else []
+                            end
+
         Book.create!(
           title: google_books_data[:title],
           isbn: isbn,
-          description: google_books_data[:description],
+          description: strip_html(google_books_data[:description]),
           cover_image_url: google_books_data[:cover_image_url],
           release_date: parse_release_date(google_books_data[:release_date]),
           author: author,
           google_books_id: google_books_id,
           page_count: google_books_data[:page_count],
-          categories: google_books_data[:categories] || []
+          categories: parsed_categories
         )
       end
 
@@ -211,6 +233,7 @@ module Api
           completion_percentage: user_book.completion_percentage,
           rating: user_book.rating,
           review: user_book.review,
+          notes: user_book.notes,
           dnf_reason: user_book.dnf_reason,
           dnf_page: user_book.dnf_page,
           started_at: user_book.started_at,
@@ -260,6 +283,23 @@ module Api
 
       def render_error(message, status: :unprocessable_entity)
         render json: { errors: [message] }, status: status
+      end
+
+      # Strip HTML tags and decode common entities from user-supplied or
+      # third-party description strings before persisting to the database.
+      def strip_html(text)
+        return nil if text.blank?
+        text
+          .gsub(/<br\s*\/?>/i, "\n")
+          .gsub(/<[^>]+>/, '')
+          .gsub(/&amp;/, '&')
+          .gsub(/&lt;/, '<')
+          .gsub(/&gt;/, '>')
+          .gsub(/&quot;/, '"')
+          .gsub(/&#39;/, "'")
+          .gsub(/&nbsp;/, ' ')
+          .strip
+          .presence
       end
     end
   end

@@ -47,34 +47,30 @@ export default function FeedEmptyState() {
     {
       title: 'Build your library',
       description: 'Search and shelf your favorite books to track your progress.',
-      icon: <BookOpen className="w-5 h-5 text-emerald-600" />,
+      icon: <BookOpen className="w-5 h-5 text-accent" />,
       href: '/search?type=books',
       cta: 'Search books',
-      bgColor: 'bg-emerald-50',
     },
     {
       title: 'Join the conversation',
       description: 'Discuss your favorite reads and authors in our community forums.',
-      icon: <MessageSquare className="w-5 h-5 text-blue-600" />,
+      icon: <MessageSquare className="w-5 h-5 text-accent" />,
       href: '/forums',
       cta: 'Explore forums',
-      bgColor: 'bg-blue-50',
     },
     {
       title: 'Local book events',
       description: 'Find signings, readings, and releases at bookstores near you.',
-      icon: <Calendar className="w-5 h-5 text-brand-indigo" />,
+      icon: <Calendar className="w-5 h-5 text-accent" />,
       href: '/search?type=events',
       cta: 'Find events',
-      bgColor: 'bg-indigo-50',
     },
     {
       title: 'Nearby bookstores',
       description: 'Discover and support independent bookstores in your area.',
-      icon: <MapPin className="w-5 h-5 text-amber-600" />,
+      icon: <MapPin className="w-5 h-5 text-accent" />,
       href: '/search?type=bookstores',
       cta: 'View map',
-      bgColor: 'bg-amber-50',
     }
   ]
 
@@ -118,7 +114,7 @@ export default function FeedEmptyState() {
               className="group p-6 rounded-3xl border border-border-default bg-background-card transition-all shadow-sm hover:shadow-md h-full flex flex-col justify-between"
             >
               <div>
-                <div className={`w-12 h-12 ${item.bgColor} rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
+                <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform" style={{ backgroundColor: 'var(--color-accent-subtle)' }}>
                   {item.icon}
                 </div>
                 <h3 className="text-xl font-bold text-text-primary mb-2">{item.title}</h3>
@@ -149,7 +145,7 @@ export default function FeedEmptyState() {
       {/* 4. Secondary Action (Find Friends) */}
       <motion.div variants={itemVariants} className="bg-background-muted rounded-3xl p-8 flex flex-col md:flex-row items-center justify-between gap-6">
         <div className="flex items-center gap-4">
-          <div className="bg-white p-3 rounded-2xl shadow-sm">
+          <div className="p-3 rounded-2xl" style={{ backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-rim)' }}>
             <Users className="text-brand-indigo" size={24} />
           </div>
           <div>
@@ -158,7 +154,7 @@ export default function FeedEmptyState() {
           </div>
         </div>
         <Link href="/search?type=people">
-          <button className="whitespace-nowrap bg-white text-text-primary font-bold px-6 py-3 rounded-2xl border border-border-default hover:border-brand-indigo transition-colors shadow-sm">
+          <button className="whitespace-nowrap text-ink font-bold px-6 py-3 rounded-2xl transition-colors" style={{ backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-rim)' }}>
             Find people to follow
           </button>
         </Link>
@@ -167,7 +163,7 @@ export default function FeedEmptyState() {
       {/* 5. Library Shortcut */}
       <motion.div variants={itemVariants} className="bg-background-muted rounded-3xl p-8 flex flex-col md:flex-row items-center justify-between gap-6">
         <div className="flex items-center gap-4">
-          <div className="bg-white p-3 rounded-2xl shadow-sm">
+          <div className="p-3 rounded-2xl" style={{ backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-rim)' }}>
             <BookOpen className="text-emerald-600" size={24} />
           </div>
           <div>
@@ -176,7 +172,7 @@ export default function FeedEmptyState() {
           </div>
         </div>
         <Link href="/library">
-          <button className="whitespace-nowrap bg-white text-text-primary font-bold px-6 py-3 rounded-2xl border border-border-default hover:border-brand-indigo transition-colors shadow-sm">
+          <button className="whitespace-nowrap text-ink font-bold px-6 py-3 rounded-2xl transition-colors" style={{ backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-rim)' }}>
             Go to my library
           </button>
         </Link>

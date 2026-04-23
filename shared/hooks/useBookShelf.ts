@@ -7,7 +7,7 @@ import type { BookShelf, UserBook, Book, Visibility } from '../types'
 
 interface UseBookShelfReturn {
   addToShelf: (
-    bookId: number,
+    bookId: number | null,
     shelf: BookShelf,
     bookData?: Book,
     options?: { visibility?: Visibility; dnf_reason?: string; dnf_page?: number; total_pages?: number }
@@ -36,10 +36,10 @@ export function useBookShelf(): UseBookShelfReturn {
   const [localError, setLocalError] = useState<string | null>(null)
 
   const addToShelf = async (
-    bookId: number,
+    bookId: number | null,
     shelf: BookShelf,
     bookData?: Book,
-    options?: { visibility?: Visibility; dnf_reason?: string; dnf_page?: number }
+    options?: { visibility?: Visibility; dnf_reason?: string; dnf_page?: number; total_pages?: number }
   ) => {
     setLocalError(null)
     try {

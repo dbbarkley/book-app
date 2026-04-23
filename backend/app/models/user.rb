@@ -8,6 +8,17 @@ class User < ApplicationRecord
   validates :email, presence: true, uniqueness: true, format: { with: URI::MailTo::EMAIL_REGEXP }
   validates :username, presence: true, uniqueness: true, length: { minimum: 3, maximum: 30 }
 
+  # ── Friendships ──────────────────────────────────────────────────────────────
+  has_many :sent_friendships,     class_name: 'Friendship', foreign_key: :requester_id,  dependent: :destroy
+  has_many :received_friendships, class_name: 'Friendship', foreign_key: :requestee_id,  dependent: :destroy
+  has_many :friends_as_requester,
+           -> { where('friendships.status = ?', 'accepted') },
+           through: :sent_friendships,     source: :requestee
+  has_many :friends_as_requestee,
+           -> { where('friendships.status = ?', 'accepted') },
+           through: :received_friendships, source: :requester
+
+  # ── Follows ───────────────────────────────────────────────────────────────────
   has_many :follows, foreign_key: :follower_id, dependent: :destroy, class_name: 'Follow'
   has_many :followed_users, through: :follows, source: :followable, source_type: 'User'
   has_many :followed_authors, through: :follows, source: :followable, source_type: 'Author'
@@ -39,6 +50,27 @@ class User < ApplicationRecord
   # Ensure preferences is always a hash
   before_save :ensure_preferences_hash
   after_save :process_location, if: :saved_change_to_zipcode?
+
+  # All accepted friends regardless of who initiated
+  def friends
+    User.where(id: friends_as_requester.select(:id))
+        .or(User.where(id: friends_as_requestee.select(:id)))
+  end
+
+  def friends_with?(other_user)
+    Friendship.accepted.between(self, other_user).exists?
+  end
+
+  def friendship_with(other_user)
+    Friendship.between(self, other_user).first
+  end
+
+  def friendship_status_with(other_user)
+    f = friendship_with(other_user)
+    return 'none' if f.nil?
+    return 'accepted' if f.accepted?
+    f.requester_id == id ? 'pending_sent' : 'pending_received'
+  end
 
   def self.from_omniauth(auth)
     # 1. Try to find by provider/uid

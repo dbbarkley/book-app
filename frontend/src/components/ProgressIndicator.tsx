@@ -32,16 +32,19 @@ export default function ProgressIndicator({
 
   return (
     <div className={`w-full ${className}`}>
-      {/* Step numbers */}
-      <div className="flex justify-between mb-2">
+      {/* Step dots */}
+      <div className="flex justify-between mb-3">
         {Array.from({ length: totalSteps }, (_, index) => (
           <div
             key={index}
-            className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium transition-colors ${
-              index <= currentStep
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-200 text-gray-600'
-            }`}
+            className="flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold transition-all"
+            style={
+              index < currentStep
+                ? { backgroundColor: 'var(--color-accent)', color: 'var(--color-accent-on)' }
+                : index === currentStep
+                ? { backgroundColor: 'var(--color-accent)', color: 'var(--color-accent-on)', boxShadow: '0 0 0 3px rgba(201,168,76,0.25)' }
+                : { backgroundColor: 'var(--color-grove)', color: 'var(--color-lit-3)', border: '1px solid var(--color-rim)' }
+            }
           >
             {index + 1}
           </div>
@@ -49,15 +52,15 @@ export default function ProgressIndicator({
       </div>
 
       {/* Progress bar */}
-      <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+      <div className="w-full rounded-full h-1.5 overflow-hidden" style={{ backgroundColor: 'var(--color-grove)' }}>
         <div
-          className="bg-blue-600 h-full transition-all duration-300 ease-out"
-          style={{ width: `${progressPercentage}%` }}
+          className="h-full rounded-full transition-all duration-300 ease-out"
+          style={{ width: `${progressPercentage}%`, backgroundColor: 'var(--color-accent)' }}
         />
       </div>
 
       {/* Step indicator text */}
-      <p className="text-xs text-gray-600 mt-2 text-center">
+      <p className="text-xs mt-2 text-center" style={{ color: 'var(--color-lit-3)' }}>
         Step {currentStep + 1} of {totalSteps}
       </p>
     </div>

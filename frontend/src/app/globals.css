@@ -2,24 +2,102 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Mobile-first base styles */
+/* ============================================================
+   LIBRAIO — MASTER THEME FILE
+   ============================================================
+   To change the entire app's colour scheme, edit ONLY the
+   CSS custom properties inside :root below. Every component
+   references these variables through Tailwind semantic classes
+   (bg-canvas, text-ink, bg-surface, etc.) — nothing else
+   needs to be touched.
+
+   CURRENT THEME: Dark Library
+   ============================================================ */
+
 @layer base {
   :root {
-    --foreground-rgb: 17, 24, 39; /* #111827 */
-    --background-rgb: 250, 250, 250; /* #FAFAFA */
-    --card-rgb: 255, 255, 255;
-    --border-rgb: 229, 231, 235;
+
+    /* ----------------------------------------------------------
+       BACKGROUNDS
+       canvas  = the room (main app bg)
+       surface = paper (cards, panels)
+       cave    = shadow (hero, deepest sections)
+       grove   = alcove (subtle dark section dividers)
+    ---------------------------------------------------------- */
+    --color-canvas:  #0D1A0F;   /* The room — deep shadow green (was hero) */
+    --color-surface: #18231A;   /* Card surfaces — same lifted green as hero */
+    --color-cave:    #18231A;   /* Hero card */
+    --color-grove:   #1F2E21;   /* Inner panels — slightly lighter green */
+
+    /* Nav needs rgba so backdrop-blur shows through */
+    --color-nav-bg:  rgba(10, 20, 11, 0.90);
+
+    /* ----------------------------------------------------------
+       ACCENT — brass lamp glow
+       accent        = primary action color
+       accent-hover  = hover/active state
+       accent-subtle = very faint accent tint (badges, tags)
+       accent-on     = text colour when sitting ON accent bg
+    ---------------------------------------------------------- */
+    --color-accent:        #C9A84C;
+    --color-accent-hover:  #A07830;
+    --color-accent-subtle: rgba(201, 168, 76, 0.12);
+    --color-accent-on:     #1A1205;
+
+    /* ----------------------------------------------------------
+       TEXT ON LIGHT SURFACES (cards, panels)
+    ---------------------------------------------------------- */
+    --color-ink:    #EDE0C4;  /* Primary text on cards — warm cream */
+    --color-ink-2:  #A89070;  /* Secondary text on cards — muted amber */
+    --color-ink-3:  #6B5A45;  /* Muted text on cards */
+
+    /* ----------------------------------------------------------
+       TEXT ON DARK SURFACES (canvas, cave, hero)
+    ---------------------------------------------------------- */
+    --color-lit:    #EDE0C4;                    /* Primary */
+    --color-lit-2:  rgba(237, 224, 196, 0.55);  /* Secondary */
+    --color-lit-3:  rgba(237, 224, 196, 0.30);  /* Faint / hint */
+
+    /* ----------------------------------------------------------
+       BORDERS
+    ---------------------------------------------------------- */
+    --color-rim:        rgba(237, 224, 196, 0.10);  /* On walnut card surfaces */
+    --color-rim-dark:   rgba(237, 224, 196, 0.08);  /* On dark bg surfaces */
+    --color-rim-accent: rgba(201, 168, 76, 0.30);   /* Accent-tinted */
+
+    /* ----------------------------------------------------------
+       STATUS COLOURS
+    ---------------------------------------------------------- */
+    --color-success:       #5A9E7A;
+    --color-success-light: rgba(90, 158, 122, 0.15);
+    --color-error:         #DC2626;
+
   }
 
   body {
-    @apply bg-background-app text-text-primary antialiased;
-    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background-color: var(--color-canvas);
+    color: var(--color-lit);
+    font-family: var(--font-inter), system-ui, sans-serif;
+    @apply antialiased;
+    /* Layered textures: vertical wood grain lines + subtle noise grain */
+    background-image:
+      repeating-linear-gradient(
+        90deg,
+        transparent,
+        transparent 2px,
+        rgba(255, 255, 255, 0.018) 2px,
+        rgba(255, 255, 255, 0.018) 4px
+      ),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23noise)' opacity='0.035'/%3E%3C/svg%3E");
   }
 
-  /* Smooth scrolling for mobile */
   html {
     @apply scroll-smooth;
     -webkit-tap-highlight-color: transparent;
+  }
+
+  h1, h2, h3 {
+    font-family: var(--font-playfair), Georgia, serif;
   }
 }
 
@@ -50,6 +128,15 @@
   /* Touch-friendly tap targets */
   .tap-target {
     @apply min-h-[44px] min-w-[44px];
+  }
+
+  /* Prevent the viewport from ever scrolling horizontally.
+     Setting this on html/body (not on a wrapper div) avoids creating
+     a new scroll container, so child elements with overflow-x:auto
+     (carousels, stat strips) can still scroll independently. */
+  html,
+  body {
+    overflow-x: hidden;
   }
 
   /* Hide scrollbar for Chrome, Safari and Opera */

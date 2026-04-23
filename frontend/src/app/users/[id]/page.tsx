@@ -1,65 +1,41 @@
 'use client'
 
-// User Profile Page - Shows user information, follows, and stats
-// Mobile-first design with TailwindCSS
-// Uses shared hooks for React Native compatibility
-
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { motion, Variants } from 'framer-motion'
-import { useAuth, useFollows } from '@book-app/shared'
+import { useAuth, useFollows, useFriends } from '@book-app/shared'
+import { Settings, RefreshCw, BarChart2, Heart, Users } from 'lucide-react'
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-    },
-  },
+  visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
 }
-
 const itemVariants: Variants = {
   hidden: { opacity: 0, y: 20 },
-  visible: { 
-    opacity: 1, 
-    y: 0,
-    transition: {
-      type: 'spring',
-      stiffness: 260,
-      damping: 20,
-    }
-  },
+  visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 260, damping: 20 } },
 }
-import { apiClient, GenreBadgeData } from '@book-app/shared'
+
+import { apiClient } from '@book-app/shared'
 import ProtectedRoute from '@/components/ProtectedRoute'
-import { formatNumber, formatDate } from '@/utils/format'
-import type { User, Follow } from '@book-app/shared'
+import { formatNumber } from '@/utils/format'
+import type { User, Follow, FriendshipStatus } from '@book-app/shared'
 import AuthorCard from '@/components/AuthorCard'
 import BookCard from '@/components/BookCard'
-import FollowButton from '@/components/FollowButton'
 import Button from '@/components/Button'
 import Avatar from '@/components/Avatar'
 import UserLibrary from '@/components/UserLibrary'
 import GenreChart from '@/components/charts/GenreChart'
 import TopAuthorsChart from '@/components/charts/TopAuthorsChart'
-import { GenreBadgesRow } from '@/components/gamification/GenreBadgesRow'
-import { GamificationDashboard } from '@/components/gamification/GamificationDashboard'
-import { BadgeDetailModal } from '@/components/gamification/BadgeDetailModal'
+import FriendButton from '@/components/FriendButton'
+import FriendRequestsPanel from '@/components/FriendRequestsPanel'
 
 interface UserProfileData {
   user: User | null
-  stats: {
-    followers_count: number
-    following_count: number
-    genre_badges?: GenreBadgeData[]
-  } | null
+  stats: { followers_count: number; following_count: number; friends_count: number } | null
   following: Follow[]
   followers: User[]
-  currentUserFollow: {
-    following: boolean
-    follow_id?: number | null
-  } | null
+  currentUserFollow: { following: boolean; follow_id?: number | null } | null
+  friendship: { status: FriendshipStatus; friendship_id: number | null } | null
 }
 
 interface ReadingStats {
@@ -67,43 +43,38 @@ interface ReadingStats {
   top_authors: Array<{ name: string; count: number }>
 }
 
-/**
- * User Profile Page
- * 
- * Features:
- * - User details (username, display name, bio, avatar)
- * - Follow/Unfollow button (if viewing another user)
- * - Stats (followers, following)
- * - List of following (authors, books, users)
- * - List of followers
- * 
- * For React Native:
- * - Replace Next.js navigation with React Navigation
- * - Use ScrollView or FlatList for better performance
- * - Adjust styling to StyleSheet
- */
+const cardStyle = {
+  backgroundColor: 'var(--color-surface)',
+  border: '1px solid var(--color-rim)',
+  boxShadow: '0 8px 32px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3)',
+}
+
 function UserProfileContent() {
   const params = useParams()
   const router = useRouter()
   const userId = parseInt(params.id as string, 10)
-  const { user: currentUser, isAuthenticated } = useAuth()
+  const { user: currentUser } = useAuth()
   const { unfollow, follow } = useFollows()
+  const {
+    pendingRequests,
+    friends: myFriends,
+    acceptRequest: acceptFriendRequest,
+    declineRequest: declineFriendRequest,
+  } = useFriends()
 
   const [profileData, setProfileData] = useState<UserProfileData>({
-    user: null,
-    stats: null,
-    following: [],
-    followers: [],
-    currentUserFollow: null,
+    user: null, stats: null, following: [], followers: [], currentUserFollow: null, friendship: null,
   })
   const [readingStats, setReadingStats] = useState<ReadingStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'following' | 'followers' | 'awards'>('following')
+  const [activeTab, setActiveTab] = useState<'friends' | 'following' | 'followers'>('friends')
   const [followLoading, setFollowLoading] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
-  const [selectedBadge, setSelectedBadge] = useState<GenreBadgeData | null>(null)
-  const [isBadgeModalOpen, setIsBadgeModalOpen] = useState(false)
+  const [statsLoading, setStatsLoading] = useState(true)
+  const [statsError, setStatsError] = useState(false)
+  const [profileFriends, setProfileFriends] = useState<User[]>([])
+  const [profileFriendsLoading, setProfileFriendsLoading] = useState(false)
 
   const isOwnProfile = currentUser?.id === userId
 
@@ -117,6 +88,12 @@ function UserProfileContent() {
     }
   }, [userId])
 
+  useEffect(() => {
+    if (!loading && profileData.user) {
+      fetchProfileFriends()
+    }
+  }, [loading, userId])
+
   const currentFollow = profileData.currentUserFollow
   const alreadyFollowing = currentFollow?.following ?? false
   const currentFollowId = currentFollow?.follow_id ?? null
@@ -124,20 +101,19 @@ function UserProfileContent() {
   const fetchProfile = async () => {
     setLoading(true)
     setError(null)
-
     try {
       const [profile, following, followers] = await Promise.all([
         apiClient.getUserProfile(userId),
         apiClient.getUserFollowing(userId).catch(() => []),
         apiClient.getUserFollowers(userId).catch(() => []),
       ])
-
       setProfileData({
         user: profile.user,
         stats: profile.stats,
         following,
         followers,
         currentUserFollow: profile.current_user_follow || { following: false },
+        friendship: profile.friendship || null,
       })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load user profile')
@@ -146,18 +122,34 @@ function UserProfileContent() {
     }
   }
 
+  const fetchProfileFriends = async () => {
+    setProfileFriendsLoading(true)
+    try {
+      const friends = await apiClient.getFriends(userId)
+      setProfileFriends(friends)
+    } catch {
+      // non-fatal
+    } finally {
+      setProfileFriendsLoading(false)
+    }
+  }
+
   const fetchReadingStats = async () => {
+    setStatsLoading(true)
+    setStatsError(false)
     try {
       const stats = await apiClient.getUserStats(userId)
       setReadingStats(stats)
     } catch (err) {
       console.error('Failed to fetch reading stats:', err)
+      setStatsError(true)
+    } finally {
+      setStatsLoading(false)
     }
   }
 
   const handleFollowToggle = async () => {
     if (!profileData.user || isOwnProfile) return
-
     setFollowLoading(true)
     setError(null)
     setMessage(null)
@@ -169,7 +161,6 @@ function UserProfileContent() {
         await follow('User', profileData.user.id)
         setMessage(`Now following ${profileData.user.display_name || profileData.user.username}`)
       }
-      // Refresh profile to update stats
       await fetchProfile()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update follow status')
@@ -180,10 +171,10 @@ function UserProfileContent() {
 
   if (loading) {
     return (
-      <div className="container-mobile py-12">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-          <p className="mt-4 text-slate-600">Loading profile...</p>
+      <div className="container-mobile py-12 max-w-4xl mx-auto">
+        <div className="animate-pulse space-y-4">
+          <div className="h-48 rounded-[28px]" style={{ backgroundColor: 'var(--color-surface)' }} />
+          <div className="h-64 rounded-[28px]" style={{ backgroundColor: 'var(--color-surface)' }} />
         </div>
       </div>
     )
@@ -191,84 +182,113 @@ function UserProfileContent() {
 
   if (!profileData.user) {
     return (
-      <div className="container-mobile py-12">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-slate-900 mb-4">Profile Not Found</h1>
-          <p className="text-slate-600 mb-4">{error || "The user you're looking for doesn't exist."}</p>
-          <Button onClick={() => router.back()} variant="outline">
-            Go Back
-          </Button>
-        </div>
+      <div className="container-mobile py-12 text-center">
+        <h1 className="font-serif text-2xl font-bold mb-4" style={{ color: 'var(--color-lit)' }}>
+          Profile Not Found
+        </h1>
+        <p className="mb-6" style={{ color: 'var(--color-lit-2)' }}>
+          {error || "The user you're looking for doesn't exist."}
+        </p>
+        <Button onClick={() => router.back()} variant="outline">Go Back</Button>
       </div>
     )
   }
 
   const { user, stats, following, followers } = profileData
+  const friendsCount = isOwnProfile ? myFriends.length : (profileFriends.length || stats?.friends_count || 0)
+  const friendsList = isOwnProfile ? myFriends : profileFriends
+
+  const hasGenres = readingStats?.genres && readingStats.genres.length > 0
+  const hasAuthors = readingStats?.top_authors && readingStats.top_authors.length > 0
 
   return (
     <div className="container-mobile py-6 sm:py-8">
-      <motion.div 
-        className="max-w-4xl mx-auto"
+      <motion.div
+        className="max-w-4xl mx-auto space-y-5"
         variants={containerVariants}
         initial="hidden"
         animate="visible"
       >
+        {/* Toasts */}
         {error && (
-          <motion.div variants={itemVariants} className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          <motion.div variants={itemVariants} className="rounded-2xl px-4 py-3 text-sm"
+            style={{ backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-error)', color: 'var(--color-error)' }}>
             {error}
           </motion.div>
         )}
         {message && (
-          <motion.div variants={itemVariants} className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+          <motion.div variants={itemVariants} className="rounded-2xl px-4 py-3 text-sm"
+            style={{ backgroundColor: 'var(--color-success-light)', border: '1px solid var(--color-success)', color: 'var(--color-success)' }}>
             {message}
           </motion.div>
         )}
-        {/* User Header Card */}
-        <motion.div variants={itemVariants} className="bg-white rounded-lg border border-slate-200 p-6 sm:p-8 shadow-sm mb-6">
+
+        {/* ── Friend Requests (own profile only) ── */}
+        {isOwnProfile && pendingRequests.length > 0 && (
+          <motion.div variants={itemVariants}>
+            <FriendRequestsPanel
+              requests={pendingRequests}
+              onAccept={acceptFriendRequest}
+              onDecline={declineFriendRequest}
+            />
+          </motion.div>
+        )}
+
+        {/* ── Header Card ── */}
+        <motion.div variants={itemVariants} className="rounded-[28px] p-6 sm:p-8" style={cardStyle}>
           <div className="flex flex-col sm:flex-row gap-6">
             <div className="flex-shrink-0 mx-auto sm:mx-0">
-              <Avatar
-                src={user.avatar_url}
-                name={user.display_name || user.username}
-                size="2xl"
-              />
+              <Avatar src={user.avatar_url} name={user.display_name || user.username} size="2xl" />
             </div>
             <div className="flex-1 text-center sm:text-left">
-              <h1 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-2">
+              <h1 className="font-serif text-3xl sm:text-4xl font-bold mb-1" style={{ color: 'var(--color-lit)' }}>
                 {user.display_name || user.username}
               </h1>
               {user.display_name && (
-                <p className="text-slate-600 mb-4">@{user.username}</p>
+                <p className="mb-4 text-sm" style={{ color: 'var(--color-lit-2)' }}>@{user.username}</p>
               )}
-              
+
               {stats && (
-                <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6">
-                  <div className="flex flex-wrap justify-center sm:justify-start gap-4 text-sm text-slate-600">
-                    <div className="bg-slate-50 px-3 py-1.5 rounded-full border border-slate-100">
-                      <span className="font-bold text-slate-900">{formatNumber(stats.followers_count)}</span> followers
-                    </div>
-                    <div className="bg-slate-50 px-3 py-1.5 rounded-full border border-slate-100">
-                      <span className="font-bold text-slate-900">{formatNumber(stats.following_count)}</span> following
-                    </div>
+                <div className="flex flex-wrap justify-center sm:justify-start gap-3 mb-6">
+                  <div
+                    className="px-3 py-1.5 rounded-full text-sm"
+                    style={{ backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-rim)' }}
+                  >
+                    <span className="font-bold" style={{ color: 'var(--color-lit)' }}>
+                      {formatNumber(friendsCount)}
+                    </span>
+                    <span style={{ color: 'var(--color-lit-2)' }}> friends</span>
                   </div>
-                  {stats.genre_badges && stats.genre_badges.length > 0 && (
-                    <div className="flex justify-center sm:justify-start">
-                      <GenreBadgesRow 
-                        badges={stats.genre_badges} 
-                        onBadgeClick={(badge) => {
-                          setSelectedBadge(badge)
-                          setIsBadgeModalOpen(true)
-                        }}
-                      />
-                    </div>
-                  )}
+                  <div
+                    className="px-3 py-1.5 rounded-full text-sm"
+                    style={{ backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-rim)' }}
+                  >
+                    <span className="font-bold" style={{ color: 'var(--color-lit)' }}>
+                      {formatNumber(stats.followers_count)}
+                    </span>
+                    <span style={{ color: 'var(--color-lit-2)' }}> followers</span>
+                  </div>
+                  <div
+                    className="px-3 py-1.5 rounded-full text-sm"
+                    style={{ backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-rim)' }}
+                  >
+                    <span className="font-bold" style={{ color: 'var(--color-lit)' }}>
+                      {formatNumber(stats.following_count)}
+                    </span>
+                    <span style={{ color: 'var(--color-lit-2)' }}> following</span>
+                  </div>
                 </div>
               )}
 
               <div className="flex flex-wrap justify-center sm:justify-start gap-3">
                 {!isOwnProfile && (
                   <>
-                    {profileData.currentUserFollow ? (
+                    <FriendButton
+                      userId={userId}
+                      initialStatus={profileData.friendship?.status ?? 'none'}
+                      initialFriendshipId={profileData.friendship?.friendship_id ?? null}
+                    />
+                    {profileData.currentUserFollow && (
                       <Button
                         variant={alreadyFollowing ? 'secondary' : 'primary'}
                         onClick={handleFollowToggle}
@@ -277,23 +297,12 @@ function UserProfileContent() {
                       >
                         {alreadyFollowing ? '✓ Following' : '+ Follow'}
                       </Button>
-                    ) : (
-                      <div className="px-6 py-3 text-sm text-text-muted border border-border-default rounded-lg">
-                        Checking follow status...
-                      </div>
                     )}
                   </>
                 )}
                 {isOwnProfile && (
-                  <Button
-                    variant="outline"
-                    onClick={() => router.push('/settings')}
-                    className="flex items-center gap-2"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
+                  <Button variant="outline" onClick={() => router.push('/settings')} className="flex items-center gap-2">
+                    <Settings size={15} />
                     Settings
                   </Button>
                 )}
@@ -302,200 +311,241 @@ function UserProfileContent() {
           </div>
         </motion.div>
 
-        {/* Stats Section - Visual Charts */}
-        <motion.div variants={itemVariants} className="flex flex-col gap-6 mb-6">
-          <div className="bg-white rounded-lg border border-slate-200 p-6 sm:p-8 shadow-sm">
-            <GenreChart data={readingStats?.genres || []} />
-          </div>
-          <div className="bg-white rounded-lg border border-slate-200 p-6 sm:p-8 shadow-sm">
-            <TopAuthorsChart data={readingStats?.top_authors || []} />
-          </div>
+        {/* ── Charts ── */}
+        <motion.div variants={itemVariants}>
+          {statsLoading ? (
+            <div className="grid sm:grid-cols-2 gap-5">
+              {[1, 2].map(i => (
+                <div key={i} className="rounded-[28px] p-6 sm:p-8 animate-pulse" style={cardStyle}>
+                  <div className="h-4 w-32 rounded-full mb-6" style={{ backgroundColor: 'var(--color-grove)' }} />
+                  <div className="h-48 rounded-2xl" style={{ backgroundColor: 'var(--color-grove)' }} />
+                </div>
+              ))}
+            </div>
+          ) : statsError ? (
+            <div
+              className="rounded-[28px] p-6 flex items-center justify-between gap-4"
+              style={cardStyle}
+            >
+              <div className="flex items-center gap-3">
+                <BarChart2 size={18} style={{ color: 'var(--color-lit-3)' }} />
+                <p className="text-sm" style={{ color: 'var(--color-lit-2)' }}>
+                  Couldn't load reading stats
+                </p>
+              </div>
+              <button
+                onClick={fetchReadingStats}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-colors"
+                style={{ backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-rim)', color: 'var(--color-lit-2)' }}
+                onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--color-rim-accent)')}
+                onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--color-rim)')}
+              >
+                <RefreshCw size={14} />
+                Retry
+              </button>
+            </div>
+          ) : (hasGenres || hasAuthors) ? (
+            <div className="grid sm:grid-cols-2 gap-5">
+              {hasGenres && (
+                <div className="rounded-[28px] p-6 sm:p-8" style={cardStyle}>
+                  <GenreChart data={readingStats!.genres} />
+                </div>
+              )}
+              {hasAuthors && (
+                <div className="rounded-[28px] p-6 sm:p-8" style={cardStyle}>
+                  <TopAuthorsChart data={readingStats!.top_authors} />
+                </div>
+              )}
+            </div>
+          ) : null}
         </motion.div>
 
-        {/* User Library Section */}
-        <motion.div variants={itemVariants} className="bg-white rounded-lg border border-slate-200 p-6 sm:p-8 shadow-sm mb-6">
+        {/* ── Favourite Authors ── */}
+        {user.favourite_authors && user.favourite_authors.length > 0 && (
+          <motion.div variants={itemVariants} className="rounded-[28px] p-6 sm:p-8" style={cardStyle}>
+            <div className="flex items-center gap-2 mb-5">
+              <Heart size={18} style={{ color: 'var(--color-accent)' }} />
+              <h3 className="font-serif text-lg font-bold" style={{ color: 'var(--color-lit)' }}>
+                Favourite Authors
+              </h3>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {user.favourite_authors.map(author => (
+                <span
+                  key={author.id}
+                  className="px-3 py-1.5 rounded-full text-sm font-medium"
+                  style={{
+                    backgroundColor: 'var(--color-grove)',
+                    border: '1px solid var(--color-rim)',
+                    color: 'var(--color-lit)',
+                  }}
+                >
+                  {author.name}
+                </span>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
+        {/* ── Library ── */}
+        <motion.div variants={itemVariants} className="rounded-[28px] p-6 sm:p-8" style={cardStyle}>
           <UserLibrary userId={userId} username={user.display_name || user.username} />
         </motion.div>
 
-        {/* Tabs */}
-        <motion.div variants={itemVariants} className="bg-white rounded-lg border border-slate-200 p-4 mb-6">
-          <div className="flex space-x-4 border-b border-slate-200">
-            <button
-              onClick={() => setActiveTab('following')}
-              className={`pb-2 px-4 font-medium transition-colors ${
-                activeTab === 'following'
-                  ? 'text-primary-600 border-b-2 border-primary-600'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Following ({following.length})
-            </button>
-            <button
-              onClick={() => setActiveTab('followers')}
-              className={`pb-2 px-4 font-medium transition-colors ${
-                activeTab === 'followers'
-                  ? 'text-primary-600 border-b-2 border-primary-600'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Followers ({followers.length})
-            </button>
-            <button
-              onClick={() => setActiveTab('awards')}
-              className={`pb-2 px-4 font-medium transition-colors ${
-                activeTab === 'awards'
-                  ? 'text-primary-600 border-b-2 border-primary-600'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Awards ({stats?.genre_badges?.length || 0})
-            </button>
+        {/* ── Friends / Following / Followers ── */}
+        <motion.div variants={itemVariants} className="rounded-[28px] overflow-hidden" style={cardStyle}>
+          {/* Tab bar */}
+          <div
+            className="flex px-2 pt-2 gap-1"
+            style={{ borderBottom: '1px solid var(--color-rim)' }}
+          >
+            {(['friends', 'following', 'followers'] as const).map(tab => {
+              const active = activeTab === tab
+              const count =
+                tab === 'friends' ? friendsCount :
+                tab === 'following' ? following.length :
+                followers.length
+              return (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className="relative px-5 py-3 text-sm font-bold capitalize transition-colors rounded-t-xl"
+                  style={{ color: active ? 'var(--color-accent)' : 'var(--color-lit-2)' }}
+                >
+                  {tab} <span style={{ color: active ? 'var(--color-accent)' : 'var(--color-lit-3)' }}>({count})</span>
+                  {active && (
+                    <span
+                      className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full"
+                      style={{ backgroundColor: 'var(--color-accent)' }}
+                    />
+                  )}
+                </button>
+              )
+            })}
           </div>
-        </motion.div>
 
-        {/* Tab Content */}
-        <motion.div variants={itemVariants}>
-          {/* Following Tab */}
-          {activeTab === 'following' && (
-            <div>
-              {following.length === 0 ? (
-                <div className="bg-slate-50 rounded-lg border border-slate-200 p-8 text-center">
-                  <p className="text-slate-600">Not following anyone yet</p>
+          {/* Tab content */}
+          <div className="p-5">
+
+            {/* Friends tab */}
+            {activeTab === 'friends' && (
+              profileFriendsLoading ? (
+                <div className="space-y-3">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="h-14 rounded-2xl animate-pulse" style={{ backgroundColor: 'var(--color-grove)' }} />
+                  ))}
+                </div>
+              ) : friendsList.length === 0 ? (
+                <div className="py-10 text-center">
+                  <Users size={32} className="mx-auto mb-3" style={{ color: 'var(--color-lit-3)' }} />
+                  <p className="text-sm font-medium" style={{ color: 'var(--color-lit-2)' }}>
+                    {isOwnProfile ? 'No friends yet — add someone!' : 'No friends to show'}
+                  </p>
                 </div>
               ) : (
-                <div className="space-y-4">
-                  {following.map((follow) => {
-                    if (follow.followable_type === 'Author' && follow.followable) {
-                      return (
-                        <AuthorCard
-                          key={follow.id}
-                          author={follow.followable as any}
-                          showFollowButton={!isOwnProfile}
-                        />
-                      )
+                <div className="space-y-3">
+                  {friendsList.map(friend => (
+                    <div
+                      key={friend.id}
+                      className="flex items-center gap-4 p-3 rounded-2xl transition-colors"
+                      style={{ backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-rim)' }}
+                    >
+                      <button onClick={() => router.push(`/users/${friend.id}`)} className="flex-shrink-0">
+                        <Avatar src={friend.avatar_url} name={friend.display_name || friend.username} size="sm" />
+                      </button>
+                      <button onClick={() => router.push(`/users/${friend.id}`)} className="flex-1 min-w-0 text-left">
+                        <p className="font-bold text-sm truncate" style={{ color: 'var(--color-lit)' }}>
+                          {friend.display_name || friend.username}
+                        </p>
+                        {friend.display_name && (
+                          <p className="text-xs" style={{ color: 'var(--color-lit-3)' }}>@{friend.username}</p>
+                        )}
+                      </button>
+                      <Button variant="outline" size="sm" onClick={() => router.push(`/users/${friend.id}`)}>
+                        View
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )
+            )}
+
+            {/* Following tab */}
+            {activeTab === 'following' && (
+              following.length === 0 ? (
+                <p className="py-8 text-center text-sm" style={{ color: 'var(--color-lit-2)' }}>
+                  Not following anyone yet
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {following.map(f => {
+                    if (f.followable_type === 'Author' && f.followable) {
+                      return <AuthorCard key={f.id} author={f.followable as any} showFollowButton={!isOwnProfile} />
                     }
-                    if (follow.followable_type === 'Book' && follow.followable) {
-                      return (
-                        <BookCard
-                          key={follow.id}
-                          book={follow.followable as any}
-                          showDescription={true}
-                        />
-                      )
+                    if (f.followable_type === 'Book' && f.followable) {
+                      return <BookCard key={f.id} book={f.followable as any} showDescription={true} />
                     }
-                    if (follow.followable_type === 'User' && follow.followable) {
-                      const followedUser = follow.followable as User
+                    if (f.followable_type === 'User' && f.followable) {
+                      const fu = f.followable as User
                       return (
-                        <div
-                          key={follow.id}
-                          className="bg-white rounded-lg border border-slate-200 p-4 hover:shadow-lg transition-shadow"
-                        >
-                          <div className="flex items-center gap-4">
-                            <Avatar
-                              src={followedUser.avatar_url}
-                              name={followedUser.display_name || followedUser.username}
-                              size="sm"
-                            />
-                            <div className="flex-1">
-                              <h3 className="font-semibold text-slate-900">
-                                {followedUser.display_name || followedUser.username}
-                              </h3>
-                              {followedUser.display_name && (
-                                <p className="text-sm text-slate-600">@{followedUser.username}</p>
-                              )}
-                            </div>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => router.push(`/users/${followedUser.id}`)}
-                            >
-                              View Profile
-                            </Button>
+                        <div key={f.id} className="flex items-center gap-4 p-3 rounded-2xl transition-colors"
+                          style={{ backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-rim)' }}>
+                          <Avatar src={fu.avatar_url} name={fu.display_name || fu.username} size="sm" />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-bold text-sm truncate" style={{ color: 'var(--color-lit)' }}>
+                              {fu.display_name || fu.username}
+                            </p>
+                            {fu.display_name && (
+                              <p className="text-xs" style={{ color: 'var(--color-lit-3)' }}>@{fu.username}</p>
+                            )}
                           </div>
+                          <Button variant="outline" size="sm" onClick={() => router.push(`/users/${fu.id}`)}>
+                            View
+                          </Button>
                         </div>
                       )
                     }
                     return null
                   })}
                 </div>
-              )}
-            </div>
-          )}
+              )
+            )}
 
-          {/* Followers Tab */}
-          {activeTab === 'followers' && (
-            <div>
-              {followers.length === 0 ? (
-                <div className="bg-slate-50 rounded-lg border border-slate-200 p-8 text-center">
-                  <p className="text-slate-600">No followers yet</p>
-                </div>
+            {/* Followers tab */}
+            {activeTab === 'followers' && (
+              followers.length === 0 ? (
+                <p className="py-8 text-center text-sm" style={{ color: 'var(--color-lit-2)' }}>
+                  No followers yet
+                </p>
               ) : (
-                <div className="space-y-4">
-                  {followers.map((follower) => (
-                    <div
-                      key={follower.id}
-                      className="bg-white rounded-lg border border-slate-200 p-4 hover:shadow-lg transition-shadow"
-                    >
-                      <div className="flex items-center gap-4">
-                        <Avatar
-                          src={follower.avatar_url}
-                          name={follower.display_name || follower.username}
-                          size="sm"
-                        />
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-slate-900">
-                            {follower.display_name || follower.username}
-                          </h3>
-                          {follower.display_name && (
-                            <p className="text-sm text-slate-600">@{follower.username}</p>
-                          )}
-                          {follower.bio && (
-                            <p className="text-sm text-slate-600 mt-1 line-clamp-2">{follower.bio}</p>
-                          )}
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => router.push(`/users/${follower.id}`)}
-                        >
-                          View Profile
-                        </Button>
+                <div className="space-y-3">
+                  {followers.map(follower => (
+                    <div key={follower.id} className="flex items-center gap-4 p-3 rounded-2xl transition-colors"
+                      style={{ backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-rim)' }}>
+                      <Avatar src={follower.avatar_url} name={follower.display_name || follower.username} size="sm" />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-sm truncate" style={{ color: 'var(--color-lit)' }}>
+                          {follower.display_name || follower.username}
+                        </p>
+                        {follower.display_name && (
+                          <p className="text-xs" style={{ color: 'var(--color-lit-3)' }}>@{follower.username}</p>
+                        )}
+                        {follower.bio && (
+                          <p className="text-xs mt-0.5 line-clamp-1" style={{ color: 'var(--color-lit-2)' }}>
+                            {follower.bio}
+                          </p>
+                        )}
                       </div>
+                      <Button variant="outline" size="sm" onClick={() => router.push(`/users/${follower.id}`)}>
+                        View
+                      </Button>
                     </div>
                   ))}
                 </div>
-              )}
-            </div>
-          )}
-
-          {/* Awards Tab */}
-          {activeTab === 'awards' && (
-            <div className="space-y-6 pb-12">
-              <div className="bg-slate-50 rounded-2xl border border-slate-200 p-6 sm:p-8">
-                <div className="mb-6">
-                  <h3 className="text-xl font-bold text-slate-900 mb-2">Genre Mastery</h3>
-                  <p className="text-slate-600 text-sm">
-                    Badges earned by reading books in specific genres. 1 page = 1 XP. Click any badge to see your progress!
-                  </p>
-                </div>
-                <GamificationDashboard 
-                  badges={stats?.genre_badges || []} 
-                  onBadgeClick={(badge) => {
-                    setSelectedBadge(badge)
-                    setIsBadgeModalOpen(true)
-                  }}
-                />
-              </div>
-            </div>
-          )}
+              )
+            )}
+          </div>
         </motion.div>
-
-        {/* Badge Detail Modal */}
-        <BadgeDetailModal
-          badge={selectedBadge}
-          isOpen={isBadgeModalOpen}
-          onClose={() => setIsBadgeModalOpen(false)}
-        />
       </motion.div>
     </div>
   )
@@ -508,4 +558,3 @@ export default function UserProfilePage() {
     </ProtectedRoute>
   )
 }
-

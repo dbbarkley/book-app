@@ -20,6 +20,32 @@ module Api
         render json: { recommended_books: results }, status: :ok
       end
 
+      # Wipe and regenerate recommendations synchronously using SmartRecommendationService.
+      # Because the service is purely DB-based (no external API calls), this is fast
+      # enough to run in-request. Returns { books_count, authors_count } on success.
+      #
+      # Rate-limited: users must wait REGENERATE_COOLDOWN between calls to prevent
+      # repeated DB load from abusive or accidental rapid refreshes.
+      REGENERATE_COOLDOWN = 5.minutes
+
+      def regenerate
+        last_rec = Recommendation.where(user: current_user, source: 'smart_v1').maximum(:updated_at)
+        if last_rec && last_rec > REGENERATE_COOLDOWN.ago
+          wait_seconds = (last_rec + REGENERATE_COOLDOWN - Time.current).ceil
+          return render json: {
+            error: "Please wait #{wait_seconds}s before regenerating again"
+          }, status: :too_many_requests
+        end
+
+        result = SmartRecommendationService.new(current_user).call
+
+        if result[:error]
+          render json: { error: result[:error] }, status: :unprocessable_entity
+        else
+          render json: { books_count: result[:books], authors_count: result[:authors] }, status: :ok
+        end
+      end
+
       def new_releases
         render json: { new_releases: [] }, status: :ok
       end
@@ -82,7 +108,7 @@ module Api
             book: serialize_book_summary(item),
             reason: rec.reason,
             score: rec.score,
-            source: rec.source || 'llm_v1'
+            source: rec.source || 'smart_v1'
           }
         when 'Author'
           {
@@ -90,7 +116,7 @@ module Api
             author: serialize_author_summary(item),
             reason: rec.reason,
             score: rec.score,
-            source: rec.source || 'llm_v1'
+            source: rec.source || 'smart_v1'
           }
         end
       end

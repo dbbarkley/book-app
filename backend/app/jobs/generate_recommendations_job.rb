@@ -5,23 +5,12 @@ class GenerateRecommendationsJob < ApplicationJob
     user = User.find_by(id: user_id)
     return unless user
 
-    Rails.logger.info "Starting recommendation generation for User #{user.id}"
+    result = SmartRecommendationService.new(user).call
 
-    # 1. Get suggestions from LLM
-    llm_output = LlmRecommendationService.new(user).call
-    
-    if llm_output[:error]
-      Rails.logger.error "Recommendation Job Failed: #{llm_output[:error]}"
-      return
+    if result[:error]
+      Rails.logger.error("[RecsJob] Failed for User #{user_id}: #{result[:error]}")
+    else
+      Rails.logger.info("[RecsJob] Done for User #{user_id} — #{result[:books]} books, #{result[:authors]} authors")
     end
-
-    # 2. Clear old LLM recommendations for this user to keep it fresh
-    Recommendation.where(user: user, source: 'llm_v1').delete_all
-
-    # 3. Resolve suggestions into DB records
-    RecommendationResolutionService.new(user, llm_output).call
-
-    Rails.logger.info "Successfully generated recommendations for User #{user.id}"
   end
 end
-

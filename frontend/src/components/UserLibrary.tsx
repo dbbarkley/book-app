@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useUserLibrary } from '@book-app/shared'
 import UserLibraryShelf from './UserLibraryShelf'
-import { SkeletonLoader } from './SkeletonLoader'
+import { BookOpen } from 'lucide-react'
 
 interface UserLibraryProps {
   userId: number
@@ -19,17 +19,25 @@ export default function UserLibrary({ userId, username }: UserLibraryProps) {
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="flex space-x-2 overflow-x-auto pb-2 scrollbar-hide">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-10 w-24 bg-slate-200 animate-pulse rounded-full" />
+        {/* Tab skeleton */}
+        <div className="flex gap-2">
+          {[1, 2, 3, 4].map(i => (
+            <div
+              key={i}
+              className="h-9 w-24 animate-pulse rounded-full"
+              style={{ backgroundColor: 'var(--color-grove)' }}
+            />
           ))}
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="space-y-3">
-              <SkeletonLoader variant="rectangular" className="aspect-[2/3] w-full rounded-lg" />
-              <SkeletonLoader variant="text" width="80%" />
-              <SkeletonLoader variant="text" width="60%" />
+        {/* Card skeletons */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="animate-pulse rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--color-grove)' }}>
+              <div className="w-full" style={{ aspectRatio: '2/3', backgroundColor: 'var(--color-grove)' }} />
+              <div className="p-3 space-y-2">
+                <div className="h-3 rounded-full w-3/4" style={{ backgroundColor: 'var(--color-surface)' }} />
+                <div className="h-3 rounded-full w-1/2" style={{ backgroundColor: 'var(--color-surface)' }} />
+              </div>
             </div>
           ))}
         </div>
@@ -39,90 +47,84 @@ export default function UserLibrary({ userId, username }: UserLibraryProps) {
 
   if (error) {
     return (
-      <div className="p-6 text-center bg-red-50 text-red-600 rounded-xl border border-red-100">
-        <p>Failed to load library: {error}</p>
+      <div
+        className="p-6 text-center rounded-2xl text-sm"
+        style={{ backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-error)', color: 'var(--color-error)' }}
+      >
+        Failed to load library: {error}
       </div>
     )
   }
 
   const tabs: { id: ShelfTab; label: string; count: number }[] = [
-    { id: 'reading', label: 'Reading', count: groupedLibrary.reading.length },
-    { id: 'to_read', label: 'To Read', count: groupedLibrary.to_read.length },
-    { id: 'read', label: 'Read', count: groupedLibrary.read.length },
-    { id: 'dnf', label: 'DNF', count: groupedLibrary.dnf.length },
+    { id: 'reading', label: 'Reading',  count: groupedLibrary.reading.length  },
+    { id: 'to_read', label: 'To Read',  count: groupedLibrary.to_read.length  },
+    { id: 'read',    label: 'Read',     count: groupedLibrary.read.length     },
+    { id: 'dnf',     label: 'DNF',      count: groupedLibrary.dnf.length      },
   ]
 
-  // Set active tab to the first one with books if current is empty and others aren't
-  // But only on initial load or if we want to be helpful. 
-  // For now, let's just stick to 'reading' as default.
-
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-slate-900">Library</h2>
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex items-center gap-2">
+        <BookOpen size={18} style={{ color: 'var(--color-accent)' }} />
+        <h2 className="font-serif text-xl font-bold" style={{ color: 'var(--color-lit)' }}>
+          Library
+        </h2>
       </div>
 
-      {/* Segmented Control / Tabs */}
-      <div className="flex space-x-1 bg-slate-100 p-1 rounded-xl w-full sm:w-max">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`
-              flex-1 sm:flex-none px-4 py-2 text-sm font-medium rounded-lg transition-all
-              ${activeTab === tab.id 
-                ? 'bg-white text-primary-600 shadow-sm' 
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'}
-            `}
-          >
-            {tab.label}
-            <span className={`ml-2 px-1.5 py-0.5 rounded-full text-xs ${
-              activeTab === tab.id ? 'bg-primary-50 text-primary-600' : 'bg-slate-200 text-slate-600'
-            }`}>
-              {tab.count}
-            </span>
-          </button>
-        ))}
+      {/* Tabs */}
+      <div className="flex gap-1.5 flex-wrap">
+        {tabs.map(tab => {
+          const active = activeTab === tab.id
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-bold transition-all"
+              style={active
+                ? { backgroundColor: 'var(--color-accent)', color: 'var(--color-accent-on)' }
+                : { backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-rim)', color: 'var(--color-lit-2)' }
+              }
+            >
+              {tab.label}
+              <span
+                className="text-xs px-1.5 py-0.5 rounded-full font-bold"
+                style={active
+                  ? { backgroundColor: 'rgba(26,18,5,0.25)', color: 'var(--color-accent-on)' }
+                  : { backgroundColor: 'var(--color-surface)', color: 'var(--color-lit-3)' }
+                }
+              >
+                {tab.count}
+              </span>
+            </button>
+          )
+        })}
       </div>
 
-      {/* Shelf Content */}
-      <div className="mt-6">
+      {/* Shelf content */}
+      <div>
         {activeTab === 'reading' && (
-          <UserLibraryShelf
-            userBooks={groupedLibrary.reading}
-            shelfName="Reading"
-            emptyMessage={`${username} isn't currently reading any books publicly.`}
-          />
+          <UserLibraryShelf userBooks={groupedLibrary.reading} shelfName="Reading"
+            emptyMessage={`${username} isn't currently reading any books publicly.`} />
         )}
         {activeTab === 'to_read' && (
-          <UserLibraryShelf
-            userBooks={groupedLibrary.to_read}
-            shelfName="To Read"
-            emptyMessage={`${username} hasn't added any books to their "To Read" list publicly.`}
-          />
+          <UserLibraryShelf userBooks={groupedLibrary.to_read} shelfName="To Read"
+            emptyMessage={`${username} hasn't added any books to their "To Read" list publicly.`} />
         )}
         {activeTab === 'read' && (
-          <UserLibraryShelf
-            userBooks={groupedLibrary.read}
-            shelfName="Read"
-            emptyMessage={`${username} hasn't marked any books as "Read" publicly.`}
-          />
+          <UserLibraryShelf userBooks={groupedLibrary.read} shelfName="Read"
+            emptyMessage={`${username} hasn't marked any books as "Read" publicly.`} />
         )}
         {activeTab === 'dnf' && (
-          <UserLibraryShelf
-            userBooks={groupedLibrary.dnf}
-            shelfName="DNF"
-            emptyMessage={`${username} hasn't shared any books they didn't finish.`}
-          />
+          <UserLibraryShelf userBooks={groupedLibrary.dnf} shelfName="DNF"
+            emptyMessage={`${username} hasn't shared any books they didn't finish.`} />
         )}
       </div>
 
-      <div className="mt-8 pt-6 border-t border-slate-100">
-        <p className="text-xs text-slate-400 italic">
-          * Only public books are shown. Private reading lists are never displayed to other users.
-        </p>
-      </div>
+      <p className="text-xs pt-2" style={{ color: 'var(--color-lit-3)', borderTop: '1px solid var(--color-rim)' }}>
+        Only public books are shown. Private shelves are never visible to other users.
+      </p>
     </div>
   )
 }
-

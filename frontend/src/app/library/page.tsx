@@ -1,31 +1,29 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
-import { Book as BookIcon, CheckCircle, XCircle, Lock } from 'lucide-react'
-import { 
-  useAuth, 
-  usePrivateLibrary, 
+import { Book as BookIcon, CheckCircle, XCircle, Lock, Search, X } from 'lucide-react'
+import {
+  useAuth,
+  usePrivateLibrary,
   useUserLibrary,
-  useMilestones 
+  useMilestones
 } from '@book-app/shared'
 import Button from '@/components/Button'
 import Shelf from '@/components/Shelf'
 import ReadingHero from '@/components/ReadingHero'
 import LibraryStats from '@/components/LibraryStats'
-import { Spotlight } from '@/components/onboarding/Spotlight'
+import BookCard from '@/components/BookCard'
 import GoalSettingModal from '@/components/library/GoalSettingModal'
 
-/**
- * Modernized Books Library Page
- * 
- * Features:
- * - Stats overview dashboard
- * - Featured "Currently Reading" hero section
- * - Horizontal scrolling "Shelves" for other sections
- * - Sticky navigation for quick shelf access
- * - Improved empty and loading states
- */
+const SHELF_LABELS: Record<string, string> = {
+  reading:  'Reading',
+  to_read:  'To Read',
+  read:     'Completed',
+  dnf:      'Did Not Finish',
+  private:  'Private',
+}
+
 export default function BooksLibraryPage() {
   const { user, isAuthenticated } = useAuth()
   const {
@@ -48,9 +46,9 @@ export default function BooksLibraryPage() {
 
   const [isGoalModalOpen, setIsGoalModalOpen] = useState(false)
   const [hasAttemptedModal, setHasAttemptedModal] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
-    // Show goal modal 2 seconds after landing if not set and hasn't been attempted this session
     if (isAuthenticated && !hasViewedMilestone('goal_set') && !hasAttemptedModal) {
       const timer = setTimeout(() => {
         if (!hasViewedMilestone('goal_set')) {
@@ -67,11 +65,10 @@ export default function BooksLibraryPage() {
     refreshPrivateLibrary()
   }
 
-  // Grouped books from library
   const readingBooks = groupedLibrary?.reading || []
-  const toReadBooks = groupedLibrary?.to_read || []
-  const readBooks = groupedLibrary?.read || []
-  const dnfBooks = groupedLibrary?.dnf || []
+  const toReadBooks  = groupedLibrary?.to_read  || []
+  const readBooks    = groupedLibrary?.read      || []
+  const dnfBooks     = groupedLibrary?.dnf       || []
 
   const currentYear = new Date().getFullYear()
   const readThisYear = readBooks.filter(ub => {
@@ -80,43 +77,60 @@ export default function BooksLibraryPage() {
   }).length
 
   const totalPublicBooks =
-    (readingBooks?.length || 0) + 
-    (toReadBooks?.length || 0) + 
-    (readBooks?.length || 0) + 
-    (dnfBooks?.length || 0)
+    (readingBooks?.length || 0) +
+    (toReadBooks?.length  || 0) +
+    (readBooks?.length    || 0) +
+    (dnfBooks?.length     || 0)
 
   const stats = {
-    reading: readingBooks.length,
-    toRead: toReadBooks.length,
-    read: readBooks.length,
-    readThisYear: readThisYear,
-    dnf: dnfBooks.length,
-    private: privateBooks.length
+    reading:     readingBooks.length,
+    toRead:      toReadBooks.length,
+    read:        readBooks.length,
+    readThisYear,
+    dnf:         dnfBooks.length,
+    private:     privateBooks.length,
   }
 
+  // ── Search ────────────────────────────────────────────────────────────────
+  const isSearching = searchQuery.trim().length > 0
+
+  const searchResults = useMemo(() => {
+    if (!isSearching) return []
+    const q = searchQuery.toLowerCase()
+    const allBooks = [
+      ...readingBooks.map(b => ({ ...b, _shelf: 'reading'  as const })),
+      ...toReadBooks .map(b => ({ ...b, _shelf: 'to_read'  as const })),
+      ...readBooks   .map(b => ({ ...b, _shelf: 'read'     as const })),
+      ...dnfBooks    .map(b => ({ ...b, _shelf: 'dnf'      as const })),
+      ...privateBooks.map(b => ({ ...b, _shelf: 'private'  as const })),
+    ]
+    return allBooks.filter(ub => {
+      const title  = ub.book?.title?.toLowerCase()       || ''
+      const author = ub.book?.author_name?.toLowerCase() || ''
+      return title.includes(q) || author.includes(q)
+    })
+  }, [searchQuery, isSearching, readingBooks, toReadBooks, readBooks, dnfBooks, privateBooks])
+
+  // ── Auth gate ─────────────────────────────────────────────────────────────
   if (!isAuthenticated) {
     return (
       <div className="container-mobile py-24">
         <div className="text-center max-w-md mx-auto">
           <div className="flex justify-center mb-6">
-            <div className="bg-primary-50 p-6 rounded-full animate-bounce">
-              <BookIcon className="w-16 h-16 text-primary-600" />
+            <div className="p-6 rounded-full" style={{ backgroundColor: 'var(--color-accent-subtle)' }}>
+              <BookIcon className="w-16 h-16 text-accent" />
             </div>
           </div>
-          <h1 className="text-3xl font-bold text-slate-900 mb-4">Your Library Awaits</h1>
-          <p className="text-slate-600 mb-8 text-lg">
+          <h1 className="font-serif text-3xl font-bold text-lit mb-4">Your Library Awaits</h1>
+          <p className="text-lit-2 mb-8 text-lg">
             Sign in to see your personal book collection and track your reading progress.
           </p>
           <div className="flex gap-4 justify-center">
             <Link href="/login">
-              <Button variant="primary" size="lg" className="px-8">
-              Sign In
-              </Button>
+              <Button variant="primary" size="lg" className="px-8">Sign In</Button>
             </Link>
             <Link href="/signup">
-              <Button variant="outline" size="lg" className="px-8">
-              Sign Up
-              </Button>
+              <Button variant="outline" size="lg" className="px-8">Sign Up</Button>
             </Link>
           </div>
         </div>
@@ -125,36 +139,78 @@ export default function BooksLibraryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/50">
+    <div className="min-h-screen">
       <div className="container-mobile py-8 sm:py-12 max-w-6xl">
+
         {/* Header */}
-        <div className="flex items-start justify-between gap-4 mb-8">
+        <div className="flex items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-4xl font-extrabold text-slate-900 mb-2 tracking-tight">Library</h1>
-            <p className="text-slate-600 text-base">
-              {totalPublicBooks === 0
-                ? 'Start building your reading collection today'
-                : `You have ${totalPublicBooks} books in your public collection.`}
-            </p>
+            <h1 className="font-serif text-3xl font-bold text-lit">
+              {user?.display_name || user?.username}'s Books
+            </h1>
+            {totalPublicBooks > 0 && (
+              <p className="text-sm mt-0.5" style={{ color: 'var(--color-lit-3)' }}>
+                {totalPublicBooks} book{totalPublicBooks !== 1 ? 's' : ''} in your collection
+              </p>
+            )}
           </div>
-          <Link href="/search?type=books" className="flex-none pt-1">
+          <Link href="/search?type=books" className="flex-none">
             <Button variant="primary" size="sm" className="shadow-md rounded-xl px-4 py-2 text-sm font-bold">
               + Add Books
             </Button>
           </Link>
         </div>
 
-        {/* Stats Dashboard */}
-        <Spotlight
-          isVisible={!hasViewedMilestone('personal_library')}
-          message="Your reading stats and shelves live here. Track your progress as you read."
-          onDismiss={() => markMilestoneViewed('personal_library')}
-          position="bottom"
-        >
-          <LibraryStats stats={stats} goal={readingGoal} onGoalClick={() => setIsGoalModalOpen(true)} />
-        </Spotlight>
+        {/* Search bar */}
+        {totalPublicBooks > 0 && (
+          <div className="mb-8">
+            <div className="relative max-w-md">
+              <Search
+                size={16}
+                className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"
+                style={{ color: 'var(--color-lit-3)' }}
+              />
+              <input
+                type="text"
+                placeholder="Search your library by title or author…"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-10 py-2.5 rounded-xl text-sm font-medium outline-none transition-all"
+                style={{
+                  backgroundColor: 'var(--color-grove)',
+                  border: '1px solid var(--color-rim)',
+                  color: 'var(--color-lit)',
+                }}
+                onFocus={e => (e.currentTarget.style.borderColor = 'var(--color-rim-accent)')}
+                onBlur={e => (e.currentTarget.style.borderColor = 'var(--color-rim)')}
+              />
+              {isSearching && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded transition-colors"
+                  style={{ color: 'var(--color-lit-3)' }}
+                  onMouseEnter={e => (e.currentTarget.style.color = 'var(--color-lit)')}
+                  onMouseLeave={e => (e.currentTarget.style.color = 'var(--color-lit-3)')}
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
 
-        {/* Goal Setting Modal */}
+            {/* Result count — only shown while searching */}
+            {isSearching && (
+              <p className="mt-2 text-xs font-medium" style={{ color: 'var(--color-lit-3)' }}>
+                {searchResults.length === 0
+                  ? `No books match "${searchQuery}"`
+                  : `${searchResults.length} book${searchResults.length === 1 ? '' : 's'} found`}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Stats */}
+        <LibraryStats stats={stats} goal={readingGoal} onGoalClick={() => setIsGoalModalOpen(true)} />
+
         <GoalSettingModal
           isOpen={isGoalModalOpen}
           onClose={() => setIsGoalModalOpen(false)}
@@ -162,102 +218,148 @@ export default function BooksLibraryPage() {
           isLoading={isGoalLoading}
         />
 
-        {/* Error Message */}
+        {/* Error */}
         {libraryError && (
-          <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-8 flex items-center gap-3 text-red-800">
+          <div className="rounded-2xl p-4 mb-8 flex items-center gap-3" style={{ backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-error)', color: 'var(--color-error)' }}>
             <span className="text-xl">⚠️</span>
             <p className="text-sm font-medium">{libraryError}</p>
           </div>
         )}
 
-        {/* Loading State */}
+        {/* Loading */}
         {libraryLoading && totalPublicBooks === 0 && (
           <div className="text-center py-24">
-            <div className="inline-block animate-spin rounded-full h-10 w-10 border-4 border-primary-600 border-t-transparent mb-4"></div>
-            <p className="text-slate-600 font-medium">Arranging your bookshelves...</p>
+            <div className="inline-block animate-spin rounded-full h-10 w-10 border-4 border-accent border-t-transparent mb-4" />
+            <p className="text-lit-2 font-medium">Arranging your bookshelves...</p>
           </div>
         )}
 
-        {/* Empty State */}
+        {/* Empty library */}
         {!libraryLoading && totalPublicBooks === 0 && privateBooks.length === 0 && (
-          <div className="text-center py-20 bg-white border border-slate-200 rounded-3xl shadow-sm mb-12">
+          <div className="text-center py-20 rounded-3xl mb-12" style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-rim)', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}>
             <div className="flex justify-center mb-6">
-              <div className="bg-slate-50 p-6 rounded-full">
-                <BookIcon className="w-16 h-16 text-slate-400" />
+              <div className="p-6 rounded-full" style={{ backgroundColor: 'var(--color-grove)' }}>
+                <BookIcon className="w-16 h-16 text-ink-3" />
               </div>
             </div>
-            <h2 className="text-2xl font-bold text-slate-900 mb-3">Your library is empty</h2>
-            <p className="text-slate-600 mb-8 max-w-sm mx-auto">
+            <h2 className="font-serif text-2xl font-bold text-ink mb-3">Your library is empty</h2>
+            <p className="text-ink-2 mb-8 max-w-sm mx-auto">
               Start adding books to track your reading journey, set goals, and organize your collection.
             </p>
             <Link href="/books/search">
-              <Button variant="primary" size="lg" className="px-10 shadow-lg">
-                Search for Books
-              </Button>
+              <Button variant="primary" size="lg" className="px-10 shadow-lg">Search for Books</Button>
             </Link>
           </div>
         )}
 
-        {/* Currently Reading - Hero Section */}
-        <ReadingHero books={readingBooks} onUpdate={handleUpdate} />
-
-        {/* To Read Shelf */}
-        <Shelf 
-          shelfId="to-read"
-          title="To Read" 
-          icon={<BookIcon className="w-6 h-6 text-amber-600" />} 
-          books={toReadBooks} 
-          subtitle="Your future adventures"
-          onUpdate={handleUpdate}
-        />
-
-        {/* Read Shelf */}
-        <Shelf 
-          shelfId="read"
-          title="Completed" 
-          icon={<CheckCircle className="w-6 h-6 text-green-600" />} 
-          books={readBooks} 
-          subtitle="Books you've finished"
-          onUpdate={handleUpdate}
-        />
-
-        {/* DNF Shelf */}
-        <Shelf 
-          shelfId="dnf"
-          title="Did Not Finish" 
-          icon={<XCircle className="w-6 h-6 text-rose-600" />} 
-          books={dnfBooks} 
-          subtitle="On hold or stopped"
-          onUpdate={handleUpdate}
-        />
-
-        {/* Private Section */}
-        <section id="private" className="mt-12 pt-12 border-t border-slate-200 scroll-mt-40">
-          <Shelf 
-            shelfId="private-books"
-            title="Private Collection" 
-            icon={<Lock className="w-6 h-6 text-slate-600" />} 
-            books={privateBooks} 
-            subtitle="Only visible to you"
-            onUpdate={handleUpdate}
-          />
-          
-          {privateBooks.length === 0 && !privateLoading && (
-            <div className="bg-white border border-dashed border-slate-300 rounded-3xl p-10 text-center text-slate-500">
-              <div className="flex justify-center mb-3">
-                <Lock className="w-8 h-8 text-slate-300" />
+        {/* ── SEARCH RESULTS VIEW ─────────────────────────────────────── */}
+        {isSearching && (
+          <section>
+            {searchResults.length === 0 ? (
+              <div
+                className="rounded-2xl px-6 py-16 text-center"
+                style={{ backgroundColor: 'var(--color-grove)', border: '1px dashed var(--color-rim)' }}
+              >
+                <Search size={32} className="mx-auto mb-4" style={{ color: 'var(--color-lit-3)' }} />
+                <p className="font-semibold text-base" style={{ color: 'var(--color-lit-2)' }}>
+                  No books match &ldquo;{searchQuery}&rdquo;
+                </p>
+                <p className="text-sm mt-1" style={{ color: 'var(--color-lit-3)' }}>
+                  Try a different title or author name.
+                </p>
               </div>
-              <p className="font-medium">No private books yet</p>
-              <p className="text-sm text-slate-400 mt-1">Books you mark as private will appear here.</p>
-            </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                {searchResults.map(ub => (
+                  ub.book ? (
+                    <div key={ub.id} className="relative">
+                      <BookCard
+                        book={ub.book}
+                        showDescription={false}
+                        userBook={ub}
+                        coverSize="medium"
+                      />
+                      {/* Shelf badge */}
+                      <span
+                        className="absolute top-2 left-2 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full"
+                        style={{
+                          backgroundColor: 'rgba(13,26,15,0.85)',
+                          color: 'var(--color-accent)',
+                          border: '1px solid var(--color-rim-accent)',
+                          backdropFilter: 'blur(4px)',
+                        }}
+                      >
+                        {SHELF_LABELS[ub._shelf]}
+                      </span>
+                    </div>
+                  ) : null
+                ))}
+              </div>
+            )}
+          </section>
         )}
 
-          {privateError && (
-            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mt-4 text-sm text-amber-800">
-              {privateError}
-            </div>
-          )}
-        </section>
+        {/* ── NORMAL SHELF VIEW (hidden while searching) ───────────────── */}
+        {!isSearching && (
+          <>
+            <ReadingHero books={readingBooks} onUpdate={handleUpdate} />
+
+            <Shelf
+              shelfId="to-read"
+              title="To Read"
+              icon={<BookIcon className="w-5 h-5" style={{ color: 'var(--color-accent)' }} />}
+              books={toReadBooks}
+              subtitle="Your future adventures"
+              onUpdate={handleUpdate}
+            />
+
+            <Shelf
+              shelfId="read"
+              title="Completed"
+              icon={<CheckCircle className="w-5 h-5" style={{ color: 'var(--color-accent)' }} />}
+              books={readBooks}
+              subtitle="Books you've finished"
+              onUpdate={handleUpdate}
+            />
+
+            <Shelf
+              shelfId="dnf"
+              title="Did Not Finish"
+              icon={<XCircle className="w-5 h-5" style={{ color: 'var(--color-accent)' }} />}
+              books={dnfBooks}
+              subtitle="On hold or stopped"
+              onUpdate={handleUpdate}
+            />
+
+            <section id="private" className="mt-12 pt-12 scroll-mt-40" style={{ borderTop: '1px solid var(--color-rim)' }}>
+              <Shelf
+                shelfId="private-books"
+                title="Private Collection"
+                icon={<Lock className="w-5 h-5" style={{ color: 'var(--color-lit-2)' }} />}
+                books={privateBooks}
+                subtitle="Only visible to you"
+                onUpdate={handleUpdate}
+              />
+
+              {privateBooks.length === 0 && !privateLoading && (
+                <div className="rounded-3xl p-10 text-center" style={{ border: '1px dashed var(--color-rim)', backgroundColor: 'var(--color-grove)' }}>
+                  <div className="flex justify-center mb-3">
+                    <Lock className="w-8 h-8 text-ink-3" />
+                  </div>
+                  <p className="font-medium text-ink-2">No private books yet</p>
+                  <p className="text-sm text-ink-3 mt-1">Books you mark as private will appear here.</p>
+                </div>
+              )}
+
+              {privateError && (
+                <div className="rounded-2xl p-4 mt-4 text-sm" style={{ backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-rim-accent)', color: 'var(--color-accent)' }}>
+                  {privateError}
+                </div>
+              )}
+            </section>
+          </>
+        )}
+
       </div>
     </div>
   )

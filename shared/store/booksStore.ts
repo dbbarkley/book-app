@@ -21,7 +21,7 @@ interface BooksState {
   // Actions
   fetchUserBook: (bookId: number) => Promise<UserBook | null>
   addToShelf: (
-    bookId: number,
+    bookId: number | null,
     status: ShelfStatus,
     bookData?: Book,
     options?: { visibility?: Visibility; dnf_reason?: string; dnf_page?: number; total_pages?: number }
@@ -51,6 +51,7 @@ interface BooksState {
   // Search result management
   cacheSearchResults: (books: Book[]) => void
   getSearchResult: (bookId: number) => Book | null
+  getSearchResultByGoogleId: (googleId: string) => Book | null
   clearSearchResults: () => void
   // Helpers
   getUserBookByBookId: (bookId: number) => UserBook | null
@@ -131,7 +132,7 @@ export const useBooksStore = create<BooksState>((set, get) => ({
   },
 
   addToShelf: async (
-    bookId: number,
+    bookId: number | null,
     status: ShelfStatus,
     bookData?: Book,
     options?: { visibility?: Visibility; dnf_reason?: string; dnf_page?: number; total_pages?: number }
@@ -300,6 +301,10 @@ export const useBooksStore = create<BooksState>((set, get) => ({
 
   getSearchResult: (bookId: number) => {
     return get().searchResults[bookId] || null
+  },
+
+  getSearchResultByGoogleId: (googleId: string) => {
+    return Object.values(get().searchResults).find(b => b.google_books_id === googleId) || null
   },
 
   getUserBookByBookId: (bookId: number) => {
