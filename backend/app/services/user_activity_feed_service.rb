@@ -9,7 +9,9 @@ class UserActivityFeedService < BaseService
   private
 
   def execute
+    # Fans out to: followers + mutual friends + the actor themselves
     recipients = @actor.followers.to_a
+    recipients.concat(@actor.friends.to_a)
     recipients << @actor
     recipients << @feedable if @feedable.is_a?(User)
 

@@ -26,9 +26,53 @@ class UserBook < ApplicationRecord
   # Calculate completion percentage when pages are updated
   before_save :calculate_completion_percentage
   before_validation :sync_status_with_shelf
-  # after_save :update_genre_xp  # disabled: gamification hidden
+
+  # ── Feed fan-out ─────────────────────────────────────────────────────────────
+  after_create_commit  :fan_out_added_to_shelf
+  after_update_commit  :fan_out_status_or_review_change
 
   private
+
+  def fan_out_added_to_shelf
+    return if visibility == 'private'
+    return unless %w[to_read reading].include?(status)
+
+    GenerateUserActivityFeedItemsJob.perform_later(
+      user_id, 'UserBook', id, 'user_added_book',
+      { 'book' => book_metadata }
+    )
+  end
+
+  def fan_out_status_or_review_change
+    return if visibility == 'private'
+
+    if saved_change_to_status?
+      old_status, new_status = saved_change_to_status
+      if new_status == 'read' && old_status != 'read'
+        GenerateUserActivityFeedItemsJob.perform_later(
+          user_id, 'UserBook', id, 'user_finished_book',
+          { 'book' => book_metadata }
+        )
+      end
+    end
+
+    if saved_change_to_review? && review.present? && saved_changes['review'].first.blank?
+      GenerateUserActivityFeedItemsJob.perform_later(
+        user_id, 'UserBook', id, 'user_review',
+        { 'book' => book_metadata, 'rating' => rating, 'review' => review }
+      )
+    end
+  end
+
+  def book_metadata
+    {
+      'id'             => book.id,
+      'title'          => book.title,
+      'author_name'    => book.author&.name,
+      'cover_image_url'=> book.cover_image_url,
+      'google_books_id'=> book.google_books_id,
+    }
+  end
 
   # def update_genre_xp
   #   if saved_change_to_pages_read?

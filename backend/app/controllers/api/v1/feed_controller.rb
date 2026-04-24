@@ -1,150 +1,196 @@
 module Api
   module V1
     class FeedController < BaseController
+      include Authenticable
+      before_action :authenticate_user!
+
+      PERSONAL_NOTIFICATION_TYPES = %w[friend_request friend_accepted book_suggestion].freeze
+
+      # GET /api/v1/feed
       def index
-        page = params[:page]&.to_i || 1
-        per_page = [params[:per_page]&.to_i || 50, 100].min
-        activity_type = params[:activity_type]
+        page     = params[:page]&.to_i || 1
+        per_page = [params[:per_page]&.to_i || 30, 100].min
+        last_viewed = current_user.last_feed_viewed_at
 
         feed_items = current_user.feed_items
-                                 .includes(:feedable)
-                                 .recent
+                                 .includes(feedable: [:book, :author])
+                                 .order(created_at: :desc)
+                                 .limit(per_page * 3)
 
-        feed_items = feed_items.by_activity_type(activity_type) if activity_type.present?
+        notifications = current_user.notifications
+                                    .where(notification_type: PERSONAL_NOTIFICATION_TYPES)
+                                    .includes(:notifiable)
+                                    .order(created_at: :desc)
+                                    .limit(50)
 
-        total_count = feed_items.count
-        offset = (page - 1) * per_page
-        feed_items = feed_items.limit(per_page).offset(offset)
-        total_pages = (total_count.to_f / per_page).ceil
+        feed_entries = serialize_feed_items(feed_items, last_viewed) +
+                       serialize_notifications(notifications, last_viewed)
+
+        feed_entries.sort_by! { |e| e[:created_at] }.reverse!
+
+        total = feed_entries.length
+        page_entries = feed_entries.slice((page - 1) * per_page, per_page) || []
 
         render json: {
-          feed_items: serialize_feed_items(feed_items),
+          entries: page_entries,
           pagination: {
             page: page,
             per_page: per_page,
-            total_pages: total_pages,
-            total_count: total_count
+            total_count: total,
+            total_pages: (total.to_f / per_page).ceil
           }
         }, status: :ok
       end
 
+      # POST /api/v1/feed/mark_viewed
+      def mark_viewed
+        current_user.update_column(:last_feed_viewed_at, Time.current)
+        render json: { ok: true }, status: :ok
+      end
+
+      # GET /api/v1/feed/unread_count
+      def unread_count
+        last_viewed = current_user.last_feed_viewed_at
+
+        if last_viewed.nil?
+          count = [current_user.feed_items.count +
+                   current_user.notifications.where(notification_type: PERSONAL_NOTIFICATION_TYPES).count, 99].min
+        else
+          feed_count  = current_user.feed_items.where('created_at > ?', last_viewed).count
+          notif_count = current_user.notifications
+                                    .where(notification_type: PERSONAL_NOTIFICATION_TYPES)
+                                    .where('created_at > ?', last_viewed).count
+          count = [feed_count + notif_count, 99].min
+        end
+
+        render json: { count: count }, status: :ok
+      end
+
       private
 
-      def serialize_feed_items(feed_items)
-        # Collect all user IDs from metadata to avoid N+1 queries
-        user_ids = []
-        feed_items.each do |item|
-          user_ids << item.metadata&.dig('actor', 'id')
-          user_ids << item.metadata&.dig('target_user', 'id')
-        end
-        user_ids = user_ids.compact.uniq
-        users_map = User.where(id: user_ids).index_by(&:id)
+      def serialize_feed_items(feed_items, last_viewed)
+        actor_ids = feed_items.map { |i| i.metadata&.dig('actor', 'id') }.compact.uniq
+        actors    = User.where(id: actor_ids).index_by(&:id)
 
-        feed_items.map do |item|
-          # Deep clone metadata to avoid modifying the original frozen object
+        feed_items.filter_map do |item|
+          feedable = item.feedable
+          next if feedable.is_a?(UserBook) && feedable.visibility == 'private'
+
           metadata = item.metadata ? JSON.parse(item.metadata.to_json) : {}
-          
-          # Hydrate actor info with fresh data from database
-          actor_id = metadata.dig('actor', 'id')
-          if actor_id && (actor = users_map[actor_id])
-            metadata['actor']['avatar_url'] = actor.avatar_url_with_attachment
-            metadata['actor']['display_name'] = actor.display_name
-            metadata['actor']['username'] = actor.username
-          end
-
-          # Hydrate target user info (for follow activities)
-          target_user_id = metadata.dig('target_user', 'id')
-          if target_user_id && (target = users_map[target_user_id])
-            metadata['target_user']['avatar_url'] = target.avatar_url_with_attachment
-            metadata['target_user']['display_name'] = target.display_name
-            metadata['target_user']['username'] = target.username
+          if (actor_id = metadata.dig('actor', 'id')) && (actor = actors[actor_id])
+            metadata['actor'] = {
+              'id'           => actor.id,
+              'username'     => actor.username,
+              'display_name' => actor.display_name,
+              'avatar_url'   => actor.avatar_url_with_attachment,
+            }
           end
 
           {
-            id: item.id,
+            id:            "fi_#{item.id}",
+            kind:          'activity',
             activity_type: item.activity_type,
-            metadata: metadata,
-            feedable: serialize_feedable(item.feedable),
-            created_at: item.created_at
+            new:           last_viewed.nil? || item.created_at > last_viewed,
+            metadata:      metadata,
+            feedable:      serialize_feedable(feedable),
+            created_at:    item.created_at,
           }
         end
+      end
+
+      def serialize_notifications(notifications, last_viewed)
+        notifications.filter_map do |notif|
+          payload = serialize_notification_payload(notif)
+          next unless payload
+
+          {
+            id:            "no_#{notif.id}",
+            kind:          'notification',
+            activity_type: notif.notification_type,
+            new:           last_viewed.nil? || notif.created_at > last_viewed,
+            metadata:      payload,
+            feedable:      nil,
+            created_at:    notif.created_at,
+          }
+        end
+      end
+
+      def serialize_notification_payload(notif)
+        case notif.notification_type
+        when 'friend_request', 'friend_accepted'
+          friendship = notif.notifiable
+          return nil unless friendship
+          other = if friendship.requester_id == current_user.id
+            friendship.requestee
+          else
+            friendship.requester
+          end
+          return nil unless other
+          {
+            'friendship_id' => friendship.id,
+            'user'          => serialize_user_mini(other),
+          }
+        when 'book_suggestion'
+          suggestion = notif.notifiable
+          return nil unless suggestion
+          {
+            'suggestion_id' => suggestion.id,
+            'message'       => suggestion.message,
+            'suggester'     => serialize_user_mini(suggestion.suggester),
+            'book' => {
+              'id'              => suggestion.book.id,
+              'title'           => suggestion.book.title,
+              'author_name'     => suggestion.book.author&.name,
+              'cover_image_url' => suggestion.book.cover_image_url,
+              'google_books_id' => suggestion.book.google_books_id,
+            },
+          }
+        end
+      end
+
+      def serialize_user_mini(user)
+        {
+          'id'           => user.id,
+          'username'     => user.username,
+          'display_name' => user.display_name,
+          'avatar_url'   => user.avatar_url_with_attachment,
+        }
       end
 
       def serialize_feedable(feedable)
         case feedable
-        when Book
-          serialize_book_payload(feedable).merge(type: 'Book')
-        when Event
-          {
-            type: 'Event',
-            id: feedable.id,
-            title: feedable.title,
-            event_type: feedable.event_type,
-            starts_at: feedable.starts_at,
-            author_name: feedable.author.name
-          }
-        when Author
-          {
-            type: 'Author',
-            id: feedable.id,
-            name: feedable.name,
-            avatar_url: feedable.avatar_url
-          }
-        when User
-          serialize_user(feedable)
-        when UserBook
-          serialize_user_book_feedable(feedable)
+        when UserBook then serialize_user_book_feedable(feedable)
+        when Book     then serialize_book_payload(feedable).merge('type' => 'Book')
+        when Author   then { 'type' => 'Author', 'id' => feedable.id, 'name' => feedable.name, 'avatar_url' => feedable.avatar_url }
+        when User     then serialize_user_mini(feedable).merge('type' => 'User')
         end
       end
 
-      def serialize_user(user)
+      def serialize_user_book_feedable(ub)
         {
-          type: 'User',
-          id: user.id,
-          username: user.username,
-          display_name: user.display_name,
-          avatar_url: user.avatar_url_with_attachment
+          'type'                  => 'UserBook',
+          'id'                    => ub.id,
+          'status'                => ub.status,
+          'visibility'            => ub.visibility,
+          'rating'                => ub.rating,
+          'review'                => ub.review,
+          'pages_read'            => ub.pages_read,
+          'total_pages'           => ub.total_pages,
+          'completion_percentage' => ub.completion_percentage,
+          'finished_at'           => ub.finished_at,
+          'book'                  => ub.book ? serialize_book_payload(ub.book) : nil,
         }
-      end
-
-      def serialize_user_book_feedable(user_book)
-        serialize_user_book_payload(user_book).merge(type: 'UserBook')
       end
 
       def serialize_book_payload(book)
-        return {} unless book
-
         {
-          id: book.id,
-          title: book.title,
-          author_name: book.author&.name,
-          cover_image_url: book.cover_image_url,
-          release_date: book.release_date
-        }
-      end
-
-      def serialize_user_book_payload(user_book)
-        {
-          id: user_book.id,
-          book_id: user_book.book_id,
-          status: user_book.status,
-          shelf: user_book.shelf,
-          visibility: user_book.visibility,
-          pages_read: user_book.pages_read,
-          total_pages: user_book.total_pages,
-          completion_percentage: user_book.completion_percentage,
-          rating: user_book.rating,
-          review: user_book.review,
-          dnf_reason: user_book.dnf_reason,
-          dnf_page: user_book.dnf_page,
-          started_at: user_book.started_at,
-          finished_at: user_book.finished_at,
-          created_at: user_book.created_at,
-          updated_at: user_book.updated_at,
-          book: serialize_book_payload(user_book.book)
+          'id'              => book.id,
+          'title'           => book.title,
+          'author_name'     => book.author&.name,
+          'cover_image_url' => book.cover_image_url,
+          'google_books_id' => book.google_books_id,
         }
       end
     end
   end
 end
-

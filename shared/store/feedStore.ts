@@ -1,40 +1,36 @@
-// Feed Store - Zustand store for feed items
+// Feed Store - Zustand store for the unified feed
 // Reusable in Next.js and React Native
 
 import { create } from 'zustand'
-import type { FeedItem, PaginationMeta, UserBook } from '../types'
+import type { FeedEntry, PaginationMeta } from '../types'
 import { apiClient } from '../api/client'
 
 interface FeedState {
-  items: FeedItem[]
+  entries: FeedEntry[]
   pagination: PaginationMeta | null
   loading: boolean
   error: string | null
-  fetchFeed: (page?: number, perPage?: number, activityType?: string) => Promise<void>
+  unreadCount: number
+  fetchFeed: (page?: number) => Promise<void>
   refreshFeed: () => Promise<void>
+  markViewed: () => Promise<void>
+  fetchUnreadCount: () => Promise<void>
   clearFeed: () => void
 }
 
 export const useFeedStore = create<FeedState>((set, get) => ({
-  items: [],
+  entries: [],
   pagination: null,
   loading: false,
   error: null,
+  unreadCount: 0,
 
-  fetchFeed: async (page = 1, perPage = 50, activityType?: string) => {
+  fetchFeed: async (page = 1) => {
     set({ loading: true, error: null })
     try {
-      const response = await apiClient.getFeed(page, perPage, activityType)
-      const sanitizedItems = response.feed_items.filter((item) => {
-        const feedable = item.feedable as UserBook | undefined
-        if (!feedable || typeof feedable.visibility === 'undefined') {
-          return true
-        }
-        // Private books should never be shared in feeds or public timelines.
-        return feedable.visibility !== 'private'
-      })
+      const response = await apiClient.getFeed(page, 30)
       set({
-        items: page === 1 ? sanitizedItems : [...get().items, ...sanitizedItems],
+        entries: page === 1 ? response.entries : [...get().entries, ...response.entries],
         pagination: response.pagination,
         loading: false,
       })
@@ -50,8 +46,29 @@ export const useFeedStore = create<FeedState>((set, get) => ({
     await get().fetchFeed(1)
   },
 
+  markViewed: async () => {
+    try {
+      await apiClient.markFeedViewed()
+      // Clear the new flag locally so the UI updates instantly
+      set(state => ({
+        entries: state.entries.map(e => ({ ...e, new: false })),
+        unreadCount: 0,
+      }))
+    } catch {
+      // non-fatal
+    }
+  },
+
+  fetchUnreadCount: async () => {
+    try {
+      const count = await apiClient.getFeedUnreadCount()
+      set({ unreadCount: count })
+    } catch {
+      // non-fatal
+    }
+  },
+
   clearFeed: () => {
-    set({ items: [], pagination: null, error: null })
+    set({ entries: [], pagination: null, error: null, unreadCount: 0 })
   },
 }))
-

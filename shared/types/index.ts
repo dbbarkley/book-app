@@ -159,30 +159,48 @@ export interface Follow {
   created_at: string
 }
 
+export type FeedActivityType =
+  | 'book_release'
+  | 'author_event'
+  | 'author_announcement'
+  | 'book_recommendation'
+  | 'event_recommendation'
+  | 'follow_activity'
+  | 'user_added_book'
+  | 'user_finished_book'
+  | 'user_progress_update'
+  | 'user_review'
+  | 'user_followed_author'
+  | 'friend_activity'
+  | 'user_followed_user'
+  | 'friend_request'
+  | 'friend_accepted'
+  | 'book_suggestion'
+
+/** Legacy feed item shape (from feed_items table directly) */
 export interface FeedItem {
-  id: number
-  activity_type: 
-    | 'book_release' 
-    | 'author_event' 
-    | 'author_announcement'
-    | 'book_recommendation'
-    | 'event_recommendation'
-    | 'follow_activity'
-    | 'user_added_book'
-    | 'user_finished_book'
-    | 'user_progress_update'
-    | 'user_review'
-    | 'user_followed_author'
-    | 'friend_activity'
+  id: number | string
+  activity_type: FeedActivityType
   metadata?: Record<string, any>
-  feedable?: Book | Event | Author | User | UserBook
-  user?: User // The user who performed the activity
+  feedable?: Book | Author | User | UserBook
+  user?: User
+  created_at: string
+}
+
+/** Unified entry returned by the new /feed endpoint */
+export interface FeedEntry {
+  id: string                  // prefixed: "fi_123" or "no_456"
+  kind: 'activity' | 'notification'
+  activity_type: FeedActivityType
+  new: boolean                // true if created after last_feed_viewed_at
+  metadata: Record<string, any>
+  feedable?: Record<string, any> | null
   created_at: string
 }
 
 export interface Notification {
   id: number
-  notification_type: 'new_follower' | 'book_release' | 'event_reminder' | 'author_announcement'
+  notification_type: 'new_follower' | 'book_release' | 'event_reminder' | 'author_announcement' | 'friend_request' | 'friend_accepted' | 'book_suggestion'
   read: boolean
   read_at?: string
   notifiable?: Book | Author | User

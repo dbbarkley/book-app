@@ -51,7 +51,9 @@ Rails.application.routes.draw do
       end
       
       # Feed
-      get 'feed', to: 'feed#index'
+      get  'feed',             to: 'feed#index'
+      post 'feed/mark_viewed', to: 'feed#mark_viewed'
+      get  'feed/unread_count',to: 'feed#unread_count'
 
       # Recommendations
       get  'recommendations/books',      to: 'recommendations#books'

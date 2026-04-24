@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_04_24_000001) do
+ActiveRecord::Schema[7.2].define(version: 2026_04_24_000002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -386,6 +386,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_04_24_000001) do
     t.string "zipcode"
     t.string "provider"
     t.string "uid"
+    t.datetime "last_feed_viewed_at"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["onboarding_completed"], name: "index_users_on_onboarding_completed"
     t.index ["preferences"], name: "index_users_on_preferences", using: :gin

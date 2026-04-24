@@ -124,19 +124,21 @@ export class ApiClient {
   }
 
   // Feed endpoints
-  async getFeed(page: number = 1, perPage: number = 50, activityType?: string) {
-    const params: Record<string, string> = {
-      page: page.toString(),
-      per_page: perPage.toString(),
-    }
-    if (activityType) {
-      params.activity_type = activityType
-    }
+  async getFeed(page: number = 1, perPage: number = 30) {
     const response = await this.client.get<{
-      feed_items: FeedItem[]
+      entries: import('../types').FeedEntry[]
       pagination: PaginationMeta
-    }>('/feed', { params })
+    }>('/feed', { params: { page, per_page: perPage } })
     return response.data
+  }
+
+  async markFeedViewed() {
+    await this.client.post('/feed/mark_viewed')
+  }
+
+  async getFeedUnreadCount() {
+    const response = await this.client.get<{ count: number }>('/feed/unread_count')
+    return response.data.count
   }
 
   // Friendship endpoints

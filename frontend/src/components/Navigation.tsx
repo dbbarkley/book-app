@@ -3,9 +3,9 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useAuth } from '@book-app/shared'
+import { useAuth, useFeed } from '@book-app/shared'
 import Avatar from './Avatar'
 import {
   Home,
@@ -14,18 +14,29 @@ import {
   User,
   Menu,
   X,
-  Settings
+  Settings,
+  Rss,
 } from 'lucide-react'
 
 export default function Navigation() {
   const pathname = usePathname()
   const { isAuthenticated, user } = useAuth()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const { unreadCount, fetchUnreadCount } = useFeed()
+
+  // Poll unread count every 60s when authenticated
+  useEffect(() => {
+    if (!isAuthenticated) return
+    fetchUnreadCount()
+    const interval = setInterval(fetchUnreadCount, 60_000)
+    return () => clearInterval(interval)
+  }, [isAuthenticated, fetchUnreadCount])
 
   const navLinks = isAuthenticated ? [
     { href: '/dashboard',         label: 'Home',     icon: Home     },
     { href: '/library',           label: 'Library',  icon: BookOpen },
     { href: '/search',            label: 'Discover', icon: Search   },
+    { href: '/feed',              label: 'Activity', icon: Rss, badge: unreadCount > 0 ? Math.min(unreadCount, 99) : null },
     { href: `/users/${user?.id}`, label: 'Profile',  icon: User     },
   ] : [
     { href: '/search', label: 'Discover', icon: Search },
@@ -67,6 +78,7 @@ export default function Navigation() {
               {navLinks.map((link) => {
                 const Icon = link.icon
                 const active = isActive(link.href)
+                const badge = 'badge' in link ? link.badge : null
                 return (
                   <Link
                     key={link.href}
@@ -84,7 +96,17 @@ export default function Navigation() {
                       />
                     )}
                     <span className="relative z-10 flex items-center gap-2">
-                      <Icon size={16} />
+                      <span className="relative">
+                        <Icon size={16} />
+                        {badge != null && (
+                          <span
+                            className="absolute -top-1.5 -right-1.5 min-w-[14px] h-[14px] rounded-full flex items-center justify-center text-[9px] font-bold px-0.5"
+                            style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-accent-on)' }}
+                          >
+                            {badge}
+                          </span>
+                        )}
+                      </span>
                       <span>{link.label}</span>
                     </span>
                   </Link>
@@ -220,6 +242,7 @@ export default function Navigation() {
                 {navLinks.map((link) => {
                   const Icon = link.icon
                   const active = isActive(link.href)
+                  const badge = 'badge' in link ? link.badge : null
                   return (
                     <Link
                       key={link.href}
@@ -234,8 +257,18 @@ export default function Navigation() {
                       onMouseEnter={e => { if (!active) e.currentTarget.style.backgroundColor = 'var(--color-grove)' }}
                       onMouseLeave={e => { if (!active) e.currentTarget.style.backgroundColor = 'transparent' }}
                     >
-                      <Icon size={18} />
-                      <span>{link.label}</span>
+                      <span className="relative flex-shrink-0">
+                        <Icon size={18} />
+                        {badge != null && (
+                          <span
+                            className="absolute -top-1.5 -right-1.5 min-w-[14px] h-[14px] rounded-full flex items-center justify-center text-[9px] font-bold px-0.5"
+                            style={{ backgroundColor: active ? 'white' : 'var(--color-accent)', color: active ? 'var(--color-accent)' : 'var(--color-accent-on)' }}
+                          >
+                            {badge}
+                          </span>
+                        )}
+                      </span>
+                      <span className="flex-1">{link.label}</span>
                     </Link>
                   )
                 })}
