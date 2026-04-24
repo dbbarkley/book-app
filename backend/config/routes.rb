@@ -32,6 +32,16 @@ Rails.application.routes.draw do
       # Follows
       resources :follows, only: [:create, :index, :destroy]
 
+      # Book Suggestions
+      resources :book_suggestions, only: [:create] do
+        collection do
+          get  :received
+        end
+        member do
+          patch :dismiss
+        end
+      end
+
       # Friendships
       resources :friendships, only: [:index, :create, :update, :destroy] do
         collection do

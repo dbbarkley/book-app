@@ -2,12 +2,13 @@
 
 import React, { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
-import { Book as BookIcon, CheckCircle, XCircle, Lock, Search, X } from 'lucide-react'
+import { Book as BookIcon, CheckCircle, XCircle, Lock, Search, X, Sparkles, Share2, ChevronRight } from 'lucide-react'
 import {
   useAuth,
   usePrivateLibrary,
   useUserLibrary,
-  useMilestones
+  useMilestones,
+  useBookSuggestions,
 } from '@book-app/shared'
 import Button from '@/components/Button'
 import Shelf from '@/components/Shelf'
@@ -15,6 +16,10 @@ import ReadingHero from '@/components/ReadingHero'
 import LibraryStats from '@/components/LibraryStats'
 import BookCard from '@/components/BookCard'
 import GoalSettingModal from '@/components/library/GoalSettingModal'
+import SuggestToFriendModal from '@/components/SuggestToFriendModal'
+import { BookCoverImage } from '@/components/BookCoverImage'
+import Avatar from '@/components/Avatar'
+import type { BookSuggestion } from '@book-app/shared'
 
 const SHELF_LABELS: Record<string, string> = {
   reading:  'Reading',
@@ -44,9 +49,12 @@ export default function BooksLibraryPage() {
     isLoading: isGoalLoading
   } = useMilestones()
 
+  const { suggestions, loading: suggestionsLoading, dismissSuggestion } = useBookSuggestions()
+
   const [isGoalModalOpen, setIsGoalModalOpen] = useState(false)
   const [hasAttemptedModal, setHasAttemptedModal] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [suggestModal, setSuggestModal] = useState<{ bookId: number; bookTitle: string } | null>(null)
 
   useEffect(() => {
     if (isAuthenticated && !hasViewedMilestone('goal_set') && !hasAttemptedModal) {
@@ -139,6 +147,7 @@ export default function BooksLibraryPage() {
   }
 
   return (
+    <>
     <div className="min-h-screen">
       <div className="container-mobile py-8 sm:py-12 max-w-6xl">
 
@@ -302,6 +311,106 @@ export default function BooksLibraryPage() {
         {/* ── NORMAL SHELF VIEW (hidden while searching) ───────────────── */}
         {!isSearching && (
           <>
+            {/* Suggested for You */}
+            {!suggestionsLoading && suggestions.length > 0 && (
+              <section className="mb-10">
+                <div className="flex items-center gap-2 mb-4">
+                  <Sparkles size={18} style={{ color: 'var(--color-accent)' }} />
+                  <h2 className="font-serif text-xl font-bold" style={{ color: 'var(--color-lit)' }}>
+                    Suggested for You
+                  </h2>
+                  <span
+                    className="ml-1 text-xs font-bold px-2 py-0.5 rounded-full"
+                    style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-accent-on)' }}
+                  >
+                    {suggestions.length}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {suggestions.map((s: BookSuggestion) => (
+                    <div
+                      key={s.id}
+                      className="flex gap-4 p-4 rounded-2xl"
+                      style={{
+                        backgroundColor: 'var(--color-surface)',
+                        border: '1px solid var(--color-rim-accent)',
+                        boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+                      }}
+                    >
+                      {/* Cover */}
+                      <Link href={`/books/${s.book.google_books_id ?? s.book.id}`} className="flex-shrink-0">
+                        <div className="w-14 rounded-xl overflow-hidden shadow-md" style={{ aspectRatio: '2/3' }}>
+                          <BookCoverImage
+                            src={s.book.cover_image_url}
+                            title={s.book.title}
+                            author={s.book.author_name}
+                            size="small"
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      </Link>
+
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <Link href={`/books/${s.book.google_books_id ?? s.book.id}`}>
+                          <p className="font-bold text-sm truncate hover:underline" style={{ color: 'var(--color-lit)' }}>
+                            {s.book.title}
+                          </p>
+                        </Link>
+                        {s.book.author_name && (
+                          <p className="text-xs truncate mb-2" style={{ color: 'var(--color-lit-3)' }}>
+                            {s.book.author_name}
+                          </p>
+                        )}
+
+                        {/* Suggester */}
+                        <div className="flex items-center gap-1.5 mb-2">
+                          <Avatar
+                            src={s.suggester.avatar_url}
+                            name={s.suggester.display_name || s.suggester.username}
+                            size="xs"
+                          />
+                          <span className="text-xs" style={{ color: 'var(--color-lit-2)' }}>
+                            from <span className="font-semibold">{s.suggester.display_name || s.suggester.username}</span>
+                          </span>
+                        </div>
+
+                        {/* Message */}
+                        {s.message && (
+                          <p className="text-xs italic mb-2 line-clamp-2" style={{ color: 'var(--color-lit-2)' }}>
+                            &ldquo;{s.message}&rdquo;
+                          </p>
+                        )}
+
+                        {/* Actions */}
+                        <div className="flex items-center gap-2">
+                          <Link
+                            href={`/books/${s.book.google_books_id ?? s.book.id}`}
+                            className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all hover:opacity-80"
+                            style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-accent-on)' }}
+                          >
+                            View Book
+                            <ChevronRight size={11} />
+                          </Link>
+                          <button
+                            onClick={() => dismissSuggestion(s.id)}
+                            className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all hover:opacity-80"
+                            style={{
+                              backgroundColor: 'var(--color-grove)',
+                              border: '1px solid var(--color-rim)',
+                              color: 'var(--color-lit-3)',
+                            }}
+                          >
+                            Dismiss
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
             <ReadingHero books={readingBooks} onUpdate={handleUpdate} />
 
             <Shelf
@@ -311,6 +420,7 @@ export default function BooksLibraryPage() {
               books={toReadBooks}
               subtitle="Your future adventures"
               onUpdate={handleUpdate}
+              onSuggest={(bookId, bookTitle) => setSuggestModal({ bookId, bookTitle })}
             />
 
             <Shelf
@@ -320,6 +430,7 @@ export default function BooksLibraryPage() {
               books={readBooks}
               subtitle="Books you've finished"
               onUpdate={handleUpdate}
+              onSuggest={(bookId, bookTitle) => setSuggestModal({ bookId, bookTitle })}
             />
 
             <Shelf
@@ -329,6 +440,7 @@ export default function BooksLibraryPage() {
               books={dnfBooks}
               subtitle="On hold or stopped"
               onUpdate={handleUpdate}
+              onSuggest={(bookId, bookTitle) => setSuggestModal({ bookId, bookTitle })}
             />
 
             <section id="private" className="mt-12 pt-12 scroll-mt-40" style={{ borderTop: '1px solid var(--color-rim)' }}>
@@ -362,5 +474,16 @@ export default function BooksLibraryPage() {
 
       </div>
     </div>
+
+    {/* Suggest to Friend Modal */}
+    {suggestModal && (
+      <SuggestToFriendModal
+        isOpen={!!suggestModal}
+        onClose={() => setSuggestModal(null)}
+        bookId={suggestModal.bookId}
+        bookTitle={suggestModal.bookTitle}
+      />
+    )}
+  </>
   )
 }

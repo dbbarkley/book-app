@@ -173,6 +173,24 @@ export class ApiClient {
     await this.client.delete(`/friendships/${friendshipId}`)
   }
 
+  // Book Suggestion endpoints
+  async suggestBook(bookId: number, recipientIds: number[], message?: string) {
+    const response = await this.client.post<{ sent_count: number; skipped_count: number; message: string }>(
+      '/book_suggestions',
+      { book_id: bookId, recipient_ids: recipientIds, message }
+    )
+    return response.data
+  }
+
+  async getReceivedSuggestions() {
+    const response = await this.client.get<{ suggestions: import('../types').BookSuggestion[] }>('/book_suggestions/received')
+    return response.data.suggestions
+  }
+
+  async dismissSuggestion(suggestionId: number) {
+    await this.client.patch(`/book_suggestions/${suggestionId}/dismiss`)
+  }
+
   async getFriendshipStatus(userId: number) {
     const response = await this.client.get<{ status: import('../types').FriendshipStatus; friendship_id: number | null }>(
       `/friendships/status/${userId}`

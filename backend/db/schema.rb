@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_04_23_000001) do
+ActiveRecord::Schema[7.2].define(version: 2026_04_24_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -50,6 +50,21 @@ ActiveRecord::Schema[7.2].define(version: 2026_04_23_000001) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["name"], name: "index_authors_on_name"
+  end
+
+  create_table "book_suggestions", force: :cascade do |t|
+    t.bigint "suggester_id", null: false
+    t.bigint "recipient_id", null: false
+    t.bigint "book_id", null: false
+    t.text "message"
+    t.string "status", default: "pending", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["book_id"], name: "index_book_suggestions_on_book_id"
+    t.index ["recipient_id"], name: "index_book_suggestions_on_recipient_id"
+    t.index ["status"], name: "index_book_suggestions_on_status"
+    t.index ["suggester_id", "recipient_id", "book_id"], name: "index_book_suggestions_unique", unique: true
+    t.index ["suggester_id"], name: "index_book_suggestions_on_suggester_id"
   end
 
   create_table "books", force: :cascade do |t|
@@ -402,6 +417,9 @@ ActiveRecord::Schema[7.2].define(version: 2026_04_23_000001) do
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "book_suggestions", "books"
+  add_foreign_key "book_suggestions", "users", column: "recipient_id"
+  add_foreign_key "book_suggestions", "users", column: "suggester_id"
   add_foreign_key "books", "authors"
   add_foreign_key "event_authors", "authors"
   add_foreign_key "event_authors", "events"

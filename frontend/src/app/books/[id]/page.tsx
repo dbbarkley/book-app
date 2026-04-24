@@ -18,7 +18,8 @@ import {
   BookCoverImage,
   Button,
   Avatar,
-  QuickUpdateModal
+  QuickUpdateModal,
+  SuggestToFriendModal,
 } from '@/components'
 import { formatDate } from '@/utils/format'
 import {
@@ -32,6 +33,7 @@ import {
   Lock,
   Globe,
   NotebookPen,
+  Share2,
 } from 'lucide-react'
 
 const cardStyle = {
@@ -61,6 +63,7 @@ export default function BookPage() {
   const [isFollowingBook, setIsFollowingBook] = useState(false)
   const [followLoading, setFollowLoading] = useState(false)
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false)
+  const [isSuggestModalOpen, setIsSuggestModalOpen] = useState(false)
   const [notes, setNotes] = useState('')
   const [notesSaved, setNotesSaved] = useState(false)
   const [otherWorks, setOtherWorks] = useState<{ key: string; title: string; year: number | null; cover_url: string | null; ratings_average: number | null; readinglog_count: number }[]>([])
@@ -281,6 +284,22 @@ export default function BookPage() {
                       <><Globe className="w-3 h-3" /> Public</>
                     )}
                   </div>
+                )}
+
+                {/* Suggest to a Friend — only when book is in DB */}
+                {internalBookId && (
+                  <button
+                    onClick={() => setIsSuggestModalOpen(true)}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl text-sm font-bold transition-all hover:opacity-80"
+                    style={{
+                      backgroundColor: 'var(--color-grove)',
+                      border: '1px solid var(--color-rim)',
+                      color: 'var(--color-lit-2)',
+                    }}
+                  >
+                    <Share2 size={14} />
+                    Suggest to a Friend
+                  </button>
                 )}
               </div>
             ) : (
@@ -542,6 +561,16 @@ export default function BookPage() {
         onClose={() => setIsUpdateModalOpen(false)}
         onUpdate={refetch}
       />
+
+      {/* Suggest to Friend Modal */}
+      {internalBookId && (
+        <SuggestToFriendModal
+          isOpen={isSuggestModalOpen}
+          onClose={() => setIsSuggestModalOpen(false)}
+          bookId={internalBookId}
+          bookTitle={book.title}
+        />
+      )}
     </div>
   )
 }

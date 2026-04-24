@@ -53,6 +53,7 @@ export {
   useBookFriends,
   useFriendship,
   useFriends,
+  useBookSuggestions,
   useNewReleases,
   useComingSoon,
   useForums,

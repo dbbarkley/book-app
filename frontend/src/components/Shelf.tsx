@@ -3,7 +3,7 @@
 import React, { useRef, useState, useMemo } from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { ChevronLeft, ChevronRight, Edit2, ArrowUpDown } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Edit2, ArrowUpDown, Share2 } from 'lucide-react'
 import type { UserBook } from '@book-app/shared'
 import BookCard from './BookCard'
 import QuickUpdateModal from './QuickUpdateModal'
@@ -42,6 +42,7 @@ interface ShelfProps {
   shelfId: string
   onUpdate?: () => void
   searchQuery?: string
+  onSuggest?: (bookId: number, bookTitle: string) => void
 }
 
 export default function Shelf({
@@ -53,6 +54,7 @@ export default function Shelf({
   shelfId,
   onUpdate,
   searchQuery = '',
+  onSuggest,
 }: ShelfProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -265,6 +267,21 @@ export default function Shelf({
                     >
                       <Edit2 className="w-3.5 h-3.5" />
                     </button>
+                    {/* Suggest overlay */}
+                    {onSuggest && userBook.book?.id != null && (
+                      <button
+                        onClick={() => onSuggest(userBook.book!.id as number, userBook.book!.title)}
+                        className="absolute top-2 left-2 p-1.5 rounded-full opacity-0 group-hover/item:opacity-100 transition-all scale-75 hover:scale-100 shadow-md"
+                        style={{
+                          backgroundColor: 'var(--color-surface)',
+                          border: '1px solid var(--color-rim)',
+                          color: 'var(--color-lit)',
+                        }}
+                        title="Suggest to a Friend"
+                      >
+                        <Share2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </>
                 )}
               </motion.div>

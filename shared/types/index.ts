@@ -38,6 +38,26 @@ export interface FriendRequest {
   }
 }
 
+export interface BookSuggestion {
+  id: number
+  status: 'pending' | 'viewed' | 'dismissed'
+  message?: string
+  created_at: string
+  suggester: {
+    id: number
+    username: string
+    display_name?: string
+    avatar_url?: string
+  }
+  book: {
+    id: number
+    title: string
+    author_name?: string
+    cover_image_url?: string
+    google_books_id?: string
+  }
+}
+
 export interface Author {
   id: number
   name: string
