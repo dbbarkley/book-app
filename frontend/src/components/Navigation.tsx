@@ -51,9 +51,9 @@ export default function Navigation() {
       <nav
         className="sticky top-0 z-50 backdrop-blur-md"
         style={{
-          backgroundColor: 'rgba(24, 35, 26, 0.95)',
-          borderBottom: '1px solid rgba(237, 224, 196, 0.12)',
-          boxShadow: '0 4px 24px rgba(0,0,0,0.45)',
+          backgroundColor: 'rgba(12, 23, 14, 0.85)',
+          borderBottom: '1px solid rgba(237, 224, 196, 0.07)',
+          boxShadow: '0 2px 16px rgba(0,0,0,0.5)',
         }}
       >
         <div className="container-mobile">
@@ -120,7 +120,7 @@ export default function Navigation() {
                 <div className="hidden md:flex items-center gap-2">
                   <Link
                     href="/login"
-                    className="px-4 py-2 text-sm font-semibold text-lit-2 hover:text-lit transition-colors rounded-xl hover:bg-grove"
+                    className="px-4 py-2 text-sm font-semibold text-lit hover:text-lit transition-colors rounded-xl hover:bg-grove"
                   >
                     Login
                   </Link>
