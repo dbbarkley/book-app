@@ -87,17 +87,17 @@ export default function QuickUpdateModal({ userBook, isOpen, onClose, onUpdate }
         })
       }
 
-      if (status === 'reading' && activeUserBookId > 0) {
+      if ((status === 'reading' || status === 'read') && activeUserBookId > 0) {
         const pRead  = parseInt(pagesRead)
         const tPages = parseInt(totalPages)
         if (tPages > 0) {
           await updateProgress(activeUserBookId, {
-            pages_read:            pRead,
+            pages_read:            status === 'read' ? tPages : pRead,
             total_pages:           tPages,
-            completion_percentage: Math.round((pRead / tPages) * 100),
+            completion_percentage: status === 'read' ? 100 : Math.round((pRead / tPages) * 100),
           })
         } else {
-          await updateProgress(activeUserBookId, { completion_percentage: percentage })
+          await updateProgress(activeUserBookId, { completion_percentage: status === 'read' ? 100 : percentage })
         }
       }
 
@@ -118,6 +118,10 @@ export default function QuickUpdateModal({ userBook, isOpen, onClose, onUpdate }
     setPercentage(val)
     if (parseInt(totalPages) > 0) {
       setPagesRead(Math.round((val / 100) * parseInt(totalPages)).toString())
+    }
+    if (val >= 100) {
+      setPercentage(100)
+      setStatus('read')
     }
   }
 
@@ -251,7 +255,11 @@ export default function QuickUpdateModal({ userBook, isOpen, onClose, onUpdate }
                     setPagesRead(e.target.value)
                     const p = parseInt(e.target.value)
                     const t = parseInt(totalPages)
-                    if (t > 0) setPercentage(Math.min(100, Math.round((p / t) * 100)))
+                    if (t > 0) {
+                      const pct = Math.min(100, Math.round((p / t) * 100))
+                      setPercentage(pct)
+                      if (p >= t) setStatus('read')
+                    }
                   }}
                   onFocus={focusBorder}
                   onBlur={blurBorder}
@@ -267,7 +275,11 @@ export default function QuickUpdateModal({ userBook, isOpen, onClose, onUpdate }
                     setTotalPages(e.target.value)
                     const p = parseInt(pagesRead)
                     const t = parseInt(e.target.value)
-                    if (t > 0) setPercentage(Math.min(100, Math.round((p / t) * 100)))
+                    if (t > 0) {
+                      const pct = Math.min(100, Math.round((p / t) * 100))
+                      setPercentage(pct)
+                      if (p >= t) setStatus('read')
+                    }
                   }}
                   onFocus={focusBorder}
                   onBlur={blurBorder}

@@ -31,7 +31,34 @@ class UserBook < ApplicationRecord
   after_create_commit  :fan_out_added_to_shelf
   after_update_commit  :fan_out_status_or_review_change
 
+  # ── Reading Buddy progress broadcast ─────────────────────────────────────────
+  after_update_commit  :broadcast_reading_buddy_progress
+
   private
+
+  def broadcast_reading_buddy_progress
+    return unless saved_change_to_pages_read? || saved_change_to_status? || saved_change_to_completion_percentage?
+
+    active_sessions = ReadingBuddySession.active
+      .where(book_id: book_id)
+      .where('initiator_id = ? OR invited_id = ?', user_id, user_id)
+
+    active_sessions.each do |session|
+      ActionCable.server.broadcast(
+        "reading_buddy_session_#{session.id}",
+        {
+          type:    'progress_update',
+          user_id: user_id,
+          progress: {
+            status:                status,
+            pages_read:            pages_read,
+            total_pages:           total_pages,
+            completion_percentage: completion_percentage,
+          }
+        }
+      )
+    end
+  end
 
   def fan_out_added_to_shelf
     return if visibility == 'private'

@@ -63,6 +63,23 @@ module Api
             display_name: notifiable.display_name,
             avatar_url: notifiable.avatar_url_with_attachment
           }
+        when ReadingBuddySession
+          {
+            type:       'ReadingBuddySession',
+            id:         notifiable.id,
+            status:     notifiable.status,
+            book: {
+              id:              notifiable.book.id,
+              title:           notifiable.book.title,
+              cover_image_url: notifiable.book.cover_image_url,
+            },
+            initiator: {
+              id:           notifiable.initiator.id,
+              username:     notifiable.initiator.username,
+              display_name: notifiable.initiator.display_name,
+              avatar_url:   notifiable.initiator.avatar_url_with_attachment,
+            }
+          }
         end
       end
     end

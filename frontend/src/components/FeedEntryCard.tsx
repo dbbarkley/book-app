@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { BookOpen, CheckCircle, Star, UserPlus, UserCheck, Sparkles, BookMarked } from 'lucide-react'
+import { BookOpen, CheckCircle, Star, UserPlus, UserCheck, Sparkles, BookMarked, Rss } from 'lucide-react'
 import Avatar from './Avatar'
 import { BookCoverImage } from './BookCoverImage'
 import type { FeedEntry } from '@book-app/shared'
@@ -257,6 +257,74 @@ export default function FeedEntryCard({ entry }: FeedEntryCardProps) {
           <p className="text-xs mt-2" style={{ color: 'var(--color-lit-3)' }}>{formatTime(entry.created_at)}</p>
         </div>
         <Star size={16} style={{ color: 'var(--color-accent)', flexShrink: 0 }} />
+        {isNew && <NewBadge />}
+      </div>
+    )
+  }
+
+  // ── USER FOLLOWED USER ─────────────────────────────────────────────────────
+  if (activity_type === 'user_followed_user') {
+    const target = metadata?.target_user
+    return (
+      <div className="flex items-center gap-3 p-4 rounded-2xl" style={cardBase}>
+        <button onClick={() => actorHref && router.push(actorHref)} className="flex-shrink-0">
+          <Avatar src={actor?.avatar_url} name={actorName} size="md" />
+        </button>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm" style={{ color: 'var(--color-lit-2)' }}>
+            <ActorLink>{actorName}</ActorLink>
+            {' '}followed{' '}
+            {target?.id ? (
+              <button
+                onClick={() => router.push(`/users/${target.id}`)}
+                className="font-bold hover:underline"
+                style={{ color: 'var(--color-lit)' }}
+              >
+                {target.display_name || target.username}
+              </button>
+            ) : (
+              <span className="font-bold" style={{ color: 'var(--color-lit)' }}>
+                {target?.display_name || target?.username || 'a user'}
+              </span>
+            )}
+          </p>
+          <p className="text-xs mt-0.5" style={{ color: 'var(--color-lit-3)' }}>{formatTime(entry.created_at)}</p>
+        </div>
+        <Rss size={16} style={{ color: 'var(--color-lit-3)', flexShrink: 0 }} />
+        {isNew && <NewBadge />}
+      </div>
+    )
+  }
+
+  // ── USER FOLLOWED AUTHOR ───────────────────────────────────────────────────
+  if (activity_type === 'user_followed_author') {
+    const target = metadata?.target_author
+    return (
+      <div className="flex items-center gap-3 p-4 rounded-2xl" style={cardBase}>
+        <button onClick={() => actorHref && router.push(actorHref)} className="flex-shrink-0">
+          <Avatar src={actor?.avatar_url} name={actorName} size="md" />
+        </button>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm" style={{ color: 'var(--color-lit-2)' }}>
+            <ActorLink>{actorName}</ActorLink>
+            {' '}is now following{' '}
+            {target?.id ? (
+              <button
+                onClick={() => router.push(`/authors/${target.id}`)}
+                className="font-bold hover:underline"
+                style={{ color: 'var(--color-lit)' }}
+              >
+                {target.name}
+              </button>
+            ) : (
+              <span className="font-bold" style={{ color: 'var(--color-lit)' }}>
+                {target?.name || 'an author'}
+              </span>
+            )}
+          </p>
+          <p className="text-xs mt-0.5" style={{ color: 'var(--color-lit-3)' }}>{formatTime(entry.created_at)}</p>
+        </div>
+        <Rss size={16} style={{ color: 'var(--color-lit-3)', flexShrink: 0 }} />
         {isNew && <NewBadge />}
       </div>
     )

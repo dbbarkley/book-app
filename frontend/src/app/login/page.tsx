@@ -1,6 +1,3 @@
-// Login Page - User authentication page
-// Mobile-first responsive design with TailwindCSS
-
 'use client'
 
 import { useState } from 'react'
@@ -8,19 +5,44 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import AuthForm, { type AuthFormData } from '@/components/AuthForm'
 import { useAuth } from '@/shared/hooks/useAuth'
+import { useCurtain } from '@/context/CurtainContext'
+
+/** Minimum time the curtain stays visible so it never flashes.
+ *  Covers the full entrance animation: lines (550ms) + panels (500–1000ms). */
+const MIN_CURTAIN_MS = 1400
+
+const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms))
 
 export default function LoginPage() {
-  const router = useRouter()
+  const router   = useRouter()
   const { login, loading } = useAuth()
+  const curtain  = useCurtain()
   const [error, setError] = useState<string | null>(null)
 
   const handleLogin = async (data: AuthFormData) => {
     setError(null)
+
+    // Cover the screen immediately — user sees the book + pulse
+    // rather than a dead wait or the double-redirect flash.
+    curtain.show()
+
     try {
-      await login(data.email, data.password)
-      router.push('/')
+      // Run auth and the minimum display delay in parallel.
+      // If auth is fast the curtain still shows for at least MIN_CURTAIN_MS.
+      // If auth is slow the curtain simply keeps waiting.
+      await Promise.all([
+        login(data.email, data.password),
+        sleep(MIN_CURTAIN_MS),
+      ])
+
+      // Panels split open — navigate to dashboard directly, skipping
+      // the old /  → /dashboard double-redirect.
+      curtain.open()
+      router.push('/dashboard')
       router.refresh()
     } catch (err: any) {
+      // Auth failed — quickly dismiss the curtain and show the error.
+      curtain.dismiss()
       const errorMessage =
         err?.response?.data?.error ||
         err?.response?.data?.errors?.[0] ||

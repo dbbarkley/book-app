@@ -8,8 +8,9 @@ import {
   useRecommendedBooks,
   useRecommendedAuthors,
 } from '@book-app/shared'
-import DashboardHero from '@/components/dashboard/DashboardHero'
-import DashboardRecommendations from '@/components/dashboard/DashboardRecommendations'
+import DashboardHero         from '@/components/dashboard/DashboardHero'
+import DashboardActivityFeed from '@/components/dashboard/DashboardActivityFeed'
+import DashboardDiscovery    from '@/components/dashboard/DashboardDiscovery'
 
 export default function DashboardPage() {
   const { user, isAuthenticated } = useAuth()
@@ -17,26 +18,23 @@ export default function DashboardPage() {
   const {
     groupedLibrary,
     loading: libraryLoading,
-    refresh: refreshLibrary
+    refresh: refreshLibrary,
   } = useUserLibrary(user?.id)
 
   const readingBooks = groupedLibrary?.reading || []
 
   const { follows, fetchFollows } = useFollows()
-  const followedAuthors = follows.filter(f => f.followable_type === 'Author')
 
-  const { books: recommendedBooks, loading: recsLoading, refresh: refreshRecs } = useRecommendedBooks()
-  const { authors: recommendedAuthors, loading: authorRecsLoading } = useRecommendedAuthors()
+  const { books: recommendedBooks, loading: recsLoading,       refresh: refreshRecs } = useRecommendedBooks()
+  const { authors: recommendedAuthors, loading: authorRecsLoading }                   = useRecommendedAuthors()
 
-  // Guard so we only auto-generate once per mount, not on every re-render
+  // Auto-trigger recommendation generation once per mount if none exist
   const hasAutoTriggered = useRef(false)
 
   useEffect(() => {
     if (isAuthenticated) fetchFollows()
   }, [isAuthenticated, fetchFollows])
 
-  // Auto-generate recommendations the first time the dashboard loads if none exist.
-  // SmartRecommendationService is fast (pure DB queries) so this is safe in-request.
   useEffect(() => {
     if (
       !recsLoading &&
@@ -49,9 +47,10 @@ export default function DashboardPage() {
   }, [recsLoading, recommendedBooks.length, refreshRecs])
 
   return (
-    <div className="min-h-screen pb-20" style={{ backgroundColor: 'var(--color-canvas)' }}>
-      <div className="container-mobile py-8 space-y-12">
+    <div className="min-h-screen pb-24" style={{ backgroundColor: 'var(--color-canvas)' }}>
+      <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
 
+        {/* ── Currently Reading — full-width hero ───────────── */}
         <DashboardHero
           readingBooks={readingBooks}
           loading={libraryLoading}
@@ -59,11 +58,25 @@ export default function DashboardPage() {
           userName={user?.display_name || user?.username}
         />
 
-        <DashboardRecommendations
-          books={recommendedBooks}
-          authors={recommendedAuthors}
-          loading={recsLoading || authorRecsLoading}
-        />
+        {/* ── 70 / 30 grid — feed left, discovery right ─────── */}
+        {/*
+          Single column on mobile (<lg), splits into 70/30 on lg+.
+          items-start keeps the right column from stretching to
+          match the feed height — it stays flush to the top.
+        */}
+        <div className="grid grid-cols-1 lg:grid-cols-[7fr_3fr] gap-8 items-start">
+
+          {/* Left — Activity feed */}
+          <DashboardActivityFeed />
+
+          {/* Right — Discovery (recommendations + authors) */}
+          <DashboardDiscovery
+            books={recommendedBooks}
+            authors={recommendedAuthors}
+            loading={recsLoading || authorRecsLoading}
+          />
+
+        </div>
 
       </div>
     </div>

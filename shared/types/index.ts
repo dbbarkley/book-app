@@ -368,3 +368,84 @@ export interface ForumComment {
   updated_at: string
 }
 
+// Reading Buddy Types
+export type ReadingBuddyStatus = 'pending' | 'active' | 'declined' | 'dnf'
+
+export interface ReadingBuddyProgress {
+  status: string
+  pages_read: number | null
+  total_pages: number | null
+  completion_percentage: number | null
+}
+
+export interface ReadingBuddyParticipant {
+  id: number
+  username: string
+  display_name: string | null
+  avatar_url: string | null
+  progress: ReadingBuddyProgress | null
+}
+
+export interface ReadingBuddySession {
+  id: number
+  status: ReadingBuddyStatus
+  started_at: string | null
+  created_at: string
+  updated_at: string
+  is_initiator: boolean
+  book: {
+    id: number
+    title: string
+    author_name: string | null
+    cover_image_url: string | null
+    google_books_id: string | null
+  }
+  initiator: ReadingBuddyParticipant
+  invited: ReadingBuddyParticipant
+}
+
+export interface ReadingBuddyMessage {
+  id: number
+  content: string
+  user_id: number
+  created_at: string
+  user: {
+    id: number
+    username: string
+    display_name: string | null
+    avatar_url: string | null
+  }
+}
+
+export interface ReadingBuddyHighlight {
+  id: number
+  page_number: number
+  extracted_text: string   // full OCR'd page text
+  highlighted_text: string // the selected passage
+  char_start: number       // selection offset within extracted_text
+  char_end: number         // selection offset within extracted_text
+  created_at: string
+  page_image_url: string | null
+  user: {
+    id: number
+    username: string
+    display_name: string | null
+    avatar_url: string | null
+  }
+}
+
+export interface CreateHighlightPayload {
+  page_number: number
+  extracted_text: string
+  highlighted_text: string
+  char_start: number
+  char_end: number
+  page_image?: Blob | null  // optional photo of the physical page
+}
+
+// ActionCable message payloads
+export type ReadingBuddyCableEvent =
+  | { type: 'new_message';    message: ReadingBuddyMessage }
+  | { type: 'progress_update'; user_id: number; progress: ReadingBuddyProgress }
+  | { type: 'new_highlight';  highlight: ReadingBuddyHighlight }
+

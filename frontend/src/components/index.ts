@@ -64,3 +64,4 @@ export type { OnboardingButtonsProps } from './OnboardingButtons'
 export type { ImportDataStepProps } from './ImportDataStep'
 export type { OnboardingGuardProps } from './OnboardingGuard'
 
+export { default as ReadingBuddyBookSection } from './ReadingBuddyBookSection'

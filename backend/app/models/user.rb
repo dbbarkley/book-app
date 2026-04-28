@@ -18,6 +18,12 @@ class User < ApplicationRecord
            -> { where('friendships.status = ?', 'accepted') },
            through: :received_friendships, source: :requester
 
+  # ── Reading Buddy ─────────────────────────────────────────────────────────────
+  has_many :initiated_reading_buddy_sessions, class_name: 'ReadingBuddySession',
+           foreign_key: :initiator_id, dependent: :destroy
+  has_many :invited_reading_buddy_sessions,   class_name: 'ReadingBuddySession',
+           foreign_key: :invited_id,   dependent: :destroy
+
   # ── Follows ───────────────────────────────────────────────────────────────────
   has_many :follows, foreign_key: :follower_id, dependent: :destroy, class_name: 'Follow'
   has_many :followed_users, through: :follows, source: :followable, source_type: 'User'

@@ -913,6 +913,92 @@ export class ApiClient {
     })
     return response.data
   }
+  // ── Reading Buddy ──────────────────────────────────────────────────────────
+
+  async getReadingBuddySessions() {
+    const response = await this.client.get<{ sessions: import('../types').ReadingBuddySession[] }>(
+      '/reading_buddy/sessions'
+    )
+    return response.data.sessions
+  }
+
+  async getReadingBuddySession(sessionId: number) {
+    const response = await this.client.get<{
+      session:    import('../types').ReadingBuddySession
+      messages:   import('../types').ReadingBuddyMessage[]
+      highlights: import('../types').ReadingBuddyHighlight[]
+    }>(`/reading_buddy/sessions/${sessionId}`)
+    return response.data
+  }
+
+  async createReadingBuddySession(bookId: number, invitedId: number) {
+    const response = await this.client.post<{ session: import('../types').ReadingBuddySession }>(
+      '/reading_buddy/sessions',
+      { book_id: bookId, invited_id: invitedId }
+    )
+    return response.data.session
+  }
+
+  async updateReadingBuddySession(
+    sessionId: number,
+    actionType: 'accept' | 'decline' | 'dnf'
+  ) {
+    const response = await this.client.patch<{ session: import('../types').ReadingBuddySession }>(
+      `/reading_buddy/sessions/${sessionId}`,
+      { action_type: actionType }
+    )
+    return response.data.session
+  }
+
+  async sendReadingBuddyMessage(sessionId: number, content: string) {
+    const response = await this.client.post<{ message: import('../types').ReadingBuddyMessage }>(
+      `/reading_buddy/sessions/${sessionId}/messages`,
+      { content }
+    )
+    return response.data.message
+  }
+
+  async getReadingBuddyHighlights(sessionId: number) {
+    const response = await this.client.get<{ highlights: import('../types').ReadingBuddyHighlight[] }>(
+      `/reading_buddy/sessions/${sessionId}/highlights`
+    )
+    return response.data.highlights
+  }
+
+  async createReadingBuddyHighlight(
+    sessionId: number,
+    payload: import('../types').CreateHighlightPayload
+  ) {
+    // Use multipart form data only when a page image is provided
+    if (payload.page_image) {
+      const formData = new FormData()
+      formData.append('page_number',      String(payload.page_number))
+      formData.append('extracted_text',   payload.extracted_text)
+      formData.append('highlighted_text', payload.highlighted_text)
+      formData.append('char_start',       String(payload.char_start))
+      formData.append('char_end',         String(payload.char_end))
+      formData.append('page_image',       payload.page_image, 'page.jpg')
+
+      const response = await this.client.post<{ highlight: import('../types').ReadingBuddyHighlight }>(
+        `/reading_buddy/sessions/${sessionId}/highlights`,
+        formData,
+        { headers: { 'Content-Type': 'multipart/form-data' } }
+      )
+      return response.data.highlight
+    }
+
+    const response = await this.client.post<{ highlight: import('../types').ReadingBuddyHighlight }>(
+      `/reading_buddy/sessions/${sessionId}/highlights`,
+      {
+        page_number:      payload.page_number,
+        extracted_text:   payload.extracted_text,
+        highlighted_text: payload.highlighted_text,
+        char_start:       payload.char_start,
+        char_end:         payload.char_end,
+      }
+    )
+    return response.data.highlight
+  }
 }
 
 // Export singleton instance

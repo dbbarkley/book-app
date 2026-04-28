@@ -27,5 +27,15 @@ module BookApp
     # Required for OmniAuth
     config.middleware.use ActionDispatch::Cookies
     config.middleware.use ActionDispatch::Session::CookieStore, key: '_book_app_session'
+
+    # ActionCable (WebSockets for Reading Buddy real-time chat)
+    config.action_cable.mount_path = '/cable'
+    config.action_cable.allowed_request_origins = [
+      'http://localhost:3002',
+      'http://localhost:3000',
+      /http:\/\/localhost:.*/,
+      /http:\/\/192\.168\.\d+\.\d+:.*/,
+      /http:\/\/127\.0\.0\.1:.*/
+    ]
   end
 end

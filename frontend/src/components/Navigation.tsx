@@ -3,9 +3,9 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useAuth, useFeed } from '@book-app/shared'
+import { useAuth } from '@book-app/shared'
 import Avatar from './Avatar'
 import {
   Home,
@@ -15,29 +15,20 @@ import {
   Menu,
   X,
   Settings,
-  Rss,
+  Users,
 } from 'lucide-react'
 
 export default function Navigation() {
   const pathname = usePathname()
   const { isAuthenticated, user } = useAuth()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const { unreadCount, fetchUnreadCount } = useFeed()
-
-  // Poll unread count every 60s when authenticated
-  useEffect(() => {
-    if (!isAuthenticated) return
-    fetchUnreadCount()
-    const interval = setInterval(fetchUnreadCount, 60_000)
-    return () => clearInterval(interval)
-  }, [isAuthenticated, fetchUnreadCount])
 
   const navLinks = isAuthenticated ? [
-    { href: '/dashboard',         label: 'Home',     icon: Home     },
-    { href: '/library',           label: 'Library',  icon: BookOpen },
-    { href: '/search',            label: 'Discover', icon: Search   },
-    { href: '/feed',              label: 'Activity', icon: Rss, badge: unreadCount > 0 ? Math.min(unreadCount, 99) : null },
-    { href: `/users/${user?.id}`, label: 'Profile',  icon: User     },
+    { href: '/dashboard',         label: 'Home',    icon: Home     },
+    { href: '/library',           label: 'Library', icon: BookOpen },
+    { href: '/search',            label: 'Discover',icon: Search   },
+    { href: '/reading-buddy',     label: 'Buddies', icon: Users    },
+    { href: `/users/${user?.id}`, label: 'Profile', icon: User     },
   ] : [
     { href: '/search', label: 'Discover', icon: Search },
   ]

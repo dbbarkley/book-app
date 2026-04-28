@@ -5,11 +5,12 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@book-app/shared'
 import Link from 'next/link'
 import Image from 'next/image'
-import { motion, type Variants } from 'framer-motion'
+import { motion, useScroll, useTransform, type Variants } from 'framer-motion'
 import {
-  BookOpen, Search, Users, Lock, XCircle,
+  BookOpen, Search, Users, Lock, XCircle, MessageCircle, Bookmark, Send,
   Check, ArrowRight, Quote, Twitter, Instagram, Mail,
 } from 'lucide-react'
+import BookCurtain from '@/components/BookCurtain'
 
 // ── Book cover mosaic — Open Library public covers ──────────────────────────
 const COVERS = [
@@ -54,7 +55,6 @@ const staggerContainer: Variants = {
   visible: { transition: { staggerChildren: 0.1 } },
 }
 
-/** Fades + slides up when it enters the viewport. Use once={true} so it doesn't re-play on scroll back. */
 function FadeUp({ children, className, delay = 0 }: {
   children: React.ReactNode; className?: string; delay?: number
 }) {
@@ -74,7 +74,6 @@ function FadeUp({ children, className, delay = 0 }: {
   )
 }
 
-/** Stagger wrapper — children should use the `fadeUp` variant. */
 function StaggerGrid({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <motion.div
@@ -304,10 +303,65 @@ function Footer() {
   )
 }
 
+// ── Hero headline — word-by-word ink reveal ──────────────────────────────────
+// Each word slides up and fades in with a quick stagger, like ink blooming
+// onto a page. The <br /> between "library" and "you" is preserved.
+const HEADLINE_LINE_1 = ['The', 'library']
+const HEADLINE_LINE_2 = ['you', 'always', 'wanted']
+
+function HeroHeadline() {
+  return (
+    <h1
+      className="font-serif text-5xl sm:text-6xl lg:text-7xl font-bold leading-[1.08] mb-6"
+      style={{ color: 'var(--color-lit)' }}
+    >
+      {/* Line 1 */}
+      {HEADLINE_LINE_1.map((word, i) => (
+        <motion.span
+          key={`h1-${word}`}
+          style={{ display: 'inline-block', marginRight: i < HEADLINE_LINE_1.length - 1 ? '0.28em' : 0 }}
+          initial={{ opacity: 0, y: 22 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{
+            delay: 0.1 + i * 0.09,
+            duration: 0.55,
+            ease: [0.22, 1, 0.36, 1],
+          }}
+        >
+          {word}
+        </motion.span>
+      ))}
+
+      <br />
+
+      {/* Line 2 */}
+      {HEADLINE_LINE_2.map((word, i) => (
+        <motion.span
+          key={`h2-${word}`}
+          style={{ display: 'inline-block', marginRight: i < HEADLINE_LINE_2.length - 1 ? '0.28em' : 0 }}
+          initial={{ opacity: 0, y: 22 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{
+            delay: 0.1 + (HEADLINE_LINE_1.length + i) * 0.09,
+            duration: 0.55,
+            ease: [0.22, 1, 0.36, 1],
+          }}
+        >
+          {word}
+        </motion.span>
+      ))}
+    </h1>
+  )
+}
+
 // ── Main page ────────────────────────────────────────────────────────────────
 export default function HomePage() {
   const router = useRouter()
   const { isAuthenticated, loading } = useAuth()
+
+  // Scroll-linked parallax for the book covers grid
+  const { scrollY } = useScroll()
+  const coversY = useTransform(scrollY, [0, 600], [0, -55])
 
   useEffect(() => {
     if (!loading && isAuthenticated) router.push('/dashboard')
@@ -324,8 +378,12 @@ export default function HomePage() {
   return (
     <div className="min-h-screen overflow-x-hidden">
 
+      {/* ── FIRST-VISIT CINEMATIC INTRO ───────────────────────────────── */}
+      <BookCurtain />
+
       {/* ── HERO ─────────────────────────────────────────────────────────── */}
       <section className="container-mobile pt-12 pb-16 sm:pt-16 sm:pb-24">
+
         <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
 
           {/* Left — copy */}
@@ -334,14 +392,33 @@ export default function HomePage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: 'easeOut' }}
           >
-            <Eyebrow>Your reading life, elevated</Eyebrow>
-            <h1 className="font-serif text-5xl sm:text-6xl lg:text-7xl font-bold leading-[1.08] mb-6" style={{ color: 'var(--color-lit)' }}>
-              The library<br />you always wanted
-            </h1>
-            <p className="text-lg sm:text-xl leading-relaxed mb-10 max-w-lg" style={{ color: 'var(--color-lit-2)' }}>
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, ease: 'easeOut' }}
+            >
+              <Eyebrow>Your reading life, elevated</Eyebrow>
+            </motion.div>
+
+            {/* Word-by-word ink reveal headline */}
+            <HeroHeadline />
+
+            <motion.p
+              className="text-lg sm:text-xl leading-relaxed mb-10 max-w-lg"
+              style={{ color: 'var(--color-lit-2)' }}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.58, duration: 0.55, ease: 'easeOut' }}
+            >
               Track every book you read, including the ones just for you. Discover new reads. Connect with readers who actually get it.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3">
+            </motion.p>
+
+            <motion.div
+              className="flex flex-col sm:flex-row gap-3"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.68, duration: 0.5, ease: 'easeOut' }}
+            >
               <Link
                 href="/signup"
                 className="inline-flex items-center justify-center gap-2 rounded-2xl px-8 py-4 text-base font-bold transition-all shadow-lg"
@@ -362,142 +439,47 @@ export default function HomePage() {
                 <Search size={17} />
                 Browse Books
               </Link>
-            </div>
+            </motion.div>
           </motion.div>
 
-          {/* Right — book cover mosaic */}
+          {/* Right — book cover mosaic with scroll parallax */}
           <motion.div
             initial={{ opacity: 0, scale: 0.96 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.7, delay: 0.1, ease: 'easeOut' }}
-            className="hidden lg:grid grid-cols-3 gap-3 relative"
+            className="hidden lg:block relative"
           >
-            {COVERS.map((cover, i) => (
-              <BookCover
-                key={cover.isbn}
-                isbn={cover.isbn}
-                bg={cover.bg}
-                title={cover.title}
-                author={cover.author}
-                rotate={i % 3 === 1 ? -1.5 : i % 3 === 2 ? 1 : 0}
-              />
-            ))}
-            {/* Gradient fade at bottom */}
-            <div
-              className="absolute inset-x-0 bottom-0 h-24 pointer-events-none"
-              style={{ background: 'linear-gradient(to top, var(--color-canvas), transparent)' }}
-            />
-          </motion.div>
-        </div>
-      </section>
-
-      {/* ── DIFFERENTIATOR — Private shelf ───────────────────────────────── */}
-      <section className="container-mobile py-16 sm:py-24">
-        <div className="max-w-7xl mx-auto">
-          <FadeUp>
-          <div
-            className="rounded-[32px] p-8 sm:p-14 grid lg:grid-cols-2 gap-12 items-center"
-            style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-rim)', boxShadow: '0 16px 48px rgba(0,0,0,0.4)' }}
-          >
-            {/* Copy */}
-            <div>
-              <Eyebrow>What sets us apart</Eyebrow>
-              <h2 className="font-serif text-3xl sm:text-4xl font-bold mb-5" style={{ color: 'var(--color-lit)' }}>
-                Read freely.<br />Track everything.<br />Share only what you want.
-              </h2>
-              <p className="text-base leading-relaxed mb-6" style={{ color: 'var(--color-lit-2)' }}>
-                Some books are just for you. A personal read, a sensitive topic, something you're not ready to talk about yet — whatever the reason, it's yours.
-              </p>
-              <p className="text-base leading-relaxed mb-8" style={{ color: 'var(--color-lit-2)' }}>
-                Libraio's <strong style={{ color: 'var(--color-lit)' }}>Private shelf</strong> is completely invisible to everyone else. Add any book and it stays between you and your reading list — full stop.
-              </p>
-              <div className="flex flex-col gap-3">
-                {[
-                  "Books you're not ready to talk about",
-                  'Personal or sensitive topics',
-                  'Guilty pleasures — no judgement',
-                  'Anything you just want to track quietly',
-                ].map(item => (
-                  <div key={item} className="flex items-start gap-3">
-                    <div
-                      className="w-5 h-5 rounded-full flex items-center justify-center mt-0.5 flex-shrink-0"
-                      style={{ backgroundColor: 'var(--color-accent-subtle)' }}
-                    >
-                      <Check size={11} style={{ color: 'var(--color-accent)' }} />
-                    </div>
-                    <span className="text-sm" style={{ color: 'var(--color-lit)' }}>{item}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Shelf visual */}
-            <div>
-              <ShelfPreview />
-            </div>
-          </div>
-          </FadeUp>
-        </div>
-      </section>
-
-      {/* ── DIFFERENTIATOR — DNF shelf ───────────────────────────────────── */}
-      <section className="container-mobile pb-16 sm:pb-24">
-        <div className="max-w-7xl mx-auto">
-          <FadeUp>
-          <div
-            className="rounded-[32px] p-8 sm:p-14 grid lg:grid-cols-2 gap-12 items-center"
-            style={{ backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-rim)' }}
-          >
-            {/* Visual — DNF card */}
-            <div className="order-2 lg:order-1 flex justify-center">
+            {/*
+              useTransform gives a smooth parallax: as the user scrolls down,
+              the covers drift upward slightly, creating a sense of depth
+              between the hero text (which scrolls normally) and the covers.
+            */}
+            <motion.div
+              style={{ y: coversY }}
+              className="grid grid-cols-3 gap-3 relative"
+            >
+              {COVERS.map((cover, i) => (
+                <BookCover
+                  key={cover.isbn}
+                  isbn={cover.isbn}
+                  bg={cover.bg}
+                  title={cover.title}
+                  author={cover.author}
+                  rotate={i % 3 === 1 ? -1.5 : i % 3 === 2 ? 1 : 0}
+                />
+              ))}
+              {/* Gradient fade at bottom */}
               <div
-                className="rounded-2xl p-6 w-full max-w-xs"
-                style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-rim)', boxShadow: '0 16px 48px rgba(0,0,0,0.5)' }}
-              >
-                <div className="flex items-center gap-2 mb-4">
-                  <XCircle size={16} style={{ color: 'var(--color-lit-3)' }} />
-                  <span className="font-bold text-sm" style={{ color: 'var(--color-lit)' }}>Did Not Finish</span>
-                  <span className="ml-auto text-xs font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--color-grove)', color: 'var(--color-lit-3)' }}>8 books</span>
-                </div>
-                {[
-                  { title: 'Ulysses',       author: 'James Joyce',          page: 'p. 34'  },
-                  { title: 'Infinite Jest', author: 'David Foster Wallace',  page: 'p. 211' },
-                  { title: 'War and Peace', author: 'Leo Tolstoy',           page: 'p. 89'  },
-                ].map(book => (
-                  <div key={book.title} className="flex items-center gap-3 py-2.5" style={{ borderTop: '1px solid var(--color-rim)' }}>
-                    <div className="w-8 h-11 rounded flex-shrink-0" style={{ backgroundColor: 'var(--color-grove)' }} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-bold truncate" style={{ color: 'var(--color-lit)' }}>{book.title}</p>
-                      <p className="text-[11px] truncate" style={{ color: 'var(--color-lit-3)' }}>{book.author}</p>
-                    </div>
-                    <span className="text-[11px] font-medium flex-shrink-0" style={{ color: 'var(--color-lit-3)' }}>{book.page}</span>
-                  </div>
-                ))}
-                <p className="text-[11px] text-center mt-3 italic" style={{ color: 'var(--color-lit-3)' }}>
-                  Stopped, not forgotten.
-                </p>
-              </div>
-            </div>
+                className="absolute inset-x-0 bottom-0 h-24 pointer-events-none"
+                style={{ background: 'linear-gradient(to top, var(--color-canvas), transparent)' }}
+              />
+            </motion.div>
+          </motion.div>
 
-            {/* Copy */}
-            <div className="order-1 lg:order-2">
-              <Eyebrow>DNF Shelf</Eyebrow>
-              <h2 className="font-serif text-3xl sm:text-4xl font-bold mb-5" style={{ color: 'var(--color-lit)' }}>
-                It's okay to stop reading a book
-              </h2>
-              <p className="text-base leading-relaxed mb-4" style={{ color: 'var(--color-lit-2)' }}>
-                Not every book is for every reader, and that's perfectly fine. Life's too short to push through something that isn't working for you.
-              </p>
-              <p className="text-base leading-relaxed" style={{ color: 'var(--color-lit-2)' }}>
-                Libraio has a dedicated <strong style={{ color: 'var(--color-lit)' }}>Did Not Finish</strong> shelf. Track where you stopped, keep a record, and move on.
-              </p>
-            </div>
-          </div>
-          </FadeUp>
         </div>
       </section>
 
-      {/* ── FEATURES ─────────────────────────────────────────────────────── */}
+      {/* ── FEATURES — Everything your reading life needs ─────────────── */}
       <section className="container-mobile py-16 sm:py-24">
         <div className="max-w-7xl mx-auto">
           <FadeUp className="text-center mb-14">
@@ -509,83 +491,320 @@ export default function HomePage() {
               Simple, focused tools built for readers — not for algorithms.
             </p>
           </FadeUp>
-          <StaggerGrid className="grid md:grid-cols-3 gap-5">
-            {[
-              {
-                icon: BookOpen,
-                title: 'Track your shelves',
-                desc: 'Organise every book into Reading, To Read, Completed, DNF, or Private. Your full reading life in one place.',
-              },
-              {
-                icon: Search,
-                title: 'Discover new reads',
-                desc: 'Search millions of books, explore genres, and find your next favourite.',
-              },
-              {
-                icon: Users,
-                title: 'Connect with readers',
-                desc: "Follow other readers, see what they're reading, and discover books through people with real taste.",
-              },
-            ].map(feature => {
-              const Icon = feature.icon
-              return (
-                <motion.div
-                  key={feature.title}
-                  variants={fadeUp}
-                  className="rounded-[28px] p-8 flex flex-col gap-5"
-                  style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-rim)', boxShadow: '0 8px 32px rgba(0,0,0,0.3)' }}
+
+          {/* Hero card — Private Shelf */}
+          <FadeUp className="mb-5">
+            <div
+              className="rounded-[28px] p-8 sm:p-10 grid lg:grid-cols-2 gap-10 items-center"
+              style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-rim)', boxShadow: '0 16px 48px rgba(0,0,0,0.4)' }}
+            >
+              <div>
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center mb-5"
+                  style={{ backgroundColor: 'var(--color-accent-subtle)' }}
                 >
+                  <Lock size={18} style={{ color: 'var(--color-accent)' }} />
+                </div>
+                <h3 className="font-serif text-2xl sm:text-3xl font-bold mb-4" style={{ color: 'var(--color-lit)' }}>
+                  Your Private shelf
+                </h3>
+                <p className="text-base leading-relaxed" style={{ color: 'var(--color-lit-2)' }}>
+                  Some books are just for you. Track anything privately — completely invisible to everyone else. No judgement, no audience. Full stop.
+                </p>
+              </div>
+              <div>
+                <ShelfPreview />
+              </div>
+            </div>
+          </FadeUp>
+
+          {/* Three supporting feature cards */}
+          <StaggerGrid className="grid md:grid-cols-3 gap-5">
+            {/* DNF Shelf */}
+            <motion.div
+              variants={fadeUp}
+              className="rounded-[28px] p-7 flex flex-col gap-4"
+              style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-rim)', boxShadow: '0 8px 32px rgba(0,0,0,0.3)' }}
+            >
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center"
+                style={{ backgroundColor: 'rgba(237,224,196,0.06)' }}
+              >
+                <XCircle size={18} style={{ color: 'var(--color-lit-3)' }} />
+              </div>
+              <div>
+                <h3 className="font-serif text-xl font-bold mb-2" style={{ color: 'var(--color-lit)' }}>DNF shelf</h3>
+                <p className="text-sm leading-relaxed mb-4" style={{ color: 'var(--color-lit-2)' }}>
+                  Stop guilt-free. Track where you left off and move on.
+                </p>
+              </div>
+              <div
+                className="rounded-xl p-3 mt-auto flex flex-col gap-0"
+                style={{ backgroundColor: 'var(--color-grove)' }}
+              >
+                {[
+                  { title: 'Ulysses', page: 'p. 34' },
+                  { title: 'Infinite Jest', page: 'p. 211' },
+                ].map((book, i) => (
                   <div
-                    className="w-11 h-11 rounded-2xl flex items-center justify-center"
-                    style={{ backgroundColor: 'var(--color-accent-subtle)' }}
+                    key={book.title}
+                    className="flex items-center gap-2.5 py-2"
+                    style={{ borderTop: i > 0 ? '1px solid var(--color-rim)' : undefined }}
                   >
-                    <Icon size={20} style={{ color: 'var(--color-accent)' }} />
+                    <span className="text-xs font-medium" style={{ color: 'var(--color-lit)' }}>{book.title}</span>
+                    <span className="ml-auto text-[11px]" style={{ color: 'var(--color-lit-3)' }}>{book.page}</span>
                   </div>
-                  <div>
-                    <h3 className="font-serif text-xl font-bold mb-2" style={{ color: 'var(--color-lit)' }}>{feature.title}</h3>
-                    <p className="text-sm leading-relaxed" style={{ color: 'var(--color-lit)' }}>{feature.desc}</p>
+                ))}
+              </div>
+            </motion.div>
+
+            {/* Suggest a Book */}
+            <motion.div
+              variants={fadeUp}
+              className="rounded-[28px] p-7 flex flex-col gap-4"
+              style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-rim)', boxShadow: '0 8px 32px rgba(0,0,0,0.3)' }}
+            >
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center"
+                style={{ backgroundColor: 'var(--color-success-light)' }}
+              >
+                <Send size={18} style={{ color: 'var(--color-success)' }} />
+              </div>
+              <div>
+                <h3 className="font-serif text-xl font-bold mb-2" style={{ color: 'var(--color-lit)' }}>Suggest a book</h3>
+                <p className="text-sm leading-relaxed mb-4" style={{ color: 'var(--color-lit-2)' }}>
+                  Send a recommendation to a friend with a personal note about why they&apos;ll love it.
+                </p>
+              </div>
+              <div
+                className="rounded-xl p-3 mt-auto flex flex-col gap-2.5"
+                style={{ backgroundColor: 'var(--color-grove)' }}
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-10 rounded flex-shrink-0" style={{ backgroundColor: 'var(--color-accent-subtle)', border: '1px solid var(--color-rim-accent)' }} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold truncate" style={{ color: 'var(--color-lit)' }}>Project Hail Mary</p>
+                    <p className="text-[10px] truncate" style={{ color: 'var(--color-lit-3)' }}>Andy Weir</p>
                   </div>
-                </motion.div>
-              )
-            })}
+                  <Send size={11} style={{ color: 'var(--color-success)', flexShrink: 0 }} />
+                </div>
+                <div
+                  className="rounded-lg p-2.5 text-[11px] italic leading-relaxed"
+                  style={{ backgroundColor: 'var(--color-surface)', color: 'var(--color-lit-2)', border: '1px solid var(--color-rim)' }}
+                >
+                  &ldquo;You loved The Martian, this one&apos;s even better. Trust me.&rdquo;
+                </div>
+              </div>
+            </motion.div>
+
+            {/* My Next Book */}
+            <motion.div
+              variants={fadeUp}
+              className="rounded-[28px] p-7 flex flex-col gap-4"
+              style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-rim)', boxShadow: '0 8px 32px rgba(0,0,0,0.3)' }}
+            >
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center"
+                style={{ backgroundColor: 'var(--color-accent-subtle)' }}
+              >
+                <BookOpen size={18} style={{ color: 'var(--color-accent)' }} />
+              </div>
+              <div>
+                <h3 className="font-serif text-xl font-bold mb-2" style={{ color: 'var(--color-lit)' }}>My next book</h3>
+                <p className="text-sm leading-relaxed mb-4" style={{ color: 'var(--color-lit-2)' }}>
+                  Personalised picks based on your shelves and reading history.
+                </p>
+              </div>
+              <div
+                className="rounded-xl p-4 mt-auto flex flex-col items-center gap-2"
+                style={{ backgroundColor: 'var(--color-grove)' }}
+              >
+                <div className="flex items-center gap-1.5">
+                  <div className="w-6 h-9 rounded-sm" style={{ backgroundColor: 'var(--color-accent-subtle)', border: '1px solid var(--color-rim-accent)', transform: 'rotate(-5deg)' }} />
+                  <div className="w-6 h-9 rounded-sm -mt-1" style={{ backgroundColor: 'var(--color-accent-subtle)', border: '1px solid var(--color-accent)', opacity: 0.7 }} />
+                  <div className="w-6 h-9 rounded-sm" style={{ backgroundColor: 'var(--color-accent-subtle)', border: '1px solid var(--color-rim-accent)', transform: 'rotate(5deg)' }} />
+                </div>
+                <span className="text-[11px] font-medium" style={{ color: 'var(--color-accent)' }}>Based on your taste</span>
+              </div>
+            </motion.div>
           </StaggerGrid>
         </div>
       </section>
 
-      {/* ── HOW IT WORKS ─────────────────────────────────────────────────── */}
+      {/* ── READING BUDDIES SPOTLIGHT ────────────────────────────────────── */}
       <section className="container-mobile py-16 sm:py-24">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-7xl mx-auto">
           <FadeUp className="text-center mb-14">
-            <Eyebrow>Getting started</Eyebrow>
-            <h2 className="font-serif text-3xl sm:text-4xl font-bold" style={{ color: 'var(--color-lit)' }}>
-              Up and running in minutes
+            <h2 className="font-serif text-3xl sm:text-4xl font-bold mb-4" style={{ color: 'var(--color-lit)' }}>
+              Reading is better with a friend
             </h2>
+            <p className="text-base max-w-xl mx-auto" style={{ color: 'var(--color-lit-2)' }}>
+              Pick a book, invite a friend, and share the journey — page by page.
+            </p>
           </FadeUp>
-          <StaggerGrid className="grid sm:grid-cols-3 gap-8 relative">
-            {/* Connector line (desktop) */}
-            <div
-              className="hidden sm:block absolute top-8 left-[calc(16.67%+1rem)] right-[calc(16.67%+1rem)] h-px"
-              style={{ backgroundColor: 'var(--color-rim)' }}
-            />
-            {[
-              { step: '1', title: 'Search any book',     desc: 'Find any title from our catalog of millions of books.' },
-              { step: '2', title: 'Add it to a shelf',   desc: 'Reading, To Read, Completed, DNF, or Private.' },
-              { step: '3', title: 'Track your progress', desc: 'Update page counts, leave notes, and watch your library grow.' },
-            ].map(s => (
-              <motion.div key={s.step} variants={fadeUp} className="flex flex-col items-center text-center gap-4">
+
+          <FadeUp>
+          <div
+            className="rounded-[28px] overflow-hidden"
+            style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-rim)', boxShadow: '0 16px 48px rgba(0,0,0,0.4)' }}
+          >
+            {/* Top — passage + discussion */}
+            <div className="grid lg:grid-cols-2">
+              {/* Passage side */}
+              <div className="p-8 sm:p-10" style={{ borderRight: '1px solid var(--color-rim)' }}>
+                <div className="flex items-center gap-3 mb-5">
+                  <Image
+                    src="https://covers.openlibrary.org/b/isbn/9798840903377-M.jpg"
+                    alt="Carl's Doomsday Scenario"
+                    width={32}
+                    height={48}
+                    className="rounded flex-shrink-0"
+                    style={{ objectFit: 'cover' }}
+                  />
+                  <div>
+                    <p className="text-sm font-bold" style={{ color: 'var(--color-lit)' }}>Carl&apos;s Doomsday Scenario</p>
+                    <p className="text-xs" style={{ color: 'var(--color-lit-3)' }}>Dungeon Crawler Carl #2 · Matt Dinniman</p>
+                  </div>
+                </div>
+
                 <div
-                  className="w-16 h-16 rounded-full flex items-center justify-center text-xl font-bold font-serif relative z-10"
-                  style={{ backgroundColor: 'var(--color-surface)', border: '2px solid var(--color-rim-accent)', color: 'var(--color-accent)' }}
+                  className="rounded-xl p-5 mb-4"
+                  style={{ backgroundColor: 'var(--color-grove)', borderLeft: '3px solid var(--color-accent)' }}
                 >
-                  {s.step}
+                  <p className="font-serif text-sm leading-relaxed italic" style={{ color: 'var(--color-lit-2)' }}>
+                    &ldquo;The universe had rules. Those rules could be{' '}
+                    <span className="px-1 rounded" style={{ backgroundColor: 'var(--color-accent-subtle)', color: 'var(--color-lit)' }}>
+                      gamed, exploited, and broken
+                    </span>
+                    . And if there was one thing Carl excelled at, it was finding ways to break things that weren&apos;t supposed to be broken.&rdquo;
+                  </p>
+                  <p className="text-xs mt-3" style={{ color: 'var(--color-lit-3)' }}>Floor 3 · p. 142</p>
                 </div>
-                <div>
-                  <h3 className="font-bold text-base mb-1" style={{ color: 'var(--color-lit)' }}>{s.title}</h3>
-                  <p className="text-sm leading-relaxed" style={{ color: 'var(--color-lit)' }}>{s.desc}</p>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span
+                    className="text-[11px] px-3 py-1 rounded-full flex items-center gap-1.5"
+                    style={{ backgroundColor: 'var(--color-success-light)', color: 'var(--color-success)' }}
+                  >
+                    <Bookmark size={10} /> Highlighted by Jamie
+                  </span>
+                  <span
+                    className="text-[11px] px-3 py-1 rounded-full flex items-center gap-1.5"
+                    style={{ backgroundColor: 'var(--color-accent-subtle)', color: 'var(--color-accent)' }}
+                  >
+                    <Bookmark size={10} /> You bookmarked this too
+                  </span>
                 </div>
-              </motion.div>
-            ))}
-          </StaggerGrid>
+              </div>
+
+              {/* Discussion side */}
+              <div className="p-8 sm:p-10">
+                <p
+                  className="text-[11px] font-bold uppercase tracking-wider mb-5 flex items-center gap-2"
+                  style={{ color: 'var(--color-lit-3)' }}
+                >
+                  <MessageCircle size={12} /> Discussion
+                </p>
+
+                <div className="flex flex-col gap-4">
+                  {/* Jamie's message */}
+                  <div className="flex gap-3 items-start">
+                    <div
+                      className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold"
+                      style={{ backgroundColor: 'var(--color-success)', color: 'var(--color-surface)' }}
+                    >
+                      JK
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[11px] font-bold mb-1" style={{ color: 'var(--color-success)' }}>Jamie K.</p>
+                      <div
+                        className="rounded-xl rounded-tl-sm p-3 text-[13px] leading-relaxed"
+                        style={{ backgroundColor: 'var(--color-grove)', color: 'var(--color-lit-2)' }}
+                      >
+                        This is such a Carl line. He&apos;s completely outmatched and his plan is just &ldquo;cool, let me find the exploit.&rdquo; I love this man.
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Your message */}
+                  <div className="flex gap-3 items-start">
+                    <div
+                      className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold"
+                      style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-accent-on)' }}
+                    >
+                      You
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[11px] font-bold mb-1" style={{ color: 'var(--color-accent)' }}>You</p>
+                      <div
+                        className="rounded-xl rounded-tl-sm p-3 text-[13px] leading-relaxed"
+                        style={{ backgroundColor: 'var(--color-accent-subtle)', color: 'var(--color-lit-2)' }}
+                      >
+                        Floor 3 is where it really clicks. The first two floors were the tutorial — now the actual game starts. Princess Donut&apos;s reaction had me on the floor.
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Jamie's reply */}
+                  <div className="flex gap-3 items-start">
+                    <div
+                      className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold"
+                      style={{ backgroundColor: 'var(--color-success)', color: 'var(--color-surface)' }}
+                    >
+                      JK
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[11px] font-bold mb-1" style={{ color: 'var(--color-success)' }}>Jamie K.</p>
+                      <div
+                        className="rounded-xl rounded-tl-sm p-3 text-[13px] leading-relaxed"
+                        style={{ backgroundColor: 'var(--color-grove)', color: 'var(--color-lit-2)' }}
+                      >
+                        Donut is carrying this entire series and she knows it. Okay this is easily a 5-star read, no question.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom — progress bars */}
+            <div
+              className="px-8 sm:px-10 py-5 grid grid-cols-2 gap-4"
+              style={{ borderTop: '1px solid var(--color-rim)' }}
+            >
+              <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--color-grove)' }}>
+                <div className="flex items-center gap-2 mb-2">
+                  <div
+                    className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[8px] font-bold"
+                    style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-accent-on)' }}
+                  >
+                    You
+                  </div>
+                  <span className="text-xs" style={{ color: 'var(--color-lit-3)' }}>Your progress</span>
+                </div>
+                <div className="w-full h-1 rounded-full mb-1.5" style={{ backgroundColor: 'var(--color-rim)' }}>
+                  <div className="h-full rounded-full" style={{ width: '71%', backgroundColor: 'var(--color-accent)' }} />
+                </div>
+                <p className="text-xs font-bold" style={{ color: 'var(--color-accent)' }}>71%</p>
+              </div>
+              <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--color-grove)' }}>
+                <div className="flex items-center gap-2 mb-2">
+                  <div
+                    className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[8px] font-bold"
+                    style={{ backgroundColor: 'var(--color-success)', color: 'var(--color-surface)' }}
+                  >
+                    JK
+                  </div>
+                  <span className="text-xs" style={{ color: 'var(--color-lit-3)' }}>Jamie&apos;s progress</span>
+                </div>
+                <div className="w-full h-1 rounded-full mb-1.5" style={{ backgroundColor: 'var(--color-rim)' }}>
+                  <div className="h-full rounded-full" style={{ width: '67%', backgroundColor: 'var(--color-success)' }} />
+                </div>
+                <p className="text-xs font-bold" style={{ color: 'var(--color-success)' }}>67%</p>
+              </div>
+            </div>
+          </div>
+          </FadeUp>
         </div>
       </section>
 

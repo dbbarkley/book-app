@@ -1,6 +1,6 @@
 FROM ruby:3.1-slim
 
-# Install all system dependencies in one layer
+# Install system dependencies
 RUN apt-get update -qq && \
     apt-get install -y \
     build-essential \

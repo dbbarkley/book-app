@@ -1,4 +1,6 @@
 Rails.application.routes.draw do
+  mount ActionCable.server => '/cable'
+
   namespace :api do
     namespace :v1 do
       # Authentication
@@ -96,6 +98,18 @@ Rails.application.routes.draw do
       end
       get 'notifications/unread', to: 'notifications#unread'
       
+      # Reading Buddy
+      resources :reading_buddy_sessions,
+                path: 'reading_buddy/sessions',
+                only: [:index, :create, :show, :update] do
+        resources :reading_buddy_messages,
+                  path: 'messages',
+                  only: [:create]
+        resources :reading_buddy_highlights,
+                  path: 'highlights',
+                  only: [:index, :create]
+      end
+
       # Imports (Goodreads, StoryGraph, etc.)
       resources :imports, only: [:index, :show, :create] do
         collection do

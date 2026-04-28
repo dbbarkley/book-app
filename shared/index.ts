@@ -16,6 +16,7 @@ export {
   useOnboardingStore,
   useAuthorsStore,
   useBooksStore,
+  useReadingBuddyStore,
 } from './store'
 
 // Hooks
@@ -60,6 +61,7 @@ export {
   useForum,
   useForumPosts,
   useForumPost,
+  useReadingBuddy,
 } from './hooks'
 
 

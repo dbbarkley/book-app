@@ -20,6 +20,7 @@ import {
   Avatar,
   QuickUpdateModal,
   SuggestToFriendModal,
+  ReadingBuddyBookSection,
 } from '@/components'
 import { formatDate } from '@/utils/format'
 import {
@@ -383,6 +384,13 @@ export default function BookPage() {
                     None of your friends have added this book yet.
                   </p>
                 )}
+              </div>
+            )}
+
+            {/* Reading Buddy — only available for DB books */}
+            {isAuthenticated && internalBookId && (
+              <div className="pt-2">
+                <ReadingBuddyBookSection bookId={internalBookId} bookTitle={book.title} />
               </div>
             )}
 

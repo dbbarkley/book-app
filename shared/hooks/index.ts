@@ -50,3 +50,5 @@ export {
   useHeartComment,
   useFollowForum,
 } from './useForumActions'
+
+export { useReadingBuddy } from './useReadingBuddy'

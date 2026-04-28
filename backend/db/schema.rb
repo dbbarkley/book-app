@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_04_24_000002) do
+ActiveRecord::Schema[7.2].define(version: 2026_04_26_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -295,6 +295,48 @@ ActiveRecord::Schema[7.2].define(version: 2026_04_24_000002) do
     t.index ["zipcode"], name: "index_processed_locations_on_zipcode"
   end
 
+  create_table "reading_buddy_highlights", force: :cascade do |t|
+    t.bigint "reading_buddy_session_id", null: false
+    t.bigint "user_id", null: false
+    t.integer "page_number", null: false
+    t.text "extracted_text", null: false
+    t.text "highlighted_text", null: false
+    t.integer "char_start", null: false
+    t.integer "char_end", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["reading_buddy_session_id", "created_at"], name: "index_rb_highlights_on_session_and_created"
+    t.index ["reading_buddy_session_id", "page_number"], name: "index_rb_highlights_on_session_and_page"
+    t.index ["reading_buddy_session_id"], name: "index_reading_buddy_highlights_on_reading_buddy_session_id"
+    t.index ["user_id"], name: "index_reading_buddy_highlights_on_user_id"
+  end
+
+  create_table "reading_buddy_messages", force: :cascade do |t|
+    t.bigint "reading_buddy_session_id", null: false
+    t.bigint "user_id", null: false
+    t.text "content", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_at"], name: "index_reading_buddy_messages_on_created_at"
+    t.index ["reading_buddy_session_id"], name: "index_reading_buddy_messages_on_reading_buddy_session_id"
+    t.index ["user_id"], name: "index_reading_buddy_messages_on_user_id"
+  end
+
+  create_table "reading_buddy_sessions", force: :cascade do |t|
+    t.bigint "book_id", null: false
+    t.bigint "initiator_id", null: false
+    t.bigint "invited_id", null: false
+    t.string "status", default: "pending", null: false
+    t.datetime "started_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["book_id"], name: "index_reading_buddy_sessions_on_book_id"
+    t.index ["initiator_id", "invited_id", "book_id"], name: "index_reading_buddy_sessions_unique", unique: true
+    t.index ["initiator_id"], name: "index_reading_buddy_sessions_on_initiator_id"
+    t.index ["invited_id"], name: "index_reading_buddy_sessions_on_invited_id"
+    t.index ["status"], name: "index_reading_buddy_sessions_on_status"
+  end
+
   create_table "recommendations", force: :cascade do |t|
     t.bigint "user_id", null: false
     t.string "recommendable_type", null: false
@@ -441,6 +483,13 @@ ActiveRecord::Schema[7.2].define(version: 2026_04_24_000002) do
   add_foreign_key "friendships", "users", column: "requestee_id"
   add_foreign_key "friendships", "users", column: "requester_id"
   add_foreign_key "imports", "users"
+  add_foreign_key "reading_buddy_highlights", "reading_buddy_sessions"
+  add_foreign_key "reading_buddy_highlights", "users"
+  add_foreign_key "reading_buddy_messages", "reading_buddy_sessions"
+  add_foreign_key "reading_buddy_messages", "users"
+  add_foreign_key "reading_buddy_sessions", "books"
+  add_foreign_key "reading_buddy_sessions", "users", column: "initiator_id"
+  add_foreign_key "reading_buddy_sessions", "users", column: "invited_id"
   add_foreign_key "recommendations", "users"
   add_foreign_key "user_books", "books"
   add_foreign_key "user_books", "users"
