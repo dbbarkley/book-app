@@ -1,0 +1,11 @@
+Hi <%= @user.display_name.presence || @user.username %>,
+
+<%= @releases.size == 1 ? 'This book releases tomorrow' : "These #{@releases.size} books release tomorrow" %>:
+
+<% @releases.each do |release| %>
+- <%= release.title %> by <%= release.authors.first %>
+<% end %>
+
+View all upcoming releases: <%= ENV.fetch('FRONTEND_URL', 'http://localhost:3001') %>/upcoming-releases
+
+© <%= Time.current.year %> Libraio
