@@ -140,8 +140,13 @@ module Api
         total = scope.count
         books = scope.offset((page - 1) * per).limit(per)
 
+        reminder_map = ReleaseReminder
+          .where(user: current_user, upcoming_release: books)
+          .pluck(:upcoming_release_id, :id)
+          .to_h
+
         render json: {
-          coming_soon: books.map(&:as_api_json),
+          coming_soon: books.map { |b| b.as_api_json.merge(reminder_id: reminder_map[b.id]) },
           meta: {
             total:       total,
             page:        page,
