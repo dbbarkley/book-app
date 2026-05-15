@@ -19,10 +19,12 @@ class SendReleaseRemindersJob < ApplicationJob
           )
         end
 
-        ReleaseReminderMailer.tomorrow_digest(user, releases).deliver_now
-
         user_reminders.each { |r| r.update_column(:reminded_at, Time.current) }
       end
+
+      ReleaseReminderMailer.tomorrow_digest(user, releases).deliver_later
+    rescue => e
+      Rails.logger.error("[SendReleaseRemindersJob] Failed for user #{user.id}: #{e.message}")
     end
   end
 end

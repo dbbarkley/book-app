@@ -1,6 +1,9 @@
 require 'rails_helper'
 
 RSpec.describe SendReleaseRemindersJob, type: :job do
+  before { ActiveJob::Base.queue_adapter = :test }
+  after  { ActiveJob::Base.queue_adapter = :sidekiq }
+
   describe '#perform' do
     let(:user_a) { create(:user) }
     let(:user_b) { create(:user) }
@@ -28,7 +31,7 @@ RSpec.describe SendReleaseRemindersJob, type: :job do
     it 'sends one email per user with reminders due tomorrow' do
       expect {
         described_class.new.perform
-      }.to change { ActionMailer::Base.deliveries.count }.by(2)
+      }.to have_enqueued_mail(ReleaseReminderMailer, :tomorrow_digest).exactly(2).times
     end
 
     it 'creates one Notification per (user, book) pair' do
@@ -48,7 +51,7 @@ RSpec.describe SendReleaseRemindersJob, type: :job do
       described_class.new.perform
       expect {
         described_class.new.perform
-      }.not_to change { ActionMailer::Base.deliveries.count }
+      }.not_to have_enqueued_mail(ReleaseReminderMailer, :tomorrow_digest)
     end
 
     it 'does not fire for reminders due next week' do
