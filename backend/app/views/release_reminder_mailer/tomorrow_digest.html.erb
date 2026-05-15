@@ -37,7 +37,7 @@
 
             <!-- Heading -->
             <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#EDE0C4;text-align:center;font-family:Georgia,serif;">
-              <%= @releases.size == 1 ? 'Your book releases tomorrow' : "#{@releases.size} books release tomorrow" %>
+              <%= @releases.size == 1 ? 'Your book releases tomorrow' : "#{@releases.size} books you're watching release tomorrow" %>
             </h1>
             <p style="margin:0 0 32px;font-size:15px;color:rgba(237,224,196,0.65);text-align:center;line-height:1.6;">
               Hi <strong style="color:#EDE0C4;"><%= @user.display_name.presence || @user.username %></strong>, here's what you have on your radar.
@@ -49,7 +49,7 @@
               <tr>
                 <% if release.cover_image_url.present? %>
                 <td style="width:52px;vertical-align:top;padding-right:14px;">
-                  <img src="<%= release.cover_image_url %>" width="52" alt="<%= release.title %>"
+                  <img src="<%= release.cover_image_url&.then { |u| u.start_with?('http://', 'https://') ? u : '' } %>" width="52" alt="<%= release.title %>"
                        style="display:block;border-radius:6px;width:52px;height:auto;" />
                 </td>
                 <% end %>

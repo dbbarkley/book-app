@@ -1,5 +1,7 @@
 class ReleaseReminderMailer < ApplicationMailer
   def tomorrow_digest(user, releases)
+    return if releases.empty?
+
     @user     = user
     @releases = releases
 
