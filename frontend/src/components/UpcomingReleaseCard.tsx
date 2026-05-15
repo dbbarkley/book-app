@@ -1,7 +1,10 @@
 'use client'
 
+import { useState } from 'react'
+import { Bell, BellRing } from 'lucide-react'
 import { BookCoverImage } from './BookCoverImage'
 import type { UpcomingRelease } from '@book-app/shared'
+import { apiClient } from '@book-app/shared'
 import { useRouter } from 'next/navigation'
 
 interface UpcomingReleaseCardProps {
@@ -16,7 +19,7 @@ function formatReleaseDate(dateStr: string, daysUntil: number | null): {
   if (daysUntil !== null && daysUntil === 1) return { label: 'Out tomorrow',  urgent: true }
   if (daysUntil !== null && daysUntil <= 7)  return { label: `In ${daysUntil} days`, urgent: true }
 
-  const date = new Date(dateStr + 'T00:00:00') // force local parse
+  const date = new Date(dateStr + 'T00:00:00')
   const now  = new Date()
   const opts: Intl.DateTimeFormatOptions =
     date.getFullYear() === now.getFullYear()
@@ -34,9 +37,35 @@ export default function UpcomingReleaseCard({ book }: UpcomingReleaseCardProps) 
   const author  = book.authors[0] ?? 'Unknown Author'
   const { label: dateLabel, urgent } = formatReleaseDate(book.date_published, book.days_until)
 
+  const [reminderId, setReminderId] = useState<number | null>(book.reminder_id ?? null)
+
+  const isUnreleased = book.days_until !== null && book.days_until > 0
+
   const handleClick = () => {
-    // Search for this book — it may already be in our catalogue
     router.push(`/search?q=${encodeURIComponent(book.title)}&type=books`)
+  }
+
+  const handleBellClick = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+
+    if (reminderId !== null) {
+      const prev = reminderId
+      setReminderId(null)
+      try {
+        await apiClient.deleteReleaseReminder(prev)
+      } catch {
+        setReminderId(prev)
+      }
+    } else {
+      const tempId = -1
+      setReminderId(tempId)
+      try {
+        const { id } = await apiClient.createReleaseReminder(book.id)
+        setReminderId(id)
+      } catch {
+        setReminderId(null)
+      }
+    }
   }
 
   return (
@@ -108,6 +137,21 @@ export default function UpcomingReleaseCard({ book }: UpcomingReleaseCardProps) 
             >
               {book.binding}
             </span>
+          )}
+
+          {/* Bell reminder toggle — only for unreleased books */}
+          {isUnreleased && (
+            <button
+              onClick={handleBellClick}
+              aria-label={reminderId !== null ? 'Remove reminder' : 'Set reminder'}
+              className="ml-auto opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity p-1 rounded-full"
+              style={{ color: reminderId !== null ? 'var(--color-accent)' : 'var(--color-lit-3)' }}
+            >
+              {reminderId !== null
+                ? <BellRing size={15} />
+                : <Bell size={15} />
+              }
+            </button>
           )}
         </div>
       </div>
