@@ -21,6 +21,7 @@ import type {
   Forum,
   ForumPost,
   ForumComment,
+  UpcomingReleasesResponse,
 } from '../types'
 
 // Get API base URL from environment
@@ -33,17 +34,23 @@ const API_BASE_URL =
 export class ApiClient {
   private client: AxiosInstance
   private token: string | null = null
+  private _refreshToken: string | null = null
+
+  // Silent-refresh state — prevents multiple simultaneous refresh calls
+  private isRefreshing = false
+  private refreshQueue: Array<{
+    resolve: (token: string) => void
+    reject: (err: unknown) => void
+  }> = []
 
   constructor(baseUrl: string = API_BASE_URL) {
     this.client = axios.create({
       baseURL: baseUrl,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      timeout: 30000, // 30 seconds
+      headers: { 'Content-Type': 'application/json' },
+      timeout: 30000,
     })
 
-    // Request interceptor to add auth token
+    // Attach access token to every request
     this.client.interceptors.request.use(
       (config) => {
         if (this.token) {
@@ -54,26 +61,115 @@ export class ApiClient {
       (error) => Promise.reject(error)
     )
 
-    // Response interceptor for error handling
+    // Silent refresh on 401 — retry the original request with a new access token.
+    // Requests that arrive while a refresh is already in flight are queued and
+    // replayed once the new token lands, so only one refresh call ever runs.
     this.client.interceptors.response.use(
       (response) => response,
-      (error: AxiosError) => {
-        // Handle common errors
-        if (error.response?.status === 401) {
-          // Token expired or invalid - clear it
-          this.setToken(null)
-          // In React Native, you might want to trigger a logout action here
-          if (typeof window !== 'undefined') {
-            window.dispatchEvent(new Event('auth:unauthorized'))
+      async (error: AxiosError) => {
+        const originalRequest = error.config as any
+        const is401 = error.response?.status === 401
+        const isRetry = originalRequest?._retry === true
+        const isRefreshEndpoint = originalRequest?.url?.includes('/auth/refresh')
+
+        // If we have a refresh token and this isn't already a retry or the
+        // refresh endpoint itself, attempt a silent token rotation.
+        if (is401 && !isRetry && !isRefreshEndpoint && this._refreshToken) {
+          if (this.isRefreshing) {
+            // Another refresh is already running — queue this request
+            return new Promise<string>((resolve, reject) => {
+              this.refreshQueue.push({ resolve, reject })
+            }).then((newToken) => {
+              originalRequest.headers.Authorization = `Bearer ${newToken}`
+              return this.client(originalRequest)
+            })
+          }
+
+          originalRequest._retry = true
+          this.isRefreshing = true
+
+          try {
+            const { data } = await axios.post(
+              `${baseUrl}/auth/refresh`,
+              {},
+              { headers: { Authorization: `Bearer ${this._refreshToken}` } }
+            )
+            const newAccess  = data.access_token ?? data.token
+            const newRefresh = data.refresh_token ?? this._refreshToken
+
+            // Update tokens in this client instance
+            this.token         = newAccess
+            this._refreshToken = newRefresh
+
+            // Propagate the new tokens to the auth store so SecureStore /
+            // localStorage stay in sync and the user object is refreshed.
+            this.notifyTokenRotation(newAccess, newRefresh)
+
+            // Drain the queue
+            this.refreshQueue.forEach(({ resolve }) => resolve(newAccess))
+            this.refreshQueue = []
+
+            originalRequest.headers.Authorization = `Bearer ${newAccess}`
+            return this.client(originalRequest)
+          } catch (refreshError) {
+            // Refresh token is also expired — force logout
+            this.refreshQueue.forEach(({ reject }) => reject(refreshError))
+            this.refreshQueue = []
+            this.handleUnauthorized()
+            return Promise.reject(refreshError)
+          } finally {
+            this.isRefreshing = false
           }
         }
+
+        // No refresh token, already retried, or non-401 — give up
+        if (is401 && !isRefreshEndpoint) {
+          this.handleUnauthorized()
+        }
+
         return Promise.reject(error)
       }
     )
   }
 
+  // Called after a successful token rotation so the store and storage adapters
+  // can update themselves without the client needing to import the store directly.
+  private onTokenRotation?: (access: string, refresh: string) => void
+
+  setOnTokenRotation(cb: (access: string, refresh: string) => void) {
+    this.onTokenRotation = cb
+  }
+
+  private notifyTokenRotation(access: string, refresh: string) {
+    if (this.onTokenRotation) {
+      this.onTokenRotation(access, refresh)
+    }
+  }
+
+  private handleUnauthorized() {
+    this.token         = null
+    this._refreshToken = null
+    if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+      window.dispatchEvent(new Event('auth:unauthorized'))
+    } else {
+      // React Native path
+      const { useAuthStore } = require('../store/authStore')
+      const store = useAuthStore.getState()
+      if (store.token) store.logout()
+    }
+  }
+
   setToken(token: string | null) {
     this.token = token
+  }
+
+  setRefreshToken(token: string | null) {
+    this._refreshToken = token
+  }
+
+  setTokens(access: string | null, refresh: string | null) {
+    this.token         = access
+    this._refreshToken = refresh
   }
 
   getToken(): string | null {
@@ -103,7 +199,16 @@ export class ApiClient {
   }
 
   async refreshToken() {
-    const response = await this.client.post<{ token: string }>('/auth/refresh')
+    // Send the refresh token (not the access token) in the Authorization header
+    const response = await this.client.post<{
+      token: string
+      access_token: string
+      refresh_token: string
+    }>('/auth/refresh', {}, {
+      headers: this._refreshToken
+        ? { Authorization: `Bearer ${this._refreshToken}` }
+        : undefined,
+    })
     return response.data
   }
 
@@ -113,13 +218,15 @@ export class ApiClient {
   }
 
   async forgotPassword(email: string) {
-    // TODO: Implement backend endpoint for password reset
-    // Expected endpoint: POST /api/v1/auth/forgot-password
-    // Expected body: { email: string }
-    // Expected response: { message: string }
-    const response = await this.client.post<{ message: string }>('/auth/forgot-password', {
-      email,
-    })
+    const response = await this.client.post<{ message: string }>('/auth/forgot-password', { email })
+    return response.data
+  }
+
+  async resetPassword(token: string, password: string) {
+    const response = await this.client.post<{ token: string; access_token: string; refresh_token: string; user: User }>(
+      '/auth/reset-password',
+      { token, password }
+    )
     return response.data
   }
 
@@ -173,6 +280,34 @@ export class ApiClient {
 
   async removeFriend(friendshipId: number) {
     await this.client.delete(`/friendships/${friendshipId}`)
+  }
+
+  async ensureBook(book: {
+    title: string
+    author_name?: string
+    google_books_id?: string
+    isbn?: string
+    cover_image_url?: string
+    description?: string
+    page_count?: number
+    release_date?: string
+    categories?: string[]
+  }): Promise<{ id: number; title: string }> {
+    const response = await this.client.post<{ id: number; title: string }>(
+      '/books/ensure',
+      {
+        title:           book.title,
+        author_name:     book.author_name,
+        google_books_id: book.google_books_id,
+        isbn:            book.isbn,
+        cover_image_url: book.cover_image_url,
+        description:     book.description,
+        page_count:      book.page_count,
+        release_date:    book.release_date,
+        categories:      book.categories,
+      }
+    )
+    return response.data
   }
 
   // Book Suggestion endpoints
@@ -324,6 +459,30 @@ export class ApiClient {
   }
 
   /**
+   * Fetch other books by the same author, excluding the current title.
+   * Results are cached server-side for 24h, so subsequent calls for the
+   * same author are fast.
+   */
+  async getAuthorWorks(author: string, excludeTitle: string): Promise<Book[]> {
+    const response = await this.client.get<{ works: Array<{
+      key: string
+      title: string
+      year: number | null
+      cover_url: string | null
+    }>}>('/books/author_works', {
+      params: { author, exclude: excludeTitle },
+    })
+    return (response.data.works || []).map((w) => ({
+      id:              -1,
+      title:           w.title,
+      author_name:     author,
+      cover_image_url: w.cover_url ?? undefined,
+      release_date:    w.year ? `${w.year}-01-01` : undefined,
+      google_books_id: w.key,
+    } as Book))
+  }
+
+  /**
    * Fetch a book by its Google Books ID.
    * Checks our DB first; falls back to live Google Books API.
    * Returns id: null when the book isn't in our DB yet.
@@ -331,6 +490,19 @@ export class ApiClient {
   async getBookByGoogleId(googleBooksId: string) {
     const response = await this.client.get<{ book: Book }>(
       `/books/by_google/${encodeURIComponent(googleBooksId)}`
+    )
+    return response.data.book
+  }
+
+  /**
+   * Fetch a book by ISBN-13 or ISBN-10.
+   * Checks our DB first, then UpcomingReleases, then falls back to a
+   * Google Books isbn: search query.
+   * Returns id: null when the book isn't in our DB yet (browse-only mode).
+   */
+  async getBookByIsbn(isbn: string) {
+    const response = await this.client.get<{ book: Book }>(
+      `/books/by_isbn/${encodeURIComponent(isbn)}`
     )
     return response.data.book
   }
@@ -386,6 +558,17 @@ export class ApiClient {
       payload.release_date = bookData.release_date
       payload.page_count = bookData.page_count
       payload.categories = bookData.categories ?? []
+    } else if (bookData?.isbn) {
+      // ISBNdb upcoming release — no Google Books ID, identify by ISBN.
+      // Backend will find_or_create the book record using the ISBN.
+      payload.isbn = bookData.isbn
+      payload.title = bookData.title
+      payload.author_name = bookData.author_name
+      payload.description = bookData.description
+      payload.cover_image_url = bookData.cover_image_url
+      payload.release_date = bookData.release_date
+      payload.page_count = bookData.page_count
+      payload.categories = bookData.categories ?? []
     } else if (bookId && bookId < 0 && bookData) {
       // Legacy path: negative ID from old search-result caching
       payload.book_id = bookId
@@ -400,6 +583,7 @@ export class ApiClient {
       payload.categories = bookData.categories ?? []
     }
 
+    console.log('[addBookToShelf] bookId:', bookId, 'isbn:', bookData?.isbn, 'google_books_id:', bookData?.google_books_id, 'payload keys:', Object.keys(payload))
     const response = await this.client.post<{ user_book: UserBook }>('/user/books', payload)
     return response.data.user_book
   }
@@ -468,6 +652,10 @@ export class ApiClient {
     return response.data.user_book
   }
 
+  async deleteUserBook(userBookId: number): Promise<void> {
+    await this.client.delete(`/user/books/${userBookId}`)
+  }
+
   // Event endpoints
   async getEvents(params?: {
     upcoming?: boolean
@@ -484,6 +672,16 @@ export class ApiClient {
   }
 
   // Recommendation endpoints
+  // Find My Next Book — BigBook-powered similarity
+  // Called once per selected seed book (progressive loading).
+  // Results are cached server-side so repeat calls for the same book are instant.
+  async getSimilarBooks(bookId: number): Promise<Book[]> {
+    const response = await this.client.get<{ books: Book[] }>(
+      `/recommendations/similar_to/${bookId}`
+    )
+    return response.data.books ?? []
+  }
+
   async getRecommendedBooks() {
     const response = await this.client.get<{
       recommended_books?: RecommendedBook[]
@@ -518,9 +716,23 @@ export class ApiClient {
     return response.data.new_releases || []
   }
 
-  async getComingSoon() {
-    const response = await this.client.get<{ coming_soon: any[] }>('/recommendations/coming_soon')
-    return response.data.coming_soon || []
+  async getComingSoon(params?: {
+    genre?:     string
+    page?:      number
+    per?:       number
+    date_from?: string   // ISO date, e.g. "2026-05-06"
+    date_to?:   string   // ISO date, e.g. "2026-05-12"
+  }) {
+    const response = await this.client.get<UpcomingReleasesResponse>('/recommendations/coming_soon', {
+      params: {
+        ...(params?.genre     && { genre:     params.genre     }),
+        ...(params?.page      && { page:      params.page      }),
+        ...(params?.per       && { per:       params.per       }),
+        ...(params?.date_from && { date_from: params.date_from }),
+        ...(params?.date_to   && { date_to:   params.date_to   }),
+      },
+    })
+    return response.data
   }
 
   // Notification endpoints
@@ -615,8 +827,13 @@ export class ApiClient {
   }
 
   async updateUser(userId: number, updates: { display_name?: string; bio?: string; avatar_url?: string; zipcode?: string; avatar?: any }) {
-    // Check if we have an avatar file to upload
-    if (updates.avatar instanceof File || updates.avatar instanceof Blob) {
+    // Check if we have an avatar file to upload.
+    // Handles both web (File/Blob) and React Native ({ uri, type, name }) formats.
+    const isFileUpload =
+      updates.avatar instanceof File ||
+      updates.avatar instanceof Blob ||
+      (updates.avatar != null && typeof updates.avatar === 'object' && 'uri' in updates.avatar)
+    if (isFileUpload) {
       const formData = new FormData()
       
       // Add regular fields
@@ -658,6 +875,96 @@ export class ApiClient {
       users: response.data.users || [],
       pagination: response.data.pagination,
     }
+  }
+
+  // ── User Lists ──────────────────────────────────────────────────────────────
+
+  async getUserLists(userId: number) {
+    const response = await this.client.get<{ lists: import('../types').UserList[] }>(
+      `/users/${userId}/lists`
+    )
+    return response.data.lists
+  }
+
+  async getUserList(userId: number, listId: number) {
+    const response = await this.client.get<{ list: import('../types').UserList }>(
+      `/users/${userId}/lists/${listId}`
+    )
+    return response.data.list
+  }
+
+  /** Find or create the authenticated user's Top 10 list. */
+  async getOrCreateTop10List(userId: number) {
+    const response = await this.client.get<{ list: import('../types').UserList }>(
+      `/users/${userId}/lists/top_10`
+    )
+    return response.data.list
+  }
+
+  async createUserList(userId: number, data: {
+    list_type?: import('../types').ListType
+    name: string
+    description?: string
+    visibility?: import('../types').ListVisibility
+  }) {
+    const response = await this.client.post<{ list: import('../types').UserList }>(
+      `/users/${userId}/lists`,
+      { list: data }
+    )
+    return response.data.list
+  }
+
+  async updateUserList(userId: number, listId: number, data: {
+    name?: string
+    description?: string
+    visibility?: import('../types').ListVisibility
+  }) {
+    const response = await this.client.patch<{ list: import('../types').UserList }>(
+      `/users/${userId}/lists/${listId}`,
+      { list: data }
+    )
+    return response.data.list
+  }
+
+  async deleteUserList(userId: number, listId: number) {
+    await this.client.delete(`/users/${userId}/lists/${listId}`)
+  }
+
+  async addBookToList(userId: number, listId: number, bookId: number, position?: number) {
+    const response = await this.client.post<{ list: import('../types').UserList }>(
+      `/users/${userId}/lists/${listId}/items`,
+      { book_id: bookId, position }
+    )
+    return response.data.list
+  }
+
+  async removeBookFromList(userId: number, listId: number, itemId: number) {
+    const response = await this.client.delete<{ list: import('../types').UserList }>(
+      `/users/${userId}/lists/${listId}/items/${itemId}`
+    )
+    return response.data.list
+  }
+
+  async reorderList(userId: number, listId: number, items: import('../types').ReorderItem[]) {
+    const response = await this.client.patch<{ list: import('../types').UserList }>(
+      `/users/${userId}/lists/${listId}/reorder`,
+      { items }
+    )
+    return response.data.list
+  }
+
+  async likeList(userId: number, listId: number) {
+    const response = await this.client.post<{ liked: boolean; likes_count: number }>(
+      `/users/${userId}/lists/${listId}/like`
+    )
+    return response.data
+  }
+
+  async unlikeList(userId: number, listId: number) {
+    const response = await this.client.delete<{ liked: boolean; likes_count: number }>(
+      `/users/${userId}/lists/${listId}/unlike`
+    )
+    return response.data
   }
 
   // Onboarding endpoints
@@ -810,9 +1117,9 @@ export class ApiClient {
   //
   // This approach respects platform ToS while providing a smooth UX
   
-  async uploadGoodreadsCsv(file: File) {
+  async uploadGoodreadsCsv(file: File | { uri: string; name: string; type?: string }) {
     const formData = new FormData()
-    formData.append('file', file)
+    formData.append('file', file as unknown as Blob)
     const response = await this.client.post<{
       import: {
         id: number
@@ -963,6 +1270,12 @@ export class ApiClient {
       `/reading_buddy/sessions/${sessionId}/highlights`
     )
     return response.data.highlights
+  }
+
+  async deleteReadingBuddyHighlight(sessionId: number, highlightId: number): Promise<void> {
+    await this.client.delete(
+      `/reading_buddy/sessions/${sessionId}/highlights/${highlightId}`
+    )
   }
 
   async createReadingBuddyHighlight(

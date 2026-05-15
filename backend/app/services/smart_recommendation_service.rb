@@ -68,8 +68,8 @@ class SmartRecommendationService
     # All user_books with book + author pre-loaded
     user_books = @user.user_books.includes(book: :author).to_a
 
-    # IDs of every book already in the user's library (to exclude from recs)
-    all_user_book_ids = user_books.map(&:book_id).compact.to_set
+    # Work IDs already in the user's library — used to exclude all editions of a read work
+    all_user_work_ids = user_books.map(&:work_id).compact.to_set
 
     # Books the user has finished
     read_user_books = user_books.select { |ub| ub.status == 'read' }
@@ -111,24 +111,24 @@ class SmartRecommendationService
                        .to_set
 
     # ── Social signal ──────────────────────────────────────────────────────────
-    # Map book_id → how many followed users have finished it
+    # Map work_id → how many followed users have finished it (any edition counts)
     followed_user_ids = @user.followed_users.pluck(:id)
-    social_book_counts = if followed_user_ids.any?
+    social_work_counts = if followed_user_ids.any?
       UserBook.where(user_id: followed_user_ids, status: 'read')
-              .group(:book_id)
-              .count  # { book_id => count }
+              .group(:work_id)
+              .count  # { work_id => count }
     else
       {}
     end
 
     {
-      all_user_book_ids:   all_user_book_ids,
+      all_user_work_ids:   all_user_work_ids,
       valued_author_ids:   valued_author_ids,
       rated_author_ids:    rated_author_ids,
       followed_author_ids: followed_author_ids,
       top_categories:      top_categories,
       category_scores:     category_scores,
-      social_book_counts:  social_book_counts,
+      social_work_counts:  social_work_counts,
       read_count:          read_user_books.size,
     }
   end
@@ -137,7 +137,8 @@ class SmartRecommendationService
 
   def score_books(profile)
     candidates = Book.includes(:author)
-                     .where.not(id: profile[:all_user_book_ids].to_a)
+                     .where.not(work_id: profile[:all_user_work_ids].to_a)
+                     .where.not(work_id: nil)
                      .where.not(author_id: nil)
 
     scored = candidates.filter_map do |book|
@@ -164,7 +165,7 @@ class SmartRecommendationService
       end
 
       # 3. Social reading
-      social_count = [profile[:social_book_counts][book.id].to_i, 3].min
+      social_count = [profile[:social_work_counts][book.work_id].to_i, 3].min
       if social_count > 0
         score += WEIGHTS[:social_read] * social_count
         label = social_count == 1 ? "someone you follow has read this" : "#{social_count} people you follow have read this"

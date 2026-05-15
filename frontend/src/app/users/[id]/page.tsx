@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { motion, Variants } from 'framer-motion'
-import { useAuth, useFollows, useFriends } from '@book-app/shared'
-import { Settings, RefreshCw, BarChart2, Heart, Users } from 'lucide-react'
+import { useAuth, useFollows, useFriends, useUserLists, useUserList } from '@book-app/shared'
+import { Settings, RefreshCw, BarChart2, Heart, Users, List, Pencil } from 'lucide-react'
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -66,6 +66,13 @@ function UserProfileContent() {
     user: null, stats: null, following: [], followers: [], currentUserFollow: null, friendship: null,
   })
   const [readingStats, setReadingStats] = useState<ReadingStats | null>(null)
+
+  // Lists
+  const { top10, refresh: refreshLists } = useUserLists(isNaN(userId) ? undefined : userId)
+  const { toggleLike: toggleTop10Like } = useUserList(
+    isNaN(userId) ? undefined : userId,
+    top10 ? top10.id : undefined
+  )
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'friends' | 'following' | 'followers'>('friends')
@@ -384,6 +391,125 @@ function UserProfileContent() {
                 </span>
               ))}
             </div>
+          </motion.div>
+        )}
+
+        {/* ── Top 10 ── */}
+        {(top10 || isOwnProfile) && (
+          <motion.div variants={itemVariants} className="rounded-[28px] p-6 sm:p-8" style={cardStyle}>
+            {/* Header */}
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-2">
+                <List size={18} style={{ color: 'var(--color-accent)' }} />
+                <h3 className="font-serif text-lg font-bold" style={{ color: 'var(--color-lit)' }}>
+                  My Top 10
+                </h3>
+                {top10 && top10.likes_count > 0 && (
+                  <span
+                    className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold"
+                    style={{
+                      backgroundColor: 'var(--color-grove)',
+                      border: '1px solid var(--color-rim)',
+                      color: 'var(--color-accent)',
+                    }}
+                  >
+                    ♥ {top10.likes_count}
+                  </span>
+                )}
+              </div>
+              {isOwnProfile ? (
+                <button
+                  onClick={() => router.push('/settings?tab=lists')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors"
+                  style={{
+                    backgroundColor: 'var(--color-grove)',
+                    border: '1px solid var(--color-rim)',
+                    color: 'var(--color-lit-2)',
+                  }}
+                >
+                  <Pencil size={12} />
+                  Edit List
+                </button>
+              ) : top10 && (
+                <button
+                  onClick={toggleTop10Like}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors"
+                  style={{
+                    backgroundColor: top10.liked_by_current_user ? 'var(--color-accent)' : 'var(--color-grove)',
+                    border: `1px solid ${top10.liked_by_current_user ? 'var(--color-accent)' : 'var(--color-rim)'}`,
+                    color: top10.liked_by_current_user ? 'var(--color-accent-on)' : 'var(--color-lit-2)',
+                  }}
+                >
+                  {top10.liked_by_current_user ? '♥ Liked' : '♡ Like'}
+                </button>
+              )}
+            </div>
+
+            {/* Empty state */}
+            {(!top10 || !top10.items || top10.items.length === 0) && (
+              <div className="text-center py-10">
+                <p className="text-sm" style={{ color: 'var(--color-lit-3)' }}>
+                  {isOwnProfile
+                    ? 'You haven\'t added any books yet.'
+                    : 'This user hasn\'t added any books yet.'}
+                </p>
+                {isOwnProfile && (
+                  <button
+                    onClick={() => router.push('/settings?tab=lists')}
+                    className="mt-4 px-4 py-2 rounded-xl text-sm font-bold transition-colors"
+                    style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-accent-on)' }}
+                  >
+                    Add Books
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Grid */}
+            {top10?.items && top10.items.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                {top10.items.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => router.push(`/books/${item.book.google_books_id ?? item.book.id}`)}
+                    className="group text-left"
+                  >
+                    <div className="relative mb-2">
+                      {/* Rank badge */}
+                      <span
+                        className="absolute top-2 left-2 z-10 px-1.5 py-0.5 rounded text-xs font-black"
+                        style={{
+                          backgroundColor: item.position === 1 ? 'rgba(255,180,0,0.9)' : 'rgba(0,0,0,0.65)',
+                          color: item.position === 1 ? '#1a1000' : '#fff',
+                        }}
+                      >
+                        #{item.position}
+                      </span>
+                      {item.book.cover_image_url ? (
+                        <img
+                          src={item.book.cover_image_url}
+                          alt={item.book.title}
+                          className="w-full aspect-[2/3] object-cover rounded-xl group-hover:opacity-90 transition-opacity"
+                        />
+                      ) : (
+                        <div
+                          className="w-full aspect-[2/3] rounded-xl flex items-center justify-center text-xs font-bold p-2 text-center"
+                          style={{ backgroundColor: 'var(--color-grove)', color: 'var(--color-lit-3)' }}
+                        >
+                          {item.book.title}
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-xs font-semibold line-clamp-2 leading-snug" style={{ color: 'var(--color-lit)' }}>
+                      {item.book.title}
+                    </p>
+                    <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--color-lit-3)' }}>
+                      {item.book.author_name}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            )}
           </motion.div>
         )}
 

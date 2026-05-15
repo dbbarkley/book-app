@@ -30,5 +30,12 @@ Rails.application.configure do
   Rails.application.routes.default_url_options = config.action_controller.default_url_options
 
   config.file_watcher = ActiveSupport::EventedFileUpdateChecker
+
+  # ── Mailer — intercept all emails in development ──────────────────────────────
+  # Emails are stored locally and viewable at http://localhost:3000/letter_opener
+  config.action_mailer.delivery_method = :letter_opener_web
+  config.action_mailer.default_url_options = { host: 'localhost', port: 3000 }
+  config.action_mailer.perform_deliveries = true
+  config.action_mailer.raise_delivery_errors = true
 end
 

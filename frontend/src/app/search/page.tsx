@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { motion } from 'framer-motion'
 import {
   useAuth,
   useUserSearch,
@@ -14,14 +15,17 @@ import BookCard from '@/components/BookCard'
 import Button from '@/components/Button'
 import Avatar from '@/components/Avatar'
 import BarcodeScannerModal from '@/components/BarcodeScannerModal'
+import UpcomingReleasesSection from '@/components/UpcomingReleasesSection'
 import Link from 'next/link'
 import {
   Search, Users, BookOpen, X, AlertCircle,
   BookMarked, Newspaper, Eye, Zap, Heart, Rocket,
   Wand2, Skull, Landmark, User, PenLine, TrendingUp,
   Briefcase, Brain, Feather, Star, Smile, LayoutGrid,
-  ScanLine,
+  ScanLine, CalendarDays, ChevronRight,
 } from 'lucide-react'
+
+type ActiveFeature = 'upcoming' | null
 
 type SearchType = 'books' | 'people'
 
@@ -62,6 +66,7 @@ function SearchContent() {
   const [searchInput, setSearchInput] = useState(initialQuery)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const [scannerOpen, setScannerOpen] = useState(false)
+  const [activeFeature, setActiveFeature] = useState<ActiveFeature>(null)
 
   // Genre browsing state — separate from text search
   const [selectedGenre, setSelectedGenre] = useState<{ id: string; name: string } | null>(null)
@@ -287,44 +292,115 @@ function SearchContent() {
           </section>
         )}
 
-        {/* ── EMPTY STATE (no query, no genre selected) ── */}
+        {/* ── DISCOVER HOME (no query, no genre selected) ── */}
         {!isSearching && !selectedGenre && (
-          <section>
-            <h2 className="font-serif text-xl font-bold mb-5 flex items-center gap-2" style={{ color: 'var(--color-lit)' }}>
-              <BookMarked size={20} style={{ color: 'var(--color-accent)' }} />
-              Explore Genres
-            </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-              {mockGenres.map(genre => {
-                const Icon = GENRE_ICONS[genre.id] || BookOpen
-                return (
-                  <button
-                    key={genre.id}
-                    onClick={() => handleGenreSelect(genre)}
-                    className="group flex flex-col items-center justify-center gap-3 h-28 rounded-2xl transition-all"
-                    style={{
-                      backgroundColor: 'var(--color-surface)',
-                      border: '1px solid var(--color-rim)',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                    }}
-                    onMouseEnter={e => {
-                      e.currentTarget.style.borderColor = 'var(--color-rim-accent)'
-                      e.currentTarget.style.transform = 'translateY(-2px)'
-                    }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.borderColor = 'var(--color-rim)'
-                      e.currentTarget.style.transform = 'translateY(0)'
-                    }}
-                  >
-                    <Icon size={22} style={{ color: 'var(--color-accent)' }} />
-                    <span className="text-xs font-bold uppercase tracking-wider text-center px-2 leading-tight" style={{ color: 'var(--color-lit)' }}>
-                      {genre.name}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-          </section>
+          <div className="space-y-10">
+
+            {/* ── Upcoming Releases feature card ── */}
+            <button
+              onClick={() => setActiveFeature(f => f === 'upcoming' ? null : 'upcoming')}
+              className="group relative overflow-hidden rounded-3xl p-6 text-left transition-all w-full"
+              style={{
+                backgroundColor:  'var(--color-surface)',
+                border:           activeFeature === 'upcoming'
+                                    ? '2px solid var(--color-accent)'
+                                    : '2px solid var(--color-rim)',
+                boxShadow:        activeFeature === 'upcoming'
+                                    ? '0 0 32px rgba(var(--color-accent-rgb, 200,150,80), 0.2)'
+                                    : '0 4px 24px rgba(0,0,0,0.4)',
+              }}
+              onMouseEnter={e => {
+                if (activeFeature !== 'upcoming')
+                  e.currentTarget.style.borderColor = 'var(--color-rim-accent)'
+              }}
+              onMouseLeave={e => {
+                if (activeFeature !== 'upcoming')
+                  e.currentTarget.style.borderColor = 'var(--color-rim)'
+              }}
+            >
+              <div
+                className="absolute inset-0 opacity-10 pointer-events-none"
+                style={{ background: 'radial-gradient(ellipse at bottom right, var(--color-accent) 0%, transparent 70%)' }}
+              />
+              <div className="relative space-y-3">
+                <div
+                  className="w-11 h-11 rounded-2xl flex items-center justify-center"
+                  style={{ backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-rim)', color: 'var(--color-accent)' }}
+                >
+                  <CalendarDays size={22} />
+                </div>
+                <div>
+                  <h3 className="font-serif text-lg font-bold leading-tight" style={{ color: 'var(--color-lit)' }}>
+                    Upcoming Releases
+                  </h3>
+                  <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--color-lit-3)' }}>
+                    What's publishing in the next 90 days
+                  </p>
+                </div>
+                <div className="flex items-center gap-1 text-xs font-bold" style={{ color: 'var(--color-accent)' }}>
+                  {activeFeature === 'upcoming' ? 'Hide' : 'Browse'}
+                  <ChevronRight size={13} className={`transition-transform ${activeFeature === 'upcoming' ? 'rotate-90' : ''}`} />
+                </div>
+              </div>
+            </button>
+
+            {/* ── Expanded upcoming panel ── */}
+            {activeFeature === 'upcoming' && (
+              <motion.div
+                key="upcoming"
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="rounded-3xl p-6"
+                style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-rim)' }}
+              >
+                <h3 className="font-serif text-lg font-bold mb-5 flex items-center gap-2" style={{ color: 'var(--color-lit)' }}>
+                  <CalendarDays size={18} style={{ color: 'var(--color-accent)' }} /> Upcoming Releases
+                </h3>
+                <UpcomingReleasesSection />
+              </motion.div>
+            )}
+
+            {/* ── Explore Genres ── */}
+            <section>
+              <h2 className="font-serif text-xl font-bold mb-5 flex items-center gap-2" style={{ color: 'var(--color-lit)' }}>
+                <BookMarked size={20} style={{ color: 'var(--color-accent)' }} />
+                Explore Genres
+              </h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                {mockGenres.map(genre => {
+                  const Icon = GENRE_ICONS[genre.id] || BookOpen
+                  return (
+                    <button
+                      key={genre.id}
+                      onClick={() => handleGenreSelect(genre)}
+                      className="group flex flex-col items-center justify-center gap-3 h-28 rounded-2xl transition-all"
+                      style={{
+                        backgroundColor: 'var(--color-surface)',
+                        border: '1px solid var(--color-rim)',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.borderColor = 'var(--color-rim-accent)'
+                        e.currentTarget.style.transform = 'translateY(-2px)'
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.borderColor = 'var(--color-rim)'
+                        e.currentTarget.style.transform = 'translateY(0)'
+                      }}
+                    >
+                      <Icon size={22} style={{ color: 'var(--color-accent)' }} />
+                      <span className="text-xs font-bold uppercase tracking-wider text-center px-2 leading-tight" style={{ color: 'var(--color-lit)' }}>
+                        {genre.name}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </section>
+
+          </div>
         )}
 
         {/* ── RESULTS ── */}

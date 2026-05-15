@@ -78,7 +78,7 @@ class FollowService < BaseService
     
     metadata = if follow.followable_type == 'User'
                  {
-                   target_user: {
+                   followed_user: {
                      id: target.id,
                      username: target.username,
                      display_name: target.display_name,
@@ -87,7 +87,7 @@ class FollowService < BaseService
                  }
                else
                  {
-                   target_author: {
+                   author: {
                      id: target.id,
                      name: target.name,
                      avatar_url: target.respond_to?(:avatar_url) ? target.avatar_url : nil

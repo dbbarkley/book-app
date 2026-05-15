@@ -29,8 +29,19 @@ export const useFeedStore = create<FeedState>((set, get) => ({
     set({ loading: true, error: null })
     try {
       const response = await apiClient.getFeed(page, 30)
+
+      let entries: FeedEntry[]
+      if (page === 1) {
+        entries = response.entries
+      } else {
+        // Deduplicate by id so a page fetched twice never shows double entries
+        const seen = new Set(get().entries.map((e) => e.id))
+        const fresh = response.entries.filter((e) => !seen.has(e.id))
+        entries = [...get().entries, ...fresh]
+      }
+
       set({
-        entries: page === 1 ? response.entries : [...get().entries, ...response.entries],
+        entries,
         pagination: response.pagination,
         loading: false,
       })

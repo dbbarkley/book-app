@@ -29,6 +29,7 @@ export function useReadingBuddy() {
     dnfSession:      store.dnfSession,
     sendMessage:     store.sendMessage,
     createHighlight: store.createHighlight,
+    deleteHighlight: store.deleteHighlight,
 
     // Real-time
     handleCableEvent: store.handleCableEvent,

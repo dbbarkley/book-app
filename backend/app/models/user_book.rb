@@ -7,11 +7,13 @@ class UserBook < ApplicationRecord
   validates :shelf, presence: true, inclusion: { in: STATUSES }
   validates :user_id, presence: true
   validates :book_id, presence: true
+  validates :work_id, presence: true
   validates :user_id, uniqueness: { scope: :book_id }
   validates :rating, numericality: { greater_than_or_equal_to: 0.25, less_than_or_equal_to: 5 }, allow_nil: true
 
   belongs_to :user
   belongs_to :book
+  belongs_to :work, optional: true
 
   # Scopes
   scope :to_read, -> { where(status: 'to_read') }
@@ -81,6 +83,18 @@ class UserBook < ApplicationRecord
           { 'book' => book_metadata }
         )
       end
+    end
+
+    if saved_change_to_pages_read? && status == 'reading' && pages_read.to_i > 0
+      GenerateUserActivityFeedItemsJob.perform_later(
+        user_id, 'UserBook', id, 'user_progress_update',
+        {
+          'book'                  => book_metadata,
+          'pages_read'            => pages_read,
+          'total_pages'           => total_pages,
+          'completion_percentage' => completion_percentage,
+        }
+      )
     end
 
     if saved_change_to_review? && review.present? && saved_changes['review'].first.blank?

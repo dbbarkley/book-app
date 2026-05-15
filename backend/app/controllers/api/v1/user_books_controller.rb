@@ -44,36 +44,60 @@ module Api
 
       # GET /api/v1/user/books/by_book/:book_id
       def show_by_book
-        user_book = current_user.user_books.find_by(book_id: params[:book_id])
-        return render_error('User book not found', status: :not_found) unless user_book
+        book = Book.find_by(id: params[:book_id])
+        return render_error('User book not found', status: :not_found) unless book
 
+        user_book = if book.work_id
+          current_user.user_books.find_by(work_id: book.work_id)
+        else
+          current_user.user_books.find_by(book_id: book.id)
+        end
+
+        return render_error('User book not found', status: :not_found) unless user_book
         render json: { user_book: serialize_user_book(user_book) }, status: :ok
       end
 
       # POST /api/v1/user/books
       def create
-        book_id = params[:book_id]
+        book_id        = params[:book_id]
         google_books_id = params[:google_books_id]
+        isbn           = params[:isbn]
+
+        Rails.logger.info "[UserBooks#create] Received params: book_id=#{book_id.inspect} google_books_id=#{google_books_id.inspect} isbn=#{isbn.inspect} status=#{params[:status].inspect} title=#{params[:title].inspect}"
 
         # New preferred path: google_books_id passed directly (no valid internal book_id)
         if google_books_id.present? && (book_id.blank? || book_id.to_i <= 0)
+          Rails.logger.info "[UserBooks#create] Path: google_books_id"
+          book = find_or_create_book_from_google_books(params)
+          book_id = book.id
+        # ISBNdb path: upcoming-release books have no Google Books ID — identify by ISBN.
+        elsif isbn.present? && (book_id.blank? || book_id.to_i <= 0)
+          Rails.logger.info "[UserBooks#create] Path: isbn (ISBNdb upcoming release)"
           book = find_or_create_book_from_google_books(params)
           book_id = book.id
         # Legacy path: negative book_id indicates a Google Books result
         elsif book_id.to_i < 0
+          Rails.logger.info "[UserBooks#create] Path: negative book_id (legacy)"
           book = find_or_create_book_from_google_books(params)
           book_id = book.id
+        else
+          Rails.logger.info "[UserBooks#create] Path: direct book_id=#{book_id.inspect}"
         end
 
-        return render_error('Missing book_id') unless book_id.present?
+        unless book_id.present?
+          Rails.logger.warn "[UserBooks#create] Failing: no book_id resolved. Full params: #{params.to_unsafe_h.inspect}"
+          return render_error('Missing book_id')
+        end
 
-        status = normalize_status(params[:status] || params[:shelf]) || 'to_read'
+        status     = normalize_status(params[:status] || params[:shelf]) || 'to_read'
         visibility = normalize_visibility(params[:visibility])
 
         user_book = current_user.user_books.find_or_initialize_by(book_id: book_id)
-        
+        user_book.work_id ||= user_book.book&.work_id
+        Rails.logger.info "[UserBooks#create] user_book new=#{user_book.new_record?} book_id=#{book_id} work_id=#{user_book.work_id} status=#{status}"
+
         # Enrich book if missing page count
-        BookEnrichmentService.enrich_book(user_book.book) if user_book.book.page_count.blank?
+        BookEnrichmentService.enrich_book(user_book.book) if user_book.book&.page_count.blank?
 
         user_book.assign_attributes(
           status: status,
@@ -83,13 +107,13 @@ module Api
           dnf_reason: params[:dnf_reason],
           dnf_page: params[:dnf_page]
         )
-        user_book.save!
-        if user_book.saved_change_to_id? &&
-             user_book.status == 'to_read' &&
-             user_book.visibility == 'public'
-          enqueue_user_book_activity(user_book, 'user_added_book')
+
+        unless user_book.save
+          Rails.logger.error "[UserBooks#create] save failed: #{user_book.errors.full_messages.inspect}"
+          return render_error(user_book.errors.full_messages.join(', '))
         end
 
+        Rails.logger.info "[UserBooks#create] Success: user_book.id=#{user_book.id}"
         render json: { user_book: serialize_user_book(user_book) }, status: :created
       end
 
@@ -114,14 +138,6 @@ module Api
         end
 
         @user_book.update!(update_params)
-        if @user_book.visibility == 'public' && @user_book.saved_change_to_status?
-          case @user_book.status
-          when 'read'
-            enqueue_user_book_activity(@user_book, 'user_finished_book')
-          when 'to_read'
-            enqueue_user_book_activity(@user_book, 'user_added_book')
-          end
-        end
         render json: { user_book: serialize_user_book(@user_book) }, status: :ok
       end
 
@@ -167,22 +183,27 @@ module Api
       end
 
       def find_or_create_book_from_google_books(google_books_data)
-        # Check if book exists by ISBN or Google Books ID
-        isbn = google_books_data[:isbn]
+        isbn            = google_books_data[:isbn]
         google_books_id = google_books_data[:google_books_id]
-        
+
+        Rails.logger.info "[find_or_create_book] isbn=#{isbn.inspect} google_books_id=#{google_books_id.inspect} title=#{google_books_data[:title].inspect}"
+
+        # Check if book exists by ISBN or Google Books ID
         book = Book.find_by(isbn: isbn) if isbn.present?
+        Rails.logger.info "[find_or_create_book] DB lookup by isbn=#{isbn.inspect} → #{book ? "found id=#{book.id}" : 'not found'}"
+
         book ||= Book.find_by(google_books_id: google_books_id) if google_books_id.present?
-        
+
         return book if book
 
         # Create author if doesn't exist
-        author_name = google_books_data[:author_name] || 'Unknown Author'
+        author_name = google_books_data[:author_name].presence || 'Unknown Author'
+        Rails.logger.info "[find_or_create_book] Creating author: #{author_name.inspect}"
         author = Author.find_or_create_by!(name: author_name) do |a|
           a.bio = google_books_data[:author_bio] if google_books_data[:author_bio].present?
         end
+        Rails.logger.info "[find_or_create_book] Author id=#{author.id}"
 
-        # Create book
         raw_categories = google_books_data[:categories]
         parsed_categories = case raw_categories
                             when String then raw_categories.split(',').map(&:strip)
@@ -190,17 +211,37 @@ module Api
                             else []
                             end
 
-        Book.create!(
-          title: google_books_data[:title],
-          isbn: isbn,
-          description: strip_html(google_books_data[:description]),
+        Rails.logger.info "[find_or_create_book] Creating book: title=#{google_books_data[:title].inspect} isbn=#{isbn.inspect} release_date=#{google_books_data[:release_date].inspect} page_count=#{google_books_data[:page_count].inspect}"
+        book = Book.new(
+          title:           google_books_data[:title],
+          isbn:            isbn,
+          description:     strip_html(google_books_data[:description]),
           cover_image_url: google_books_data[:cover_image_url],
-          release_date: parse_release_date(google_books_data[:release_date]),
-          author: author,
+          release_date:    parse_release_date(google_books_data[:release_date]),
+          author:          author,
           google_books_id: google_books_id,
-          page_count: google_books_data[:page_count],
-          categories: parsed_categories
+          page_count:      google_books_data[:page_count],
+          categories:      parsed_categories
         )
+
+        if book.save
+          Rails.logger.info "[find_or_create_book] Book created id=#{book.id}"
+          work = WorkResolutionService.resolve(
+            google_books_id: google_books_id,
+            isbn:            isbn,
+            title:           book.title,
+            author:          book.author_name,
+            description:     book.description,
+            cover_image_url: book.cover_image_url,
+            page_count:      book.page_count,
+          )
+          book.update_column(:work_id, work.id)
+        else
+          Rails.logger.error "[find_or_create_book] Book save failed: #{book.errors.full_messages.inspect}"
+          raise ActiveRecord::RecordInvalid.new(book)
+        end
+
+        book
       end
 
       def parse_release_date(date_string)
@@ -224,6 +265,7 @@ module Api
         {
           id: user_book.id,
           book_id: user_book.book_id,
+          work_id: user_book.work_id,
           book: serialize_book(user_book.book),
           status: user_book.status,
           shelf: user_book.shelf,
@@ -241,17 +283,6 @@ module Api
           created_at: user_book.created_at,
           updated_at: user_book.updated_at
         }
-      end
-
-      def enqueue_user_book_activity(user_book, activity_type)
-        return unless user_book.visibility == 'public'
-
-        GenerateUserActivityFeedItemsJob.perform_later(
-          current_user.id,
-          'UserBook',
-          user_book.id,
-          activity_type
-        )
       end
 
       def serialize_book(book)

@@ -3,11 +3,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, Variants } from 'framer-motion'
-import { useAuth, apiClient } from '@book-app/shared'
+import { useAuth, apiClient, useUserList } from '@book-app/shared'
 import {
   ChevronLeft, LogOut, Upload, X, Check,
-  BookOpen, Download, User as UserIcon,
+  BookOpen, Download, User as UserIcon, List, Search, Plus, ChevronUp, ChevronDown,
 } from 'lucide-react'
+import type { UserBook } from '@book-app/shared'
 
 import ProtectedRoute from '@/components/ProtectedRoute'
 import InputField from '@/components/InputField'
@@ -76,6 +77,15 @@ function SettingsContent() {
 
   const [loading, setLoading] = useState(true)
 
+  // Top 10 list
+  const { list: top10List, loading: top10Loading, saving: top10Saving,
+          addBook: addToTop10, removeBook: removeFromTop10, reorder: reorderTop10 } =
+    useUserList(user?.id, 'top_10')
+  const [completedBooks, setCompletedBooks] = useState<UserBook[]>([])
+  const [completedLoading, setCompletedLoading] = useState(false)
+  const [bookQuery, setBookQuery] = useState('')
+  const [top10Toast, setTop10Toast] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+
   // Profile
   const [profileForm, setProfileForm] = useState<ProfileFormData>({ display_name: '', bio: '', avatar_file: null })
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
@@ -101,6 +111,72 @@ function SettingsContent() {
       fetchPreferencesAndAuthors()
     }
   }, [user])
+
+  // Load completed books once (lazy — when the section first mounts)
+  const fetchCompletedBooks = useCallback(async () => {
+    if (completedBooks.length > 0) return  // already loaded
+    setCompletedLoading(true)
+    try {
+      const { user_books } = await apiClient.getUserBooks({ shelf: 'read' })
+      setCompletedBooks(user_books)
+    } catch { /* non-fatal */ }
+    finally { setCompletedLoading(false) }
+  }, [completedBooks.length])
+
+  // Trigger load when the list is first available (i.e. user is logged in)
+  useEffect(() => {
+    if (user?.id && !top10Loading) fetchCompletedBooks()
+  }, [user?.id, top10Loading])
+
+  // Client-side filter of completed books
+  const filteredBooks = bookQuery.trim()
+    ? completedBooks.filter(ub =>
+        ub.book?.title?.toLowerCase().includes(bookQuery.toLowerCase()) ||
+        ub.book?.author_name?.toLowerCase().includes(bookQuery.toLowerCase())
+      )
+    : completedBooks
+
+  const handleTop10AddBook = async (userBook: UserBook) => {
+    if (!userBook.book) return
+    setBookQuery('')
+    try {
+      await addToTop10(userBook.book.id)
+      setTop10Toast({ type: 'success', message: `"${userBook.book.title}" added to your Top 10` })
+      setTimeout(() => setTop10Toast(null), 3000)
+    } catch (e: any) {
+      setTop10Toast({ type: 'error', message: e?.response?.data?.error ?? 'Failed to add book' })
+    }
+  }
+
+  const handleTop10Remove = async (itemId: number) => {
+    try {
+      await removeFromTop10(itemId)
+    } catch (e: any) {
+      setTop10Toast({ type: 'error', message: e?.message ?? 'Failed to remove book' })
+    }
+  }
+
+  const handleTop10MoveUp = async (index: number) => {
+    const items = top10List?.items ?? []
+    if (index === 0) return
+    const above = items[index - 1]
+    const current = items[index]
+    await reorderTop10([
+      { id: current.id, position: above.position },
+      { id: above.id,   position: current.position },
+    ])
+  }
+
+  const handleTop10MoveDown = async (index: number) => {
+    const items = top10List?.items ?? []
+    if (index === items.length - 1) return
+    const below = items[index + 1]
+    const current = items[index]
+    await reorderTop10([
+      { id: current.id, position: below.position },
+      { id: below.id,   position: current.position },
+    ])
+  }
 
   const fetchPreferencesAndAuthors = async () => {
     try {
@@ -379,6 +455,208 @@ function SettingsContent() {
                 Save Preferences
               </Button>
             </div>
+          </div>
+        </motion.div>
+
+        {/* ── My Top 10 ── */}
+        <motion.div variants={itemVariants} className="rounded-[28px] overflow-hidden mb-5" style={cardStyle}>
+          <SectionHeader title="My Top 10" description="Your all-time favourite books, displayed on your profile" />
+          <div className="p-6 sm:p-8 space-y-5">
+
+            {top10Toast && <Toast type={top10Toast.type} message={top10Toast.message} />}
+
+            {top10Loading ? (
+              <div className="space-y-3">
+                {[1,2,3].map(i => (
+                  <div key={i} className="h-14 rounded-2xl animate-pulse" style={{ backgroundColor: 'var(--color-grove)' }} />
+                ))}
+              </div>
+            ) : (
+              <>
+                {/* Item count */}
+                <p className="text-sm" style={{ color: 'var(--color-lit-3)' }}>
+                  {top10List?.items?.length ?? 0}/10 books added
+                </p>
+
+                {/* Current items */}
+                {top10List?.items && top10List.items.length > 0 && (
+                  <div className="space-y-2">
+                    {top10List.items.map((item, index) => (
+                      <div
+                        key={item.id}
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-2xl"
+                        style={{ backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-rim)' }}
+                      >
+                        {/* Rank badge */}
+                        <span
+                          className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black"
+                          style={{
+                            backgroundColor: item.position === 1 ? 'rgba(201,168,76,0.15)' : 'var(--color-surface)',
+                            border: `1px solid ${item.position === 1 ? 'var(--color-accent)' : 'var(--color-rim)'}`,
+                            color: item.position === 1 ? 'var(--color-accent)' : 'var(--color-lit-2)',
+                          }}
+                        >
+                          #{item.position}
+                        </span>
+
+                        {/* Cover */}
+                        {item.book.cover_image_url ? (
+                          <img
+                            src={item.book.cover_image_url}
+                            alt={item.book.title}
+                            className="w-9 h-12 rounded-lg object-cover flex-shrink-0"
+                          />
+                        ) : (
+                          <div
+                            className="w-9 h-12 rounded-lg flex-shrink-0"
+                            style={{ backgroundColor: 'var(--color-surface)' }}
+                          />
+                        )}
+
+                        {/* Info */}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold truncate" style={{ color: 'var(--color-lit)' }}>
+                            {item.book.title}
+                          </p>
+                          <p className="text-xs truncate" style={{ color: 'var(--color-lit-3)' }}>
+                            {item.book.author_name}
+                          </p>
+                        </div>
+
+                        {/* Controls */}
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleTop10MoveUp(index)}
+                            disabled={index === 0 || top10Saving}
+                            className="p-1.5 rounded-lg transition-colors disabled:opacity-30"
+                            style={{ backgroundColor: 'var(--color-surface)' }}
+                            title="Move up"
+                          >
+                            <ChevronUp size={14} style={{ color: 'var(--color-lit-2)' }} />
+                          </button>
+                          <button
+                            onClick={() => handleTop10MoveDown(index)}
+                            disabled={index === (top10List?.items?.length ?? 0) - 1 || top10Saving}
+                            className="p-1.5 rounded-lg transition-colors disabled:opacity-30"
+                            style={{ backgroundColor: 'var(--color-surface)' }}
+                            title="Move down"
+                          >
+                            <ChevronDown size={14} style={{ color: 'var(--color-lit-2)' }} />
+                          </button>
+                          <button
+                            onClick={() => handleTop10Remove(item.id)}
+                            disabled={top10Saving}
+                            className="p-1.5 rounded-lg transition-colors"
+                            style={{ backgroundColor: 'var(--color-surface)' }}
+                            title="Remove"
+                          >
+                            <X size={14} style={{ color: 'var(--color-lit-3)' }} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Add book — pick from completed library */}
+                {(top10List?.items?.length ?? 0) < 10 && (
+                  <div className="space-y-3">
+                    {/* Section label */}
+                    <div className="flex items-center gap-2">
+                      <BookOpen size={14} style={{ color: 'var(--color-accent)' }} />
+                      <span className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--color-lit-2)' }}>
+                        Add from your read books
+                      </span>
+                    </div>
+
+                    {/* Filter input */}
+                    <div
+                      className="flex items-center gap-2 px-3 h-10 rounded-xl"
+                      style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-rim)' }}
+                    >
+                      <Search size={14} style={{ color: 'var(--color-lit-3)', flexShrink: 0 }} />
+                      <input
+                        type="text"
+                        placeholder="Filter by title or author…"
+                        value={bookQuery}
+                        onChange={e => setBookQuery(e.target.value)}
+                        className="flex-1 bg-transparent text-sm outline-none"
+                        style={{ color: 'var(--color-lit)' }}
+                      />
+                      {bookQuery && (
+                        <button onClick={() => setBookQuery('')} className="opacity-50 hover:opacity-100">
+                          <X size={13} style={{ color: 'var(--color-lit-3)' }} />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Books grid */}
+                    {completedLoading ? (
+                      <div className="flex items-center justify-center py-8 gap-2" style={{ color: 'var(--color-lit-3)' }}>
+                        <span className="text-sm animate-pulse">Loading your read books…</span>
+                      </div>
+                    ) : completedBooks.length === 0 ? (
+                      <p className="text-xs text-center py-6" style={{ color: 'var(--color-lit-3)' }}>
+                        No completed books yet — mark some books as Read in your library first!
+                      </p>
+                    ) : filteredBooks.length === 0 ? (
+                      <p className="text-xs text-center py-4" style={{ color: 'var(--color-lit-3)' }}>
+                        No books match "{bookQuery}"
+                      </p>
+                    ) : (
+                      <div
+                        className="rounded-2xl overflow-hidden"
+                        style={{ border: '1px solid var(--color-rim)', backgroundColor: 'var(--color-surface)', maxHeight: '320px', overflowY: 'auto' }}
+                      >
+                        {filteredBooks.map((ub) => {
+                          const book = ub.book
+                          if (!book) return null
+                          const alreadyAdded = top10List?.items?.some(i => i.book.id === book.id) ?? false
+                          return (
+                            <button
+                              key={ub.id}
+                              onClick={() => !alreadyAdded && handleTop10AddBook(ub)}
+                              disabled={alreadyAdded || top10Saving}
+                              className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors"
+                              style={{ borderBottom: '1px solid var(--color-rim)' }}
+                              onMouseEnter={e => !alreadyAdded && (e.currentTarget.style.backgroundColor = 'var(--color-grove)')}
+                              onMouseLeave={e => (e.currentTarget.style.backgroundColor = '')}
+                            >
+                              {book.cover_image_url ? (
+                                <img src={book.cover_image_url} alt={book.title} className="w-8 h-11 rounded-lg object-cover flex-shrink-0" />
+                              ) : (
+                                <div className="w-8 h-11 rounded-lg flex-shrink-0" style={{ backgroundColor: 'var(--color-grove)' }} />
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium truncate" style={{ color: alreadyAdded ? 'var(--color-lit-3)' : 'var(--color-lit)' }}>
+                                  {book.title}
+                                </p>
+                                <p className="text-xs truncate" style={{ color: 'var(--color-lit-3)' }}>
+                                  {book.author_name}
+                                </p>
+                                {ub.rating ? (
+                                  <p className="text-xs mt-0.5" style={{ color: 'var(--color-accent)' }}>
+                                    {'★'.repeat(Math.round(ub.rating))}{'☆'.repeat(5 - Math.round(ub.rating))}
+                                  </p>
+                                ) : null}
+                              </div>
+                              {alreadyAdded ? (
+                                <span className="flex-shrink-0 text-xs font-semibold px-2 py-0.5 rounded-lg"
+                                  style={{ backgroundColor: 'var(--color-grove)', color: 'var(--color-lit-3)', border: '1px solid var(--color-rim)' }}>
+                                  In list
+                                </span>
+                              ) : (
+                                <Plus size={16} style={{ color: 'var(--color-accent)', flexShrink: 0 }} />
+                              )}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </motion.div>
 

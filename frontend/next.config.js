@@ -56,6 +56,22 @@ const nextConfig = {
         protocol: 'https',
         hostname: '**.nyt.com',
       },
+      {
+        protocol: 'https',
+        hostname: 'images.isbndb.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.penguinrandomhouse.com',
+      },
+      {
+        protocol: 'http',
+        hostname: 'images.penguinrandomhouse.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'assets.hardcover.app',
+      },
     ],
   },
   webpack: (config) => {

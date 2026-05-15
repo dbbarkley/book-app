@@ -12,10 +12,14 @@ import { apiClient } from '../api/client'
 
 // Use an absolute URL when a base is available (browser) so the proxy works
 // correctly regardless of how the page is accessed (localhost vs LAN IP).
+// React Native: window exists but window.location is undefined — guard both.
 const PROXY_BASE =
-  typeof window !== 'undefined'
+  typeof window !== 'undefined' && window.location != null
     ? `${window.location.origin}/api/books/search`
     : '/api/books/search'
+
+// In React Native there is no Next.js proxy — detect by checking for location
+const IS_NATIVE = typeof window === 'undefined' || window.location == null
 
 /** Build auth headers for the internal Next.js proxy routes. */
 function authHeaders(): HeadersInit {
@@ -143,6 +147,25 @@ export async function searchBooks(
   maxResults: number = 20
 ): Promise<GoogleBooksBook[]> {
   if (!query.trim()) return []
+
+  // React Native: no Next.js proxy — go straight to the backend API
+  if (IS_NATIVE) {
+    const { apiClient } = await import('../api/client')
+    const results = await apiClient.searchBooks(query, 1, maxResults)
+    // apiClient.searchBooks returns { books, pagination } — extract books array
+    const bookList = (results as any).books ?? results
+    return (bookList as any[]).map((b: any) => ({
+      id:              b.google_books_id ?? String(b.id),
+      title:           b.title,
+      authors:         b.author_name ? [b.author_name] : [],
+      description:     b.description,
+      cover_image_url: b.cover_image_url,
+      published_date:  b.release_date,
+      page_count:      b.page_count,
+      genres:          b.genres ?? [],
+      isbn:            b.isbn,
+    }))
+  }
 
   try {
     const params = new URLSearchParams({

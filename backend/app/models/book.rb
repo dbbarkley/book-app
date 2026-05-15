@@ -10,6 +10,7 @@ class Book < ApplicationRecord
   scope :recently_released, -> { where('release_date <= ? AND release_date >= ?', Date.current, 30.days.ago) }
 
   belongs_to :author
+  belongs_to :work, optional: true
   delegate :name, to: :author, prefix: true, allow_nil: true
   
   has_many :follows, as: :followable, dependent: :destroy

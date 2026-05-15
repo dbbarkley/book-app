@@ -133,7 +133,11 @@ export function BookCoverImage({
         onError={handleError}
         priority={priority}
         loading={priority ? undefined : 'lazy'}
-        unoptimized={imageSrc.includes('covers.openlibrary.org') || imageSrc.includes('googleapis.com')}
+        unoptimized={
+          imageSrc.includes('covers.openlibrary.org') ||
+          imageSrc.includes('googleapis.com') ||
+          imageSrc.includes('images.isbndb.com')
+        }
       />
     </motion.div>
   )

@@ -18,6 +18,7 @@ class FeedItem < ApplicationRecord
     user_followed_author
     user_followed_user
     friend_activity
+    user_updated_top_10
   ].freeze
 
   validates :activity_type, inclusion: { in: ACTIVITY_TYPES }

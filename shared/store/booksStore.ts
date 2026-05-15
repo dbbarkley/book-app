@@ -53,6 +53,7 @@ interface BooksState {
   getSearchResult: (bookId: number) => Book | null
   getSearchResultByGoogleId: (googleId: string) => Book | null
   clearSearchResults: () => void
+  removeFromShelf: (userBookId: number) => Promise<void>
   // Helpers
   getUserBookByBookId: (bookId: number) => UserBook | null
   getShelfBooks: (status: ShelfStatus) => UserBook[]
@@ -137,7 +138,17 @@ export const useBooksStore = create<BooksState>((set, get) => ({
     bookData?: Book,
     options?: { visibility?: Visibility; dnf_reason?: string; dnf_page?: number; total_pages?: number }
   ) => {
-    set({ loading: true, error: null })
+    // Optimistic update: immediately reflect status change for known books
+    const existingEntry = bookId != null ? get().userBooks[bookId] : null
+    if (bookId != null && existingEntry) {
+      set((state) => ({
+        userBooks: {
+          ...state.userBooks,
+          [bookId]: { ...existingEntry, status, shelf: status },
+        },
+      }))
+    }
+
     try {
       const userBook = await apiClient.addBookToShelf(bookId, status, bookData, options)
       const normalized = normalizeUserBook(userBook)
@@ -156,22 +167,46 @@ export const useBooksStore = create<BooksState>((set, get) => ({
         })
       return normalized
     } catch (error) {
-      set({
-        error: error instanceof Error ? error.message : 'Failed to add book to shelf',
-        loading: false,
-      })
+      // Revert optimistic update
+      if (bookId != null && existingEntry) {
+        set((state) => ({
+          userBooks: { ...state.userBooks, [bookId]: existingEntry },
+          error: error instanceof Error ? error.message : 'Failed to add book to shelf',
+          loading: false,
+        }))
+      } else {
+        set({
+          error: error instanceof Error ? error.message : 'Failed to add book to shelf',
+          loading: false,
+        })
+      }
       throw error
     }
   },
 
   updateProgress: async (userBookId: number, updates) => {
-    set({ loading: true, error: null })
+    // Find the book keyed by this userBookId for optimistic update
+    const state = get()
+    const bookKey = Object.keys(state.userBooks).find(
+      (k) => state.userBooks[Number(k)]?.id === userBookId
+    )
+    const existing = bookKey != null ? state.userBooks[Number(bookKey)] : null
+
+    if (existing) {
+      set((s) => ({
+        userBooks: {
+          ...s.userBooks,
+          [existing.book_id]: { ...existing, ...updates },
+        },
+      }))
+    }
+
     try {
       const userBook = await apiClient.updateBookProgress(userBookId, updates)
       const normalized = normalizeUserBook(userBook)
-      set((state) => ({
+      set((s) => ({
         userBooks: {
-          ...state.userBooks,
+          ...s.userBooks,
           [normalized.book_id]: normalized,
         },
         loading: false,
@@ -184,10 +219,19 @@ export const useBooksStore = create<BooksState>((set, get) => ({
         })
       return normalized
     } catch (error) {
-      set({
-        error: error instanceof Error ? error.message : 'Failed to update progress',
-        loading: false,
-      })
+      // Revert optimistic update
+      if (existing) {
+        set((s) => ({
+          userBooks: { ...s.userBooks, [existing.book_id]: existing },
+          error: error instanceof Error ? error.message : 'Failed to update progress',
+          loading: false,
+        }))
+      } else {
+        set({
+          error: error instanceof Error ? error.message : 'Failed to update progress',
+          loading: false,
+        })
+      }
       throw error
     }
   },
@@ -235,6 +279,28 @@ export const useBooksStore = create<BooksState>((set, get) => ({
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to save review',
+        loading: false,
+      })
+      throw error
+    }
+  },
+
+  removeFromShelf: async (userBookId: number) => {
+    set({ loading: true, error: null })
+    try {
+      await apiClient.deleteUserBook(userBookId)
+      // Remove the entry from local state
+      set((state) => {
+        const next = { ...state.userBooks }
+        const key = Object.keys(next).find(
+          (k) => next[Number(k)]?.id === userBookId
+        )
+        if (key !== undefined) delete next[Number(key)]
+        return { userBooks: next, loading: false }
+      })
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to remove book from shelf',
         loading: false,
       })
       throw error
@@ -308,7 +374,8 @@ export const useBooksStore = create<BooksState>((set, get) => ({
   },
 
   getUserBookByBookId: (bookId: number) => {
-    return get().userBooks[bookId] || null
+    const { userBooks, bookIdRedirectMap } = get()
+    return userBooks[bookId] ?? userBooks[bookIdRedirectMap[bookId]] ?? null
   },
 
   getShelfBooks: (status: ShelfStatus, visibility?: Visibility) => {

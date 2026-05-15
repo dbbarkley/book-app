@@ -4,6 +4,7 @@
 
 import { useCallback } from 'react'
 import { useOnboardingStore } from '../store/onboardingStore'
+import { useAuthStore } from '../store/authStore'
 import { apiClient } from '../api/client'
 
 /**
@@ -68,6 +69,7 @@ export function useOnboarding() {
         onboarding_completed: true,
       })
 
+      useAuthStore.getState().updateUser({ onboarding_completed: true })
       setLoading(false)
       return { success: true }
     } catch (error: any) {
@@ -94,6 +96,7 @@ export function useOnboarding() {
         onboarding_completed: true,
       })
 
+      useAuthStore.getState().updateUser({ onboarding_completed: true })
       setLoading(false)
       return { success: true }
     } catch (error: any) {

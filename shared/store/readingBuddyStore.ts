@@ -33,6 +33,7 @@ interface ReadingBuddyState {
   dnfSession: (sessionId: number) => Promise<void>
   sendMessage: (sessionId: number, content: string) => Promise<void>
   createHighlight: (sessionId: number, payload: CreateHighlightPayload) => Promise<ReadingBuddyHighlight>
+  deleteHighlight: (sessionId: number, highlightId: number) => Promise<void>
 
   // Real-time updates (called by the cable subscription in the component)
   handleCableEvent: (event: ReadingBuddyCableEvent) => void
@@ -133,6 +134,11 @@ export const useReadingBuddyStore = create<ReadingBuddyState>((set, get) => ({
       return { highlights: updated }
     })
     return highlight
+  },
+
+  deleteHighlight: async (sessionId: number, highlightId: number) => {
+    await apiClient.deleteReadingBuddyHighlight(sessionId, highlightId)
+    set(state => ({ highlights: state.highlights.filter(h => h.id !== highlightId) }))
   },
 
   handleCableEvent: (event: ReadingBuddyCableEvent) => {

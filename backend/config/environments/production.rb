@@ -8,6 +8,19 @@ Rails.application.configure do
   config.log_level = :info
   config.log_tags = [ :request_id ]
   config.action_mailer.perform_caching = false
+
+  # Use Redis as the cache store so author_works (and other Rails.cache calls)
+  # persist across dynos and survive deploys. Falls back to memory_store if
+  # REDIS_URL isn't set (e.g. in staging envs that don't have Redis yet).
+  if ENV["REDIS_URL"].present?
+    config.cache_store = :redis_cache_store, {
+      url:              ENV["REDIS_URL"],
+      expires_in:       24.hours,
+      race_condition_ttl: 10.seconds,
+    }
+  else
+    config.cache_store = :memory_store, { size: 64.megabytes }
+  end
   config.i18n.fallbacks = true
   config.active_support.deprecation = :notify
   config.active_record.dump_schema_after_migration = false

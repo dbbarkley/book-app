@@ -1,6 +1,45 @@
 module Api
   module V1
     class RecommendationsController < BaseController
+      SIMILAR_RATE_LIMIT = 10 # requests per minute per user
+
+      # GET /api/v1/recommendations/similar_to/:book_id
+      #
+      # Returns books similar to the given book using Open Library's subject graph.
+      # Results are cached server-side so repeat calls are instant.
+      # Called progressively — one request per selected seed book —
+      # so the frontend can pre-fetch before the user taps "Find".
+      def similar_to
+        book = Book.find_by(id: params[:book_id])
+        return render json: { error: 'Book not found' }, status: :not_found unless book
+
+        Rails.logger.info("[SimilarTo] Request for Book ##{book.id} '#{book.title}' by User ##{current_user.id}")
+
+        # Basic rate limit: check how many similar_to calls this user has made recently
+        cache_key = "similar_rate:#{current_user.id}"
+        call_count = Rails.cache.fetch(cache_key, expires_in: 1.minute) { 0 }
+        if call_count >= SIMILAR_RATE_LIMIT
+          Rails.logger.warn("[SimilarTo] Rate limit hit for User ##{current_user.id} (#{call_count} calls/min)")
+          return render json: { error: 'Too many requests. Please wait a moment.' }, status: :too_many_requests
+        end
+        Rails.cache.write(cache_key, call_count + 1, expires_in: 1.minute)
+
+        # Fetch similar books (heavily cached in the service)
+        similar = HardcoverSimilarityService.new(book).call
+        Rails.logger.info("[SimilarTo] Service returned #{similar.size} books for Book ##{book.id}")
+
+        # Filter out books already in this user's library
+        user_book_ids = current_user.user_books.pluck(:book_id).to_set
+        before_count  = similar.size
+        similar.reject! { |b| b[:id].present? && user_book_ids.include?(b[:id]) }
+        Rails.logger.info("[SimilarTo] After filtering user library: #{similar.size} books (removed #{before_count - similar.size})")
+
+        render json: { books: similar }, status: :ok
+      rescue => e
+        Rails.logger.error("[SimilarTo] Unexpected error for Book ##{params[:book_id]}: #{e.message}\n#{e.backtrace.first(3).join("\n")}")
+        render json: { error: 'Could not fetch similar books' }, status: :internal_server_error
+      end
+
       def books
         recommendations = Recommendation.for_user(current_user).books.includes(recommendable: :author)
         
@@ -50,8 +89,69 @@ module Api
         render json: { new_releases: [] }, status: :ok
       end
 
+      # GET /api/v1/recommendations/coming_soon
+      #
+      # Query params:
+      #   genre     — filter by genre slug (e.g. "romance", "thriller"). Optional.
+      #   date_from — ISO date lower bound, e.g. "2026-05-06". Defaults to today.
+      #   date_to   — ISO date upper bound, e.g. "2026-05-12". Optional.
+      #   page      — page number, default 1
+      #   per       — results per page, default 20, max 50
+      #
+      # Returns upcoming releases ordered by date_published ASC,
+      # served from the upcoming_releases cache table (refreshed daily by ISBNdb).
       def coming_soon
-        render json: { coming_soon: [] }, status: :ok
+        per  = [[params[:per].to_i, 1].max, 50].min
+        per  = 20 if per.zero?
+        page = [params[:page].to_i, 1].max
+
+        # Date range — default to today→∞ when not specified
+        date_from = parse_date(params[:date_from]) || Date.current
+        date_to   = parse_date(params[:date_to])
+
+        # Apply date + genre filters FIRST so the dedup window is scoped correctly.
+        # A hardcover in June and a paperback in May belong to different release
+        # windows and should both appear — not have one globally suppress the other.
+        base = UpcomingRelease.where('date_published >= ?', date_from)
+        base = base.where('date_published <= ?', date_to) if date_to
+        base = base.by_genre(params[:genre].downcase.strip) if params[:genre].present?
+
+        # Dedup within the filtered set — one winner per (title, first_author),
+        # hardcover preferred, earliest date as tiebreaker.
+        deduped_ids = base
+          .select(Arel.sql(
+            "DISTINCT ON (lower(trim(title)), lower(trim(COALESCE(authors->>0, '')))) id"
+          ))
+          .order(Arel.sql(
+            "lower(trim(title)), " \
+            "lower(trim(COALESCE(authors->>0, ''))), " \
+            "CASE WHEN binding = 'Hardcover' THEN 0 ELSE 1 END ASC, " \
+            "date_published ASC"
+          ))
+
+        # When browsing "all" genres, push Young Adult to the bottom so adult
+        # fiction/non-fiction leads. When the user has explicitly filtered to
+        # young-adult, respect that and sort by date only.
+        ya_last = params[:genre].blank? ?
+          "CASE WHEN genres @> '[\"young-adult\"]'::jsonb THEN 1 ELSE 0 END ASC, " : ""
+
+        scope = UpcomingRelease.where(id: deduped_ids).order(Arel.sql("#{ya_last}date_published ASC"))
+
+        total = scope.count
+        books = scope.offset((page - 1) * per).limit(per)
+
+        render json: {
+          coming_soon: books.map(&:as_api_json),
+          meta: {
+            total:       total,
+            page:        page,
+            per:         per,
+            total_pages: (total.to_f / per).ceil,
+            genre:       params[:genre].presence,
+            date_from:   date_from.iso8601,
+            date_to:     date_to&.iso8601,
+          }
+        }, status: :ok
       end
 
       def authors
@@ -95,6 +195,13 @@ module Api
       end
 
       private
+
+      def parse_date(str)
+        return nil if str.blank?
+        Date.parse(str)
+      rescue ArgumentError
+        nil
+      end
 
       def serialize_recommendation(rec)
         item = rec.recommendable

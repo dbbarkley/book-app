@@ -1,6 +1,11 @@
 Rails.application.routes.draw do
   mount ActionCable.server => '/cable'
 
+  # Development email previewer — view sent emails at http://localhost:3000/letter_opener
+  if Rails.env.development?
+    mount LetterOpenerWeb::Engine, at: '/letter_opener'
+  end
+
   namespace :api do
     namespace :v1 do
       # Authentication
@@ -8,7 +13,9 @@ Rails.application.routes.draw do
       post 'auth/login', to: 'auth#login'
       post 'auth/logout', to: 'auth#logout'
       post 'auth/refresh', to: 'auth#refresh'
-      get 'auth/me', to: 'auth#me'
+      get  'auth/me', to: 'auth#me'
+      post 'auth/forgot-password', to: 'auth#forgot_password'
+      post 'auth/reset-password',  to: 'auth#reset_password'
       
       # Social Auth
       get 'auth/:provider/callback', to: 'auth#callback'
@@ -29,6 +36,20 @@ Rails.application.routes.draw do
         get 'stats', on: :member
         get 'friends', on: :member
         # get 'genre/:genre/books', on: :member, action: :genre_books, constraints: { genre: /[^\/]+/ }  # disabled: gamification hidden
+
+        # Lists
+        resources :lists, controller: 'user_lists' do
+          collection do
+            get :top_10
+          end
+          member do
+            post   :like
+            delete :unlike
+            patch  :reorder
+            post   'items',           action: :add_item
+            delete 'items/:item_id',  action: :remove_item
+          end
+        end
       end
       
       # Follows
@@ -62,8 +83,9 @@ Rails.application.routes.draw do
       get  'recommendations/authors',    to: 'recommendations#authors'
       post 'recommendations/regenerate', to: 'recommendations#regenerate'
       # get 'recommendations/events', to: 'recommendations#events'  # disabled: events hidden
-      get 'recommendations/new_releases', to: 'recommendations#new_releases'
-      get 'recommendations/coming_soon',  to: 'recommendations#coming_soon'
+      get 'recommendations/new_releases',        to: 'recommendations#new_releases'
+      get 'recommendations/coming_soon',         to: 'recommendations#coming_soon'
+      get 'recommendations/similar_to/:book_id', to: 'recommendations#similar_to'
       
       # Authors
       resources :authors, only: [:index, :show, :create] do
@@ -72,11 +94,20 @@ Rails.application.routes.draw do
         get 'followers', on: :member
       end
       
+      # BISAC curated discovery shelves
+      resources :bisac_categories, only: [:index], param: :code do
+        get 'books', on: :member
+      end
+
       # Books
       resources :books, only: [:index, :show] do
         get 'friends', on: :member
         collection do
-          get 'by_google/:google_books_id', action: :show_by_google, constraints: { google_books_id: /[^\/]+/ }
+          get  'by_google/:google_books_id', action: :show_by_google, constraints: { google_books_id: /[^\/]+/ }
+          get  'by_isbn/:isbn',              action: :show_by_isbn,   constraints: { isbn: /\d{10,13}/ }
+          get  'author_works', action: :author_works
+          get  'genre',        action: :genre
+          post 'ensure',       action: :ensure_book
         end
       end
       

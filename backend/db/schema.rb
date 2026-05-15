@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_04_26_000001) do
+ActiveRecord::Schema[7.2].define(version: 2026_05_14_000004) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -52,6 +52,27 @@ ActiveRecord::Schema[7.2].define(version: 2026_04_26_000001) do
     t.index ["name"], name: "index_authors_on_name"
   end
 
+  create_table "bisac_categories", force: :cascade do |t|
+    t.string "code", null: false
+    t.string "name", null: false
+    t.string "parent_code"
+    t.string "color", default: "#6B8FD6", null: false
+    t.jsonb "query_terms", default: [], null: false
+    t.integer "display_order", default: 0, null: false
+    t.boolean "active", default: true, null: false
+    t.datetime "last_populated_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.string "data_source", default: "hardcover", null: false
+    t.string "source_identifier"
+    t.integer "stale_hours", default: 168, null: false
+    t.index ["active"], name: "index_bisac_categories_on_active"
+    t.index ["code"], name: "index_bisac_categories_on_code", unique: true
+    t.index ["data_source"], name: "index_bisac_categories_on_data_source"
+    t.index ["display_order"], name: "index_bisac_categories_on_display_order"
+    t.index ["parent_code"], name: "index_bisac_categories_on_parent_code"
+  end
+
   create_table "book_suggestions", force: :cascade do |t|
     t.bigint "suggester_id", null: false
     t.bigint "recipient_id", null: false
@@ -82,6 +103,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_04_26_000001) do
     t.datetime "cover_last_enriched_at"
     t.jsonb "categories", default: []
     t.integer "page_count"
+    t.bigint "work_id"
     t.index ["author_id"], name: "index_books_on_author_id"
     t.index ["categories"], name: "index_books_on_categories", using: :gin
     t.index ["cover_image_quality"], name: "index_books_on_cover_image_quality"
@@ -91,6 +113,27 @@ ActiveRecord::Schema[7.2].define(version: 2026_04_26_000001) do
     t.index ["page_count"], name: "index_books_on_page_count"
     t.index ["release_date"], name: "index_books_on_release_date"
     t.index ["title", "author_id"], name: "index_books_on_title_and_author_id"
+    t.index ["work_id"], name: "index_books_on_work_id"
+  end
+
+  create_table "curated_shelf_books", force: :cascade do |t|
+    t.string "bisac_code", null: false
+    t.string "google_books_id", null: false
+    t.string "title", null: false
+    t.string "author_name"
+    t.string "cover_image_url"
+    t.text "description"
+    t.string "published_date"
+    t.decimal "average_rating", precision: 3, scale: 2
+    t.integer "ratings_count", default: 0
+    t.integer "rank", default: 0, null: false
+    t.datetime "cached_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.integer "page_count"
+    t.index ["bisac_code", "google_books_id"], name: "idx_curated_shelf_books_unique", unique: true
+    t.index ["bisac_code"], name: "index_curated_shelf_books_on_bisac_code"
+    t.index ["cached_at"], name: "index_curated_shelf_books_on_cached_at"
   end
 
   create_table "event_authors", force: :cascade do |t|
@@ -368,6 +411,29 @@ ActiveRecord::Schema[7.2].define(version: 2026_04_26_000001) do
     t.index ["title", "author_name"], name: "index_scraped_books_on_title_and_author_name", unique: true
   end
 
+  create_table "upcoming_releases", force: :cascade do |t|
+    t.string "isbn13", null: false
+    t.string "isbn10"
+    t.string "title", null: false
+    t.jsonb "authors", default: [], null: false
+    t.string "publisher"
+    t.date "date_published"
+    t.string "binding"
+    t.text "synopsis"
+    t.string "cover_image_url"
+    t.jsonb "subjects", default: [], null: false
+    t.jsonb "genres", default: [], null: false
+    t.decimal "msrp", precision: 8, scale: 2
+    t.datetime "fetched_at", default: -> { "now()" }, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.integer "pages"
+    t.index ["date_published"], name: "index_upcoming_releases_on_date_published"
+    t.index ["genres"], name: "index_upcoming_releases_on_genres", using: :gin
+    t.index ["isbn13"], name: "index_upcoming_releases_on_isbn13", unique: true
+    t.index ["publisher"], name: "index_upcoming_releases_on_publisher"
+  end
+
   create_table "user_books", force: :cascade do |t|
     t.bigint "user_id", null: false
     t.bigint "book_id", null: false
@@ -386,12 +452,14 @@ ActiveRecord::Schema[7.2].define(version: 2026_04_26_000001) do
     t.string "dnf_reason"
     t.integer "dnf_page"
     t.text "notes"
+    t.bigint "work_id", null: false
     t.index ["book_id"], name: "index_user_books_on_book_id"
     t.index ["status"], name: "index_user_books_on_status"
     t.index ["user_id", "book_id"], name: "index_user_books_on_user_id_and_book_id", unique: true
     t.index ["user_id", "shelf"], name: "index_user_books_on_user_id_and_shelf"
     t.index ["user_id"], name: "index_user_books_on_user_id"
     t.index ["visibility"], name: "index_user_books_on_visibility"
+    t.index ["work_id"], name: "index_user_books_on_work_id"
   end
 
   create_table "user_genre_stat_books", force: :cascade do |t|
@@ -414,6 +482,41 @@ ActiveRecord::Schema[7.2].define(version: 2026_04_26_000001) do
     t.index ["user_id"], name: "index_user_genre_stats_on_user_id"
   end
 
+  create_table "user_list_items", force: :cascade do |t|
+    t.bigint "user_list_id", null: false
+    t.bigint "book_id", null: false
+    t.integer "position", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["book_id"], name: "index_user_list_items_on_book_id"
+    t.index ["user_list_id", "book_id"], name: "index_user_list_items_on_user_list_id_and_book_id", unique: true
+    t.index ["user_list_id", "position"], name: "index_user_list_items_on_user_list_id_and_position", unique: true
+    t.index ["user_list_id"], name: "index_user_list_items_on_user_list_id"
+  end
+
+  create_table "user_list_likes", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "user_list_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id", "user_list_id"], name: "index_user_list_likes_on_user_id_and_user_list_id", unique: true
+    t.index ["user_id"], name: "index_user_list_likes_on_user_id"
+    t.index ["user_list_id"], name: "index_user_list_likes_on_user_list_id"
+  end
+
+  create_table "user_lists", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "list_type", default: "custom", null: false
+    t.string "name", null: false
+    t.text "description"
+    t.string "visibility", default: "public", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id", "list_type"], name: "index_user_lists_on_user_id_and_list_type"
+    t.index ["user_id", "list_type"], name: "index_user_lists_one_top_10_per_user", unique: true, where: "((list_type)::text = 'top_10'::text)"
+    t.index ["user_id"], name: "index_user_lists_on_user_id"
+  end
+
   create_table "users", force: :cascade do |t|
     t.string "email", null: false
     t.string "username", null: false
@@ -429,8 +532,11 @@ ActiveRecord::Schema[7.2].define(version: 2026_04_26_000001) do
     t.string "provider"
     t.string "uid"
     t.datetime "last_feed_viewed_at"
+    t.string "password_reset_token"
+    t.datetime "password_reset_sent_at"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["onboarding_completed"], name: "index_users_on_onboarding_completed"
+    t.index ["password_reset_token"], name: "index_users_on_password_reset_token", unique: true
     t.index ["preferences"], name: "index_users_on_preferences", using: :gin
     t.index ["provider", "uid"], name: "index_users_on_provider_and_uid", unique: true
     t.index ["username"], name: "index_users_on_username", unique: true
@@ -458,12 +564,33 @@ ActiveRecord::Schema[7.2].define(version: 2026_04_26_000001) do
     t.index ["zipcode"], name: "index_venues_on_zipcode"
   end
 
+  create_table "works", force: :cascade do |t|
+    t.string "canonical_title", null: false
+    t.string "canonical_author", null: false
+    t.string "normalized_title", null: false
+    t.string "normalized_author", null: false
+    t.bigint "hardcover_id"
+    t.string "hardcover_slug"
+    t.string "ol_work_id"
+    t.text "description"
+    t.string "cover_image_url"
+    t.integer "page_count"
+    t.integer "first_published_year"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["hardcover_id"], name: "index_works_on_hardcover_id", unique: true, where: "(hardcover_id IS NOT NULL)"
+    t.index ["hardcover_slug"], name: "index_works_on_hardcover_slug", unique: true, where: "(hardcover_slug IS NOT NULL)"
+    t.index ["normalized_title", "normalized_author"], name: "index_works_on_normalized_title_and_normalized_author", unique: true
+    t.index ["ol_work_id"], name: "index_works_on_ol_work_id", unique: true, where: "(ol_work_id IS NOT NULL)"
+  end
+
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "book_suggestions", "books"
   add_foreign_key "book_suggestions", "users", column: "recipient_id"
   add_foreign_key "book_suggestions", "users", column: "suggester_id"
   add_foreign_key "books", "authors"
+  add_foreign_key "books", "works"
   add_foreign_key "event_authors", "authors"
   add_foreign_key "event_authors", "events"
   add_foreign_key "events", "authors"
@@ -493,7 +620,13 @@ ActiveRecord::Schema[7.2].define(version: 2026_04_26_000001) do
   add_foreign_key "recommendations", "users"
   add_foreign_key "user_books", "books"
   add_foreign_key "user_books", "users"
+  add_foreign_key "user_books", "works"
   add_foreign_key "user_genre_stat_books", "user_books"
   add_foreign_key "user_genre_stat_books", "user_genre_stats"
   add_foreign_key "user_genre_stats", "users"
+  add_foreign_key "user_list_items", "books"
+  add_foreign_key "user_list_items", "user_lists"
+  add_foreign_key "user_list_likes", "user_lists"
+  add_foreign_key "user_list_likes", "users"
+  add_foreign_key "user_lists", "users"
 end

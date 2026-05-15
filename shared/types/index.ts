@@ -1,5 +1,44 @@
 // API Types - Generated from backend API responses
 
+// ── User Lists ─────────────────────────────────────────────────────────────────
+
+export type ListType = 'top_10' | 'custom'
+export type ListVisibility = 'public' | 'private'
+
+export interface UserListBook {
+  id: number
+  title: string
+  cover_image_url?: string
+  author_name?: string
+  google_books_id?: string
+}
+
+export interface UserListItem {
+  id: number
+  position: number
+  book: UserListBook
+}
+
+export interface UserList {
+  id: number
+  user_id: number
+  list_type: ListType
+  name: string
+  description?: string
+  visibility: ListVisibility
+  likes_count: number
+  liked_by_current_user?: boolean
+  items?: UserListItem[]
+  items_count?: number
+  created_at: string
+  updated_at: string
+}
+
+export interface ReorderItem {
+  id: number
+  position: number
+}
+
 export interface User {
   id: number
   email?: string
@@ -91,6 +130,7 @@ export interface RecommendedBook {
   score?: number
   source?: string
 }
+
 
 export interface RecommendedAuthor {
   id: number
@@ -441,6 +481,38 @@ export interface CreateHighlightPayload {
   char_start: number
   char_end: number
   page_image?: Blob | null  // optional photo of the physical page
+}
+
+// ── Upcoming Releases ────────────────────────────────────────────────────────
+
+export interface UpcomingRelease {
+  id:              number
+  isbn13:          string
+  title:           string
+  authors:         string[]
+  publisher:       string | null
+  date_published:  string          // ISO date string e.g. "2026-07-14"
+  binding:         string | null   // "Hardcover" | "Paperback" | etc.
+  synopsis:        string | null
+  cover_image_url: string | null
+  subjects:        string[]
+  genres:          string[]
+  msrp:            number | null
+  pages:           number | null   // page count from ISBNdb
+  days_until:      number | null   // days from today until release
+}
+
+export interface UpcomingReleasesMeta {
+  total:       number
+  page:        number
+  per:         number
+  total_pages: number
+  genre:       string | null
+}
+
+export interface UpcomingReleasesResponse {
+  coming_soon: UpcomingRelease[]
+  meta:        UpcomingReleasesMeta
 }
 
 // ActionCable message payloads

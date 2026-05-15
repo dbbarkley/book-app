@@ -12,23 +12,40 @@ module Api
         per_page = [params[:per_page]&.to_i || 30, 100].min
         last_viewed = current_user.last_feed_viewed_at
 
+        # Accurate totals from the DB for correct pagination metadata.
+        feed_total  = current_user.feed_items.count
+        notif_total = current_user.notifications
+                                  .where(notification_type: PERSONAL_NOTIFICATION_TYPES).count
+        total = feed_total + notif_total
+
+        # Load enough rows from each source to cover the requested page.
+        # Worst-case: every entry on this page comes from one source alone.
+        load_limit = page * per_page
+
+        # preload(:feedable) correctly groups by feedable_type and issues one
+        # query per type, avoiding the N+1 that includes() causes on a polymorphic
+        # association when sub-associations (:book, :author) don't exist on every type.
         feed_items = current_user.feed_items
-                                 .includes(feedable: [:book, :author])
+                                 .preload(:feedable)
                                  .order(created_at: :desc)
-                                 .limit(per_page * 3)
+                                 .limit(load_limit)
+                                 .to_a
+
+        # Preload :book for UserBook feedables in a single extra query.
+        user_book_feedables = feed_items.filter_map { |fi| fi.feedable if fi.feedable.is_a?(UserBook) }
+        ActiveRecord::Associations::Preloader.new(records: user_book_feedables, associations: :book).call if user_book_feedables.any?
 
         notifications = current_user.notifications
                                     .where(notification_type: PERSONAL_NOTIFICATION_TYPES)
                                     .includes(:notifiable)
                                     .order(created_at: :desc)
-                                    .limit(50)
+                                    .limit(load_limit)
 
         feed_entries = serialize_feed_items(feed_items, last_viewed) +
                        serialize_notifications(notifications, last_viewed)
 
         feed_entries.sort_by! { |e| e[:created_at] }.reverse!
 
-        total = feed_entries.length
         page_entries = feed_entries.slice((page - 1) * per_page, per_page) || []
 
         render json: {
@@ -76,7 +93,7 @@ module Api
           feedable = item.feedable
           next if feedable.is_a?(UserBook) && feedable.visibility == 'private'
 
-          metadata = item.metadata ? JSON.parse(item.metadata.to_json) : {}
+          metadata = item.metadata&.dup || {}
           if (actor_id = metadata.dig('actor', 'id')) && (actor = actors[actor_id])
             metadata['actor'] = {
               'id'           => actor.id,
@@ -163,6 +180,19 @@ module Api
         when Book     then serialize_book_payload(feedable).merge('type' => 'Book')
         when Author   then { 'type' => 'Author', 'id' => feedable.id, 'name' => feedable.name, 'avatar_url' => feedable.avatar_url }
         when User     then serialize_user_mini(feedable).merge('type' => 'User')
+        when Event
+          {
+            'type'         => 'Event',
+            'id'           => feedable.id,
+            'title'        => feedable.title,
+            'event_type'   => feedable.event_type,
+            'starts_at'    => feedable.starts_at,
+            'location'     => feedable.location,
+            'is_virtual'   => feedable.is_virtual,
+            'image_url'    => feedable.image_url,
+            'external_url' => feedable.external_url,
+            'author_name'  => feedable.author&.name,
+          }
         end
       end
 

@@ -1,6 +1,11 @@
 // Book Details Hook - Fetch book details and user's reading status
 // Reusable in Next.js and React Native
-// Handles DB books (positive integer ID), Google Books ID strings, and Book objects
+// Handles DB books (positive integer ID), Google Books ID strings, ISBN-13/10, and Book objects
+
+/** True for ISBN-13 (13 digits) or ISBN-10 (9 digits + optional X check digit). */
+function isIsbn(s: string): boolean {
+  return /^\d{13}$/.test(s) || /^\d{9}[\dX]$/i.test(s)
+}
 
 import { useState, useEffect } from 'react'
 import { apiClient } from '../api/client'
@@ -99,7 +104,7 @@ export function useBookDetails(
               // Use our search proxy (Google Books primary, OL fallback) to get
               // a properly-structured book with a stable ID.
               const params = new URLSearchParams({ q: `intitle:"${title}"`, maxResults: '1', type: 'books' })
-              const origin = typeof window !== 'undefined' ? window.location.origin : ''
+              const origin = (typeof window !== 'undefined' && window.location != null) ? window.location.origin : ''
               const token = apiClient.getToken()
               const searchRes = await fetch(`${origin}/api/books/search?${params}`, {
                 headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -110,7 +115,7 @@ export function useBookDetails(
                 if (item?.volumeInfo) {
                   const v = item.volumeInfo
                   const resolved: Book = {
-                    id: -1,
+                    id: null,
                     title: v.title || title,
                     author_name: (v.authors || []).join(', '),
                     description: v.description,
@@ -133,6 +138,29 @@ export function useBookDetails(
         }
         setError('This book link has expired. Please search for the book to view it.')
         setLoading(false)
+        return
+      }
+
+      // ── ISBN-13 / ISBN-10 ─────────────────────────────────────────────────────
+      // ISBNdb-sourced IDs (e.g. from Upcoming Releases) are pure numeric ISBN
+      // strings, not Google Books volume IDs. Route them to the dedicated endpoint
+      // so we get DB → UpcomingRelease → Google Books fallback in that order.
+      if (isIsbn(bookIdOrBook)) {
+        setLoading(true)
+        setError(null)
+        try {
+          const bookData = await apiClient.getBookByIsbn(bookIdOrBook)
+          setBook(bookData)
+          if (bookData?.id && bookData.id > 0) {
+            setResolvedInternalId(bookData.id)
+            try { await fetchUserBook(bookData.id) } catch { /* not on shelf */ }
+          }
+        } catch (err) {
+          setError(err instanceof Error ? err.message : 'Failed to fetch book details')
+          setBook(null)
+        } finally {
+          setLoading(false)
+        }
         return
       }
 

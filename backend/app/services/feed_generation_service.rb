@@ -39,17 +39,27 @@ class FeedGenerationService < BaseService
   def find_followers(feedable)
     case feedable
     when Book
-      # Followers of book + followers of author + users who have the book on their shelf
-      book_followers = User.joins(:follows)
-                          .where(follows: { followable: feedable })
-      
-      shelf_users = User.joins(:user_books)
-                        .where(user_books: { book_id: feedable.id })
-      
-      author_followers = User.joins(:follows)
-                            .where(follows: { followable: feedable.author })
-      
-      (book_followers + shelf_users + author_followers).uniq
+      # Build a SQL UNION of three sources so deduplication happens in the DB,
+      # not in Ruby memory.  Guard against a nil author_id to avoid a bad query.
+      queries = [
+        User.joins(:follows)
+            .where(follows: { followable_type: 'Book', followable_id: feedable.id })
+            .select(:id)
+            .to_sql,
+        User.joins(:user_books)
+            .where(user_books: { book_id: feedable.id })
+            .select(:id)
+            .to_sql,
+      ]
+
+      if feedable.author_id.present?
+        queries << User.joins(:follows)
+                       .where(follows: { followable_type: 'Author', followable_id: feedable.author_id })
+                       .select(:id)
+                       .to_sql
+      end
+
+      User.where(id: User.from("(#{queries.join(' UNION ')}) AS u").select(:id))
     when Event
       # Followers of author
       User.joins(:follows)

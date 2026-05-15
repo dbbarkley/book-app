@@ -9,25 +9,26 @@ class UserActivityFeedService < BaseService
   private
 
   def execute
-    # Fans out to: followers + mutual friends + the actor themselves
-    recipients = @actor.followers.to_a
-    recipients.concat(@actor.friends.to_a)
-    recipients << @actor
-    recipients << @feedable if @feedable.is_a?(User)
-
-    recipients.uniq!
+    # Collect recipient IDs using pluck to avoid loading full User records into memory.
+    recipient_ids = Set.new
+    recipient_ids.merge(@actor.followers.pluck(:id))
+    recipient_ids.merge(@actor.friends.pluck(:id))
+    recipient_ids << @actor.id
+    recipient_ids << @feedable.id if @feedable.is_a?(User)
 
     payload = @metadata.deep_dup
     payload[:actor] = actor_payload
 
-    created_items = recipients.map do |recipient|
-      FeedItem.find_or_create_by(
-        user: recipient,
-        feedable: @feedable,
+    created_items = recipient_ids.map do |uid|
+      item = FeedItem.find_or_initialize_by(
+        user_id:       uid,
+        feedable_type: @feedable.class.name,
+        feedable_id:   @feedable.id,
         activity_type: @activity_type
-      ) do |item|
-        item.metadata = payload
-      end
+      )
+      item.metadata = payload
+      item.save
+      item
     end
 
     success!(created_items.select(&:persisted?))

@@ -25,7 +25,7 @@ const STEPS = [
   { title: 'Welcome', description: "Let's get your library set up" },
   { title: 'Import Your Books', description: 'Bring your reading history over in seconds' },
   { title: 'Your Favorite Genres', description: "We'll use these to personalise your recommendations" },
-  { title: 'Authors You Love', description: 'Follow authors to stay up to date with their work' },
+  { title: 'Favourite Authors', description: 'Add authors you love to personalise your recommendations' },
 ]
 const TOTAL_STEPS = STEPS.length
 
@@ -157,7 +157,7 @@ export default function OnboardingPage() {
               {[
                 { icon: Upload, label: 'Import your Goodreads library', sub: 'Bring over your books, ratings & shelves instantly' },
                 { icon: BookOpen, label: 'Pick genres you love', sub: "We'll personalise your recommendations" },
-                { icon: CheckCircle, label: 'Follow your favourite authors', sub: 'Get updates when they release new books' },
+                { icon: CheckCircle, label: 'Add your favourite authors', sub: 'Get updates when they release new books' },
               ].map(({ icon: Icon, label, sub }) => (
                 <div key={label} className="flex items-start gap-4 rounded-2xl p-4" style={cardStyle}>
                   <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"

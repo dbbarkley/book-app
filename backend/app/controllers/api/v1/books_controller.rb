@@ -1,8 +1,40 @@
+require 'net/http'
+require 'json'
+
 module Api
   module V1
     class BooksController < ApplicationController
       include Authenticable
-      skip_before_action :authenticate_user!, only: [:index, :show, :show_by_google]
+      skip_before_action :authenticate_user!, only: [:index, :show, :show_by_google, :show_by_isbn, :author_works, :genre]
+      # Disable Rails ParamsWrapper so POST bodies are accessible as flat params
+      # (e.g. params[:title]) instead of being nested under params[:book].
+      wrap_parameters false
+
+      # ── Genre constants ────────────────────────────────────────────────────────
+
+      NYT_LIST_MAP = {
+        'fiction'      => 'combined-print-and-e-book-fiction',
+        'non-fiction'  => 'combined-print-and-e-book-nonfiction',
+        'mystery'      => 'mysteries-thrillers',
+        'thriller'     => 'mysteries-thrillers',
+        'self-help'    => 'advice-how-to-and-miscellaneous',
+        'business'     => 'business-books',
+        'young-adult'  => 'young-adult',
+        'children'     => 'childrens-middle-grade',
+        'graphic-novel'=> 'graphic-books-and-manga',
+      }.freeze
+
+      OL_SUBJECT_MAP = {
+        'romance'    => 'romance',
+        'sci-fi'     => 'science_fiction',
+        'fantasy'    => 'fantasy',
+        'horror'     => 'horror',
+        'historical' => 'historical_fiction',
+        'biography'  => 'biography',
+        'memoir'     => 'autobiography',
+        'philosophy' => 'philosophy',
+        'poetry'     => 'poetry',
+      }.freeze
 
       def index
         books = Book.includes(:author).all
@@ -70,6 +102,14 @@ module Api
           return
         end
 
+        # Curated shelf fallback — hc_ and ol_ IDs won't resolve via Google Books,
+        # but they are always stored in curated_shelf_books after the populator runs.
+        curated = CuratedShelfBook.find_by(google_books_id: google_books_id)
+        if curated
+          render json: { book: curated.as_book_json }, status: :ok
+          return
+        end
+
         # Live fallback — fetch directly from Google Books API
         book_data = fetch_google_book(google_books_id)
         if book_data
@@ -79,16 +119,202 @@ module Api
         end
       end
 
+      # GET /api/v1/books/by_isbn/:isbn
+      # Looks up a book by ISBN-13 (or ISBN-10).
+      # DB hit first; falls back to a Google Books isbn: search query.
+      # Returns id: nil when the book isn't in our DB yet (browse-only mode).
+      def show_by_isbn
+        isbn = params[:isbn].to_s.strip
+
+        # Validate: ISBN-13 is 13 digits; ISBN-10 is 9 digits + optional X check digit.
+        unless isbn.match?(/\A(\d{13}|\d{9}[\dX])\z/i)
+          return render json: { error: 'Invalid ISBN' }, status: :bad_request
+        end
+
+        # DB hit — check isbn column first, then google_books_id.
+        # Google Books sometimes uses ISBN-13 strings as volume IDs, so a book may
+        # be stored with the ISBN in google_books_id rather than isbn.
+        book = Book.includes(:author).find_by(isbn: isbn)
+        book ||= Book.includes(:author).find_by(google_books_id: isbn)
+        if book
+          backfill_description(book)
+          render json: { book: serialize_book_detail(book) }, status: :ok
+          return
+        end
+
+        # Also check upcoming_releases table — ISBNdb data lives here before the book
+        # is added to a user's shelf and written into books.
+        upcoming = UpcomingRelease.find_by(isbn13: isbn)
+        if upcoming
+          render json: { book: upcoming.as_book_json }, status: :ok
+          return
+        end
+
+        # Live fallback — search Google Books by ISBN
+        book_data = fetch_google_book_by_isbn(isbn)
+        if book_data
+          render json: { book: book_data }, status: :ok
+        else
+          render json: { error: 'Book not found' }, status: :not_found
+        end
+      end
+
+      # POST /api/v1/books/ensure
+      # Finds or creates a Book record without touching the user's shelf and without
+      # any external API calls — the client sends the data it already has from whatever
+      # source it came from (Google Books, Hardcover, NYT, ISBNdb, OpenLibrary, etc.).
+      # Deduplication order: ISBN (most universal) → google_books_id → title+author.
+      def ensure_book
+        title           = params[:title].to_s.strip
+        author_name     = params[:author_name].to_s.strip.presence || 'Unknown Author'
+        google_books_id = params[:google_books_id].to_s.strip.presence
+        isbn            = params[:isbn].to_s.strip.presence
+
+        return render json: { error: 'title is required' }, status: :bad_request if title.blank?
+
+        # Dedup: ISBN first (universal), then google_books_id, then title+author
+        book  = Book.find_by(isbn: isbn) if isbn.present?
+        book ||= Book.find_by(google_books_id: google_books_id) if google_books_id.present?
+        book ||= Book.joins(:author)
+                     .where('LOWER(books.title) = ? AND LOWER(authors.name) = ?',
+                            title.downcase, author_name.downcase)
+                     .first
+
+        unless book
+          author = Author.find_or_create_by!(name: author_name)
+
+          book = Book.new(
+            title:           title,
+            isbn:            isbn,
+            google_books_id: google_books_id,
+            description:     params[:description],
+            cover_image_url: params[:cover_image_url],
+            release_date:    parse_book_date(params[:release_date].to_s),
+            page_count:      params[:page_count],
+            categories:      Array(params[:categories]),
+            author:          author
+          )
+
+          unless book.save
+            Rails.logger.error "[Books#ensure_book] save failed: #{book.errors.full_messages}"
+            return render json: { error: 'Could not save book' }, status: :unprocessable_entity
+          end
+
+          work = WorkResolutionService.resolve(
+            google_books_id: book.google_books_id,
+            isbn:            book.isbn,
+            title:           book.title,
+            author:          book.author&.name,
+            description:     book.description,
+            cover_image_url: book.cover_image_url,
+            page_count:      book.page_count,
+          )
+          book.update_column(:work_id, work.id)
+        end
+
+        render json: { id: book.id, title: book.title }, status: :ok
+      rescue => e
+        Rails.logger.error "[Books#ensure_book] #{e.message}"
+        render json: { error: 'Could not save book' }, status: :unprocessable_entity
+      end
+
+      # GET /api/v1/books/author_works?author=Matt+Dinniman&exclude=Dungeon+Crawler+Carl
+      # Proxies to Google Books API (inauthor: query) so mobile gets the same
+      # rich results as the web without needing the Next.js server route.
+      #
+      # Results are cached per-author for 24 hours. Author catalogs change rarely,
+      # so this is safe and avoids hammering Google Books on every book detail view.
+      # Cache key is normalised (downcased, stripped) so "Brandon Sanderson" and
+      # "brandon sanderson" share the same entry.
+      AUTHOR_WORKS_CACHE_TTL = 24.hours
+      GOOGLE_BOOKS_READ_TIMEOUT = 5 # seconds
+
+      def author_works
+        author  = params[:author].to_s.strip
+        exclude = params[:exclude].to_s.strip.downcase
+
+        return render json: { works: [] } if author.blank?
+
+        cache_key = "author_works/v3/#{author.downcase.gsub(/\s+/, '_')}"
+
+        # Fetch the full author catalog from cache or Google Books.
+        # We cache the raw list (before exclude filtering) so the same cache entry
+        # can be reused regardless of which book the user is currently viewing.
+        #
+        # Empty results are NOT cached — Google Books is non-deterministic and can
+        # return nothing on a bad call. Manual read/write lets us skip the write
+        # when the result is empty so a flaky first request doesn't poison the
+        # cache for 24 hours.
+        works = Rails.cache.read(cache_key)
+        if works.nil?
+          works = fetch_author_works_from_google(author)
+          Rails.cache.write(cache_key, works, expires_in: AUTHOR_WORKS_CACHE_TTL) if works.any?
+        end
+
+        # Normalize the exclude title so variants like "Project Hail Mary (Movie Tie-In)"
+        # are also excluded when the user is viewing "Project Hail Mary".
+        exclude_normalized = WorkResolutionService.normalize_title(exclude)
+
+        seen = Set.new
+        deduped = works
+          .reject { |w| WorkResolutionService.normalize_title(w[:title]) == exclude_normalized }
+          .select do |w|
+            nt = WorkResolutionService.normalize_title(w[:title])
+            # Reject exact duplicates
+            next false if seen.include?(nt)
+            # Reject foreign-language editions that append the English title after a separator,
+            # e.g. "Sopravvissuto. The Martian" → "sopravvissuto the martian" ends with " martian"
+            next false if seen.any? { |s| s.length >= 4 && nt.end_with?(" #{s}") }
+            next false if exclude_normalized.length >= 4 && nt.end_with?(" #{exclude_normalized}")
+            seen.add(nt)
+            true
+          end
+
+        render json: { works: deduped }
+      rescue => e
+        Rails.logger.error("[author_works] Unexpected error for '#{params[:author]}': #{e.message}")
+        render json: { works: [], error: true }, status: :ok
+      end
+
+      # GET /api/v1/books/genre?id=fiction
+      # Proxies NYT Bestsellers or Open Library subjects so mobile gets the same
+      # genre browsing as the web without needing Next.js API routes.
+      def genre
+        genre_id = params[:id].to_s.strip.downcase
+        return render json: { books: [], _source: nil } if genre_id.blank?
+
+        # Try NYT first
+        nyt_list = NYT_LIST_MAP[genre_id]
+        if nyt_list
+          begin
+            books = fetch_genre_from_nyt(nyt_list)
+            return render json: { books: books, _source: 'nyt' }
+          rescue => e
+            Rails.logger.warn("[genre] NYT failed for '#{genre_id}': #{e.message}, falling back to OL")
+          end
+        end
+
+        # Open Library fallback (or primary for non-NYT genres)
+        ol_subject = OL_SUBJECT_MAP[genre_id] || genre_id.gsub(/\s+/, '_')
+        begin
+          books = fetch_genre_from_open_library(ol_subject)
+          render json: { books: books, _source: 'open_library' }
+        rescue => e
+          Rails.logger.error("[genre] All sources failed for '#{genre_id}': #{e.message}")
+          render json: { books: [], _source: nil }, status: :bad_gateway
+        end
+      end
+
       # GET /api/v1/books/:id/friends
       def friends
         book = Book.find(params[:id])
         
-        # Get users that the current user follows who also have this book
-        # Note: In a real app, you might want to filter by shelf status or visibility
         friend_ids = current_user.followed_users.pluck(:id)
-        
+        identity   = book.work_id ? { work_id: book.work_id } : { book_id: book.id }
+
         user_books = UserBook.includes(:user)
-                             .where(book_id: book.id, user_id: friend_ids, visibility: 'public')
+                             .where(identity)
+                             .where(user_id: friend_ids, visibility: 'public')
                              .limit(10)
 
         render json: {
@@ -105,6 +331,179 @@ module Api
       end
 
       private
+
+      # ── Author works helper ───────────────────────────────────────────────────
+
+      # Fetches an author's catalog from Google Books with a hard read timeout.
+      # Returns an array of hashes: { key:, title:, year:, cover_url: }.
+      # Called inside Rails.cache.fetch — result is stored for 24h.
+      def fetch_author_works_from_google(author)
+        query   = "inauthor:\"#{author}\""
+        api_key = ENV['GOOGLE_BOOKS_API_KEY']
+        fields  = 'items/id,items/volumeInfo/title,items/volumeInfo/publishedDate,' \
+                  'items/volumeInfo/imageLinks,items/volumeInfo/authors'
+        url     = "https://www.googleapis.com/books/v1/volumes" \
+                  "?q=#{URI.encode_www_form_component(query)}" \
+                  "&maxResults=40&orderBy=relevance&printType=books&langRestrict=en" \
+                  "&fields=#{URI.encode_www_form_component(fields)}"
+        url    += "&key=#{api_key}" if api_key.present?
+
+        uri  = URI.parse(url)
+        http = Net::HTTP.new(uri.host, uri.port)
+        http.use_ssl     = true
+        http.read_timeout = GOOGLE_BOOKS_READ_TIMEOUT
+        http.open_timeout = GOOGLE_BOOKS_READ_TIMEOUT
+
+        response = http.get(uri.request_uri)
+        data     = JSON.parse(response.body)
+        items    = data['items'] || []
+
+        author_norm = WorkResolutionService.normalize_author(author)
+
+        items
+          .select { |item| item.dig('volumeInfo', 'imageLinks', 'thumbnail').present? }
+          .select { |item|
+            # Only include books where the searched author is the primary (first-listed) author.
+            # This prevents anthology contributions (e.g. "Forward" by Blake Crouch, where Andy
+            # Weir wrote one story) from appearing in the author's own catalog.
+            authors = Array(item.dig('volumeInfo', 'authors'))
+            next true if authors.empty?
+            WorkResolutionService.normalize_author(authors.first) == author_norm
+          }
+          .first(20)
+          .map do |item|
+            vi = item['volumeInfo'] || {}
+            {
+              key:       item['id'],
+              title:     vi['title'],
+              year:      vi['publishedDate'] ? vi['publishedDate'].to_i : nil,
+              cover_url: vi.dig('imageLinks', 'thumbnail'),
+            }
+          end
+      rescue Net::ReadTimeout, Net::OpenTimeout => e
+        Rails.logger.warn("[author_works] Google Books timed out for '#{author}': #{e.message}")
+        [] # return empty — caller will render { works: [] }
+      rescue => e
+        Rails.logger.error("[author_works] Google Books fetch failed for '#{author}': #{e.message}")
+        []
+      end
+
+      # ── Genre helpers ─────────────────────────────────────────────────────────
+
+      def fetch_genre_from_nyt(list_name)
+        api_key = ENV['NEW_YORK_TIMES_API_KEY']
+        raise 'NYT API key not configured' if api_key.blank?
+
+        uri = URI("https://api.nytimes.com/svc/books/v3/lists/current/#{list_name}.json?api-key=#{api_key}")
+        http = Net::HTTP.new(uri.host, uri.port)
+        http.use_ssl = true
+        http.open_timeout = 8
+        http.read_timeout = 12
+
+        resp = http.get(uri.request_uri, { 'Accept' => 'application/json' })
+        raise "NYT returned #{resp.code}" unless resp.is_a?(Net::HTTPSuccess)
+
+        books_data = JSON.parse(resp.body).dig('results', 'books') || []
+
+        # Resolve Google Books IDs from ISBNs in parallel threads
+        threads = books_data.map do |b|
+          Thread.new do
+            isbn = b['primary_isbn13'] || b['primary_isbn10']
+            gbid = isbn ? resolve_google_books_id(isbn) : nil
+            next nil unless gbid || isbn
+
+            {
+              id: nil,
+              title: b['title'],
+              author_name: b['author'],
+              cover_image_url: b['book_image'],
+              description: b['description'].presence,
+              google_books_id: gbid,
+              isbn: b['primary_isbn13'] || b['primary_isbn10'],
+              release_date: '',
+              _source: 'nyt',
+              _rank: b['rank'],
+            }
+          end
+        end
+
+        overlay_db_covers(threads.map(&:value).compact)
+      end
+
+      def fetch_genre_from_open_library(subject)
+        uri = URI("https://openlibrary.org/subjects/#{URI.encode_www_form_component(subject)}.json?limit=24")
+        http = Net::HTTP.new(uri.host, uri.port)
+        http.use_ssl = true
+        http.open_timeout = 8
+        http.read_timeout = 12
+
+        resp = http.get(uri.request_uri, { 'Accept' => 'application/json' })
+        raise "Open Library returned #{resp.code}" unless resp.is_a?(Net::HTTPSuccess)
+
+        works = JSON.parse(resp.body)['works'] || []
+
+        results = works
+          .select { |w| w['cover_id'].present? }
+          .map do |w|
+            ol_key = w['key'].to_s.sub('/works/', '')
+            {
+              id: nil,
+              title: w['title'],
+              author_name: w.dig('authors', 0, 'name') || 'Unknown Author',
+              cover_image_url: "https://covers.openlibrary.org/b/id/#{w['cover_id']}-M.jpg",
+              google_books_id: "ol_#{ol_key}",
+              isbn: nil,
+              release_date: w['first_publish_year'].to_s,
+              _source: 'open_library',
+            }
+          end
+
+        overlay_db_covers(results)
+      end
+
+      # For any books we already have in our DB, substitute our stored cover so the
+      # thumbnail in browse lists matches the cover shown on the detail page.
+      # Two queries regardless of list size: one by ISBN, one by google_books_id.
+      def overlay_db_covers(results)
+        return results if results.empty?
+
+        isbns      = results.filter_map { |r| r[:isbn] }.uniq
+        google_ids = results.filter_map { |r| r[:google_books_id] }.uniq
+
+        by_isbn   = Book.where(isbn: isbns).where.not(cover_image_url: [nil, ''])
+                        .pluck(:isbn, :cover_image_url).to_h
+        # Include ISBNs in the google_books_id lookup — Google Books uses ISBN-13
+        # as the volume ID for some editions, so the ISBN may be stored there instead.
+        by_google = Book.where(google_books_id: (google_ids + isbns).uniq)
+                        .where.not(cover_image_url: [nil, ''])
+                        .pluck(:google_books_id, :cover_image_url).to_h
+
+        results.map do |r|
+          stored = by_isbn[r[:isbn]] ||
+                   by_google[r[:google_books_id]] ||
+                   by_google[r[:isbn]]
+          stored ? r.merge(cover_image_url: stored) : r
+        end
+      end
+
+      def resolve_google_books_id(isbn)
+        key = ENV['GOOGLE_BOOKS_API_KEY']
+        params = "q=isbn:#{isbn}&maxResults=1&fields=items/id"
+        params += "&key=#{key}" if key.present?
+
+        uri = URI("https://www.googleapis.com/books/v1/volumes?#{params}")
+        http = Net::HTTP.new(uri.host, uri.port)
+        http.use_ssl = true
+        http.open_timeout = 5
+        http.read_timeout = 8
+
+        resp = http.get(uri.request_uri, { 'Accept' => 'application/json' })
+        return nil unless resp.is_a?(Net::HTTPSuccess)
+
+        JSON.parse(resp.body).dig('items', 0, 'id')
+      rescue
+        nil
+      end
 
       # Backfill a missing description from whichever source makes sense.
       # OL books (google_books_id starts with "ol_") don't have a direct Google
@@ -195,7 +594,61 @@ module Api
         nil
       end
 
+      # Search Google Books by ISBN and return a book hash (id: nil = not in our DB).
+      def fetch_google_book_by_isbn(isbn)
+        key = ENV['GOOGLE_BOOKS_API_KEY']
+        params = { 'q' => "isbn:#{isbn}", 'maxResults' => '1' }
+        params['key'] = key if key.present?
+        uri = URI("https://www.googleapis.com/books/v1/volumes")
+        uri.query = URI.encode_www_form(params)
+
+        http = Net::HTTP.new(uri.host, uri.port)
+        http.use_ssl = true
+        http.open_timeout = 5
+        http.read_timeout = 10
+
+        response = http.get(uri.request_uri, { 'Accept' => 'application/json' })
+        return nil unless response.is_a?(Net::HTTPSuccess)
+
+        data = JSON.parse(response.body)
+        item = Array(data['items']).first
+        return nil unless item
+
+        v = item['volumeInfo'] || {}
+        image_links = v['imageLinks'] || {}
+        identifiers = Array(v['industryIdentifiers'])
+
+        {
+          id: nil,
+          google_books_id: item['id'],
+          title: v['title'] || 'Unknown Title',
+          isbn: isbn,
+          description: strip_html(v['description']),
+          cover_image_url: image_links['thumbnail'] || image_links['smallThumbnail'],
+          release_date: v['publishedDate'],
+          page_count: v['pageCount'],
+          author_name: Array(v['authors']).first || 'Unknown Author',
+          author: nil,
+          followers_count: 0,
+          categories: Array(v['categories']),
+        }
+      rescue => e
+        Rails.logger.error("Google Books ISBN lookup error for #{isbn}: #{e.message}")
+        nil
+      end
+
       # Strip HTML tags and decode common entities from Google Books descriptions.
+      def parse_book_date(date_string)
+        return nil if date_string.blank?
+        case date_string.length
+        when 4  then Date.new(date_string.to_i, 1, 1)
+        when 7  then Date.parse("#{date_string}-01")
+        else         Date.parse(date_string)
+        end
+      rescue ArgumentError
+        nil
+      end
+
       def strip_html(text)
         return nil if text.blank?
         text
@@ -220,6 +673,8 @@ module Api
           id: book.id,
           title: book.title,
           author_name: book.author.name,
+          author_id: book.author.id,
+          google_books_id: book.google_books_id,
           cover_image_url: book.cover_image_url,
           release_date: book.release_date,
           page_count: book.respond_to?(:page_count) ? book.page_count : nil
@@ -235,6 +690,11 @@ module Api
           cover_image_url: book.cover_image_url,
           release_date: book.release_date,
           page_count: book.respond_to?(:page_count) ? book.page_count : nil,
+          # Flat fields expected by shared Book type (mobile + web)
+          author_name: book.author.name,
+          author_id: book.author.id,
+          google_books_id: book.google_books_id,
+          # Nested author object for web detail views
           author: {
             id: book.author.id,
             name: book.author.name,

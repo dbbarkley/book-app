@@ -9,10 +9,13 @@ class BackfillFeedItemsJob < ApplicationJob
     recent_items = find_recent_feedable_items(followable)
 
     recent_items.each do |item|
+      type = determine_activity_type(item)
+      next unless type
+
       FeedItem.find_or_create_by(
         user: user,
         feedable: item,
-        activity_type: determine_activity_type(item)
+        activity_type: type
       )
     end
   rescue ActiveRecord::RecordNotFound => e
@@ -30,7 +33,7 @@ class BackfillFeedItemsJob < ApplicationJob
       books + events
     when Book
       # Just this book if recently released
-      followable.release_date > 30.days.ago ? [followable] : []
+      followable.release_date&.> 30.days.ago ? [followable] : []
     else
       []
     end
@@ -38,13 +41,10 @@ class BackfillFeedItemsJob < ApplicationJob
 
   def determine_activity_type(item)
     case item
-    when Book
-      'book_release'
-    when Event
-      'author_event'
-    else
-      'unknown'
+    when Book  then 'book_release'
+    when Event then 'author_event'
     end
+    # Returns nil for unknown types — callers must guard against nil
   end
 end
 

@@ -2,10 +2,19 @@
   - default
   - low_priority
 
-# :scheduler:
-#   :schedule:
-#     scrape_new_releases:
-#       cron: "0 3 */3 * *" # Every 3 days at 3:00 AM
-#       class: ScrapeNewReleasesJob
-#       queue: default
-#       description: "Scrapes new book releases from Amazon and B&N"
+:scheduler:
+  :schedule:
+    refresh_upcoming_releases:
+      cron: "0 4 * * *"  # Daily at 4:00 AM
+      class: RefreshUpcomingReleasesJob
+      queue: default
+      description: "Fetches upcoming book releases from ISBNdb and caches in DB"
+    cleanup_old_feed_items:
+      cron: "0 3 * * 0"  # Weekly on Sunday at 3:00 AM
+      class: CleanupOldFeedItemsJob
+      queue: low_priority
+      description: "Deletes feed items older than 90 days to keep the table lean"
+    # scrape_new_releases:
+    #   cron: "0 3 */3 * *" # Every 3 days at 3:00 AM (disabled — replaced by ISBNdb)
+    #   class: ScrapeNewReleasesJob
+    #   queue: default

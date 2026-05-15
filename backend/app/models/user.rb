@@ -34,6 +34,8 @@ class User < ApplicationRecord
   has_many :user_books, dependent: :destroy
   has_many :imports, dependent: :destroy
   has_many :user_genre_stats, dependent: :destroy
+  has_many :user_lists, dependent: :destroy
+  has_many :user_list_likes, dependent: :destroy
   
   # Forum associations
   has_many :owned_forums, class_name: 'Forum', foreign_key: :owner_id, dependent: :destroy

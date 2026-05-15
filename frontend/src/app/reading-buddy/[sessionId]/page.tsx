@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   Send,
   Check,
@@ -12,9 +13,9 @@ import {
   Loader2,
   BookOpen,
   MessageCircle,
-  Bookmark,
   Highlighter,
   Pencil,
+  ChevronLeft,
 } from 'lucide-react'
 import { useReadingBuddy, useAuth, apiClient } from '@book-app/shared'
 import type { ReadingBuddyCableEvent } from '@book-app/shared'
@@ -23,9 +24,285 @@ import Avatar from '@/components/Avatar'
 import { BookCoverImage } from '@/components/BookCoverImage'
 import HighlightCaptureModal from '@/components/reading-buddy/HighlightCaptureModal'
 
-// Mobile panel tabs
 type MobileTab = 'progress' | 'highlights' | 'discussion'
 
+// ─── Circular SVG progress ring ───────────────────────────────────────────────
+function ProgressRing({
+  pct,
+  color,
+  size = 72,
+  stroke = 4,
+}: {
+  pct: number
+  color: string
+  size?: number
+  stroke?: number
+}) {
+  const r    = (size - stroke * 2) / 2
+  const circ = 2 * Math.PI * r
+  const dash = (Math.min(pct, 100) / 100) * circ
+
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox={`0 0 ${size} ${size}`}
+      style={{ transform: 'rotate(-90deg)' }}
+    >
+      {/* Track */}
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={r}
+        fill="none"
+        stroke="var(--color-rim)"
+        strokeWidth={stroke}
+      />
+      {/* Fill */}
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={r}
+        fill="none"
+        stroke={color}
+        strokeWidth={stroke}
+        strokeDasharray={`${dash} ${circ}`}
+        strokeLinecap="round"
+        style={{ transition: 'stroke-dasharray 1s cubic-bezier(0.32,0.72,0,1)' }}
+      />
+    </svg>
+  )
+}
+
+// ─── Progress ring card (sidebar) ────────────────────────────────────────────
+function ProgressRingCard({
+  label,
+  pct,
+  pages,
+  color,
+  avatarSrc,
+  isYou,
+}: {
+  label: string
+  pct: number
+  pages: number
+  color: string
+  avatarSrc?: string
+  isYou?: boolean
+}) {
+  return (
+    <div className="flex flex-col items-center gap-2">
+      {/* Ring + center text */}
+      <div className="relative" style={{ width: 72, height: 72 }}>
+        <ProgressRing pct={pct} color={color} size={72} stroke={4} />
+        <div
+          className="absolute inset-0 flex flex-col items-center justify-center"
+          style={{ gap: 1 }}
+        >
+          {isYou ? (
+            <span
+              className="text-[11px] font-bold tabular-nums"
+              style={{ color }}
+            >
+              {pct}%
+            </span>
+          ) : avatarSrc ? (
+            <Avatar src={avatarSrc} name={label} size="xs" />
+          ) : (
+            <span
+              className="text-[11px] font-bold tabular-nums"
+              style={{ color }}
+            >
+              {pct}%
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Label */}
+      <div className="text-center space-y-0.5">
+        <p className="text-[10px] font-bold uppercase tracking-widest truncate max-w-[72px]" style={{ color }}>
+          {isYou ? 'You' : label}
+        </p>
+        <p className="text-[10px]" style={{ color: 'var(--color-lit-3)' }}>
+          {pct}%
+          {pages > 0 && (
+            <span className="ml-1 opacity-70">· {pages}p</span>
+          )}
+        </p>
+      </div>
+    </div>
+  )
+}
+
+// ─── Highlight card ───────────────────────────────────────────────────────────
+function HighlightCard({
+  text,
+  pageNumber,
+  authorName,
+  isMe,
+  date,
+}: {
+  text: string
+  pageNumber: number
+  authorName: string
+  isMe: boolean
+  date: string
+}) {
+  return (
+    <div
+      className="relative overflow-hidden"
+      style={{
+        borderRadius: '14px',
+        background: 'var(--color-grove)',
+        border: '1px solid var(--color-rim)',
+        borderLeft: `3px solid ${isMe ? 'var(--color-accent)' : 'var(--color-success)'}`,
+      }}
+    >
+      {/* Subtle highlight tint */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: isMe
+            ? 'linear-gradient(135deg, rgba(201,168,76,0.04) 0%, transparent 60%)'
+            : 'linear-gradient(135deg, rgba(90,158,122,0.04) 0%, transparent 60%)',
+        }}
+      />
+
+      <div className="relative px-4 py-3.5 space-y-2.5">
+        {/* Author + date row */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5">
+            <span
+              className="text-[10px] font-bold"
+              style={{ color: isMe ? 'var(--color-accent)' : 'var(--color-success)' }}
+            >
+              {isMe ? 'You' : authorName}
+            </span>
+            <span className="text-[10px]" style={{ color: 'var(--color-lit-3)' }}>
+              · p. {pageNumber}
+            </span>
+          </div>
+          <span className="text-[10px]" style={{ color: 'var(--color-lit-3)' }}>
+            {date}
+          </span>
+        </div>
+
+        {/* Passage */}
+        <blockquote
+          className="font-serif text-sm leading-relaxed italic"
+          style={{ color: 'var(--color-lit)' }}
+        >
+          &ldquo;{text}&rdquo;
+        </blockquote>
+      </div>
+    </div>
+  )
+}
+
+// ─── Chat bubble ─────────────────────────────────────────────────────────────
+function ChatBubble({
+  content,
+  isMe,
+  authorName,
+  authorInitials,
+  time,
+}: {
+  content: string
+  isMe: boolean
+  authorName: string
+  authorInitials: string
+  time: string
+}) {
+  return (
+    <div className={`flex items-end gap-2.5 ${isMe ? 'flex-row-reverse' : ''}`}>
+      {/* Partner avatar */}
+      {!isMe ? (
+        <div
+          className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-[9px] font-bold"
+          style={{ background: 'var(--color-success)', color: 'var(--color-canvas)' }}
+        >
+          {authorInitials}
+        </div>
+      ) : (
+        <div className="w-6 flex-shrink-0" />
+      )}
+
+      <div style={{ maxWidth: '72%' }}>
+        {!isMe && (
+          <p className="text-[10px] font-bold mb-1 ml-1" style={{ color: 'var(--color-success)' }}>
+            {authorName}
+            <span className="font-normal ml-2" style={{ color: 'var(--color-lit-3)' }}>
+              {time}
+            </span>
+          </p>
+        )}
+
+        <div
+          className="px-3.5 py-2.5 text-[13px] leading-relaxed"
+          style={{
+            borderRadius: isMe ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+            background: isMe ? 'var(--color-accent)' : 'var(--color-surface)',
+            color: isMe ? 'var(--color-accent-on)' : 'var(--color-lit)',
+            border: isMe ? 'none' : '1px solid var(--color-rim)',
+            boxShadow: isMe ? '0 2px 12px rgba(201,168,76,0.2)' : '0 1px 4px rgba(0,0,0,0.15)',
+          }}
+        >
+          {content}
+        </div>
+
+        {isMe && (
+          <p className="text-[10px] mt-1 text-right mr-1" style={{ color: 'var(--color-lit-3)' }}>
+            {time}
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── Mobile tab bar ───────────────────────────────────────────────────────────
+const MOBILE_TABS: { key: MobileTab; label: string; icon: React.ReactNode }[] = [
+  { key: 'progress',   label: 'Progress',    icon: <BookOpen    size={13} /> },
+  { key: 'highlights', label: 'Highlights',  icon: <Highlighter size={13} /> },
+  { key: 'discussion', label: 'Discussion',  icon: <MessageCircle size={13} /> },
+]
+
+function MobileTabBar({
+  active,
+  onChange,
+}: {
+  active: MobileTab
+  onChange: (t: MobileTab) => void
+}) {
+  return (
+    <div
+      className="flex-none flex items-center gap-1 px-3 py-2"
+      style={{ borderBottom: '1px solid var(--color-rim)' }}
+    >
+      {MOBILE_TABS.map(tab => {
+        const isActive = tab.key === active
+        return (
+          <button
+            key={tab.key}
+            onClick={() => onChange(tab.key)}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold rounded-xl transition-all duration-200 active:scale-[0.97]"
+            style={{
+              color: isActive ? 'var(--color-accent)' : 'var(--color-lit-3)',
+              background: isActive ? 'var(--color-accent-subtle)' : 'transparent',
+              border: isActive ? '1px solid rgba(201,168,76,0.15)' : '1px solid transparent',
+            }}
+          >
+            {tab.icon}
+            {tab.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 export default function ReadingBuddySessionPage() {
   const params    = useParams()
   const router    = useRouter()
@@ -40,12 +317,11 @@ export default function ReadingBuddySessionPage() {
     sendMessage, createHighlight, handleCableEvent,
   } = useReadingBuddy()
 
-  const [messageText, setMessageText]     = useState('')
-  const [sending, setSending]             = useState(false)
-  const [actionLoading, setActionLoading] = useState<string | null>(null)
-  const [cableConnected, setCableConnected] = useState(false)
-  const [showDnfConfirm, setShowDnfConfirm] = useState(false)
-  const [mobileTab, setMobileTab]           = useState<MobileTab>('progress')
+  const [messageText, setMessageText]               = useState('')
+  const [sending, setSending]                       = useState(false)
+  const [actionLoading, setActionLoading]           = useState<string | null>(null)
+  const [showDnfConfirm, setShowDnfConfirm]         = useState(false)
+  const [mobileTab, setMobileTab]                   = useState<MobileTab>('progress')
   const [showHighlightModal, setShowHighlightModal] = useState(false)
 
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -69,11 +345,11 @@ export default function ReadingBuddySessionPage() {
     cableRef.current = new ActionCableSubscription(buildCableUrl(token), {
       channelName:    'ReadingBuddyChannel',
       params:         { session_id: sessionId },
-      onConnected:    () => setCableConnected(true),
-      onDisconnected: () => setCableConnected(false),
+      onConnected:    () => {},
+      onDisconnected: () => {},
       onMessage:      (data) => handleCableEvent(data as ReadingBuddyCableEvent),
     })
-    return () => { cableRef.current?.unsubscribe(); cableRef.current = null; setCableConnected(false) }
+    return () => { cableRef.current?.unsubscribe(); cableRef.current = null }
   }, [activeSession?.status, sessionId])
 
   const handleSend = async () => {
@@ -107,7 +383,7 @@ export default function ReadingBuddySessionPage() {
     try { await dnfSession(sessionId) } finally { setActionLoading(null) }
   }
 
-  /* ── Loading ───────────────────────────────────────────────────── */
+  // ── Loading ─────────────────────────────────────────────────────────────────
   if (sessionLoading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
@@ -116,25 +392,35 @@ export default function ReadingBuddySessionPage() {
     )
   }
 
-  /* ── Error / Not Found ─────────────────────────────────────────── */
+  // ── Error / Not Found ────────────────────────────────────────────────────────
   if (sessionError || !activeSession) {
     return (
       <div className="container-mobile py-24 text-center max-w-md mx-auto space-y-4">
-        <div className="flex justify-center">
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ backgroundColor: 'var(--color-grove)' }}>
-            <BookOpen className="w-8 h-8" style={{ color: 'var(--color-lit-3)' }} />
-          </div>
+        <div
+          className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto"
+          style={{ background: 'var(--color-grove)' }}
+        >
+          <BookOpen className="w-8 h-8" style={{ color: 'var(--color-lit-3)' }} />
         </div>
-        <h1 className="font-serif text-2xl font-bold text-lit">Session Not Found</h1>
-        <p className="text-lit-2">{sessionError || "This reading session doesn't exist or you're not a participant."}</p>
-        <Link href="/reading-buddy" className="inline-block mt-4 text-sm font-bold" style={{ color: 'var(--color-accent)' }}>
-          &larr; All Sessions
+        <h1 className="font-serif text-2xl font-bold" style={{ color: 'var(--color-lit)' }}>
+          Session not found
+        </h1>
+        <p className="text-sm" style={{ color: 'var(--color-lit-3)' }}>
+          {sessionError || "This session doesn't exist or you're not a participant."}
+        </p>
+        <Link
+          href="/reading-buddy"
+          className="inline-flex items-center gap-1.5 text-sm font-bold mt-4"
+          style={{ color: 'var(--color-accent)' }}
+        >
+          <ChevronLeft className="w-4 h-4" />
+          All sessions
         </Link>
       </div>
     )
   }
 
-  /* ── Derived state ─────────────────────────────────────────────── */
+  // ── Derived state ────────────────────────────────────────────────────────────
   const session      = activeSession
   const partner      = session.initiator.id === user?.id ? session.invited   : session.initiator
   const me           = session.initiator.id === user?.id ? session.initiator : session.invited
@@ -143,92 +429,14 @@ export default function ReadingBuddySessionPage() {
   const isClosed     = session.status === 'declined' || session.status === 'dnf'
   const isInvited    = session.invited.id === user?.id
 
-  const myPct        = me.progress?.completion_percentage ?? 0
-  const myPages      = me.progress?.pages_read ?? 0
+  const myPct        = me.progress?.completion_percentage      ?? 0
+  const myPages      = me.progress?.pages_read                 ?? 0
   const partnerPct   = partner.progress?.completion_percentage ?? 0
-  const partnerPages = partner.progress?.pages_read ?? 0
+  const partnerPages = partner.progress?.pages_read            ?? 0
   const partnerName  = partner.display_name || partner.username
   const partnerInitials = partnerName.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
 
-  /* ── Shared sub-components ─────────────────────────────────────── */
-
-  // Vine-style progress bar with a gold leaf at the tip
-  const VineBar = ({ pct, variant }: { pct: number; variant: 'self' | 'partner' }) => (
-    <div
-      className="relative w-full h-1.5 rounded-full overflow-visible"
-      style={{ backgroundColor: 'var(--color-rim)' }}
-    >
-      <div
-        className="h-full rounded-full transition-all duration-700"
-        style={{
-          width: `${Math.max(pct, 2)}%`,
-          background: variant === 'self'
-            ? 'linear-gradient(90deg, var(--color-accent-hover), var(--color-accent))'
-            : 'linear-gradient(90deg, var(--color-success), #7ec49a)',
-        }}
-      />
-      {/* Leaf glyph at tip */}
-      {pct > 3 && (
-        <span
-          className="absolute top-1/2 -translate-y-1/2 text-[10px] leading-none pointer-events-none select-none"
-          style={{
-            left: `calc(${pct}% - 6px)`,
-            color: variant === 'self' ? 'var(--color-accent)' : 'var(--color-success)',
-            filter: `drop-shadow(0 0 3px ${variant === 'self' ? 'var(--color-accent)' : 'var(--color-success)'})`,
-          }}
-        >
-          ❧
-        </span>
-      )}
-    </div>
-  )
-
-  // Progress card used in the left sidebar
-  const ProgressCard = ({
-    label, initials, pages, pct, variant, isYou,
-  }: {
-    label: string; initials: string; pages: number; pct: number;
-    variant: 'self' | 'partner'; isYou?: boolean;
-  }) => (
-    <div
-      className="rounded-2xl p-4 relative overflow-hidden"
-      style={{
-        backgroundColor: 'var(--color-grove)',
-        border: '1px solid var(--color-rim)',
-        borderRadius: '16px 14px 15px 17px',
-        borderLeft: `3px solid ${variant === 'self' ? 'var(--color-accent)' : 'var(--color-success)'}`,
-      }}
-    >
-      <div className="flex items-center gap-2 mb-3">
-        <div
-          className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-[9px] font-bold"
-          style={{
-            backgroundColor: variant === 'self' ? 'var(--color-accent)' : 'var(--color-success)',
-            color: variant === 'self' ? 'var(--color-accent-on)' : 'var(--color-canvas)',
-          }}
-        >
-          {isYou ? 'You' : initials}
-        </div>
-        <span className="text-xs font-medium truncate flex-1" style={{ color: 'var(--color-lit-3)' }}>
-          {label}
-        </span>
-        {pages > 0 && (
-          <span className="text-[11px] flex-none" style={{ color: 'var(--color-lit-3)' }}>
-            {pages} pg
-          </span>
-        )}
-      </div>
-      <VineBar pct={pct} variant={variant} />
-      <p
-        className="font-serif text-xl font-semibold mt-2"
-        style={{ color: variant === 'self' ? 'var(--color-accent)' : 'var(--color-success)' }}
-      >
-        {pct}%
-      </p>
-    </div>
-  )
-
-  // Group highlights by page number
+  // Group highlights by page
   const highlightsByPage = highlights.reduce<Record<number, typeof highlights>>((acc, h) => {
     if (!acc[h.page_number]) acc[h.page_number] = []
     acc[h.page_number].push(h)
@@ -236,267 +444,64 @@ export default function ReadingBuddySessionPage() {
   }, {})
   const sortedPages = Object.keys(highlightsByPage).map(Number).sort((a, b) => a - b)
 
-  // Highlights panel content (shared between desktop column and mobile tab)
-  const HighlightsContent = () => {
-    if (highlights.length === 0) {
-      return (
-        <div className="px-6 py-8 text-center">
-          <div
-            className="w-11 h-11 flex items-center justify-center mx-auto mb-4"
-            style={{
-              backgroundColor: 'var(--color-grove)',
-              borderRadius: '14px 12px 13px 15px',
-            }}
-          >
-            <Bookmark className="w-5 h-5" style={{ color: 'var(--color-lit-3)' }} />
-          </div>
-          <h3 className="font-serif text-base font-semibold mb-1.5" style={{ color: 'var(--color-lit)' }}>
-            No highlights yet
-          </h3>
-          <p className="text-sm leading-relaxed max-w-xs mx-auto mb-5" style={{ color: 'var(--color-lit-3)' }}>
-            Highlight passages as you read and they&apos;ll show up here alongside what {partnerName} is bookmarking.
-          </p>
-          <button
-            onClick={() => setShowHighlightModal(true)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-bold transition-all hover:opacity-80"
-            style={{
-              backgroundColor: 'var(--color-accent)',
-              color: 'var(--color-accent-on)',
-              borderRadius: '12px 10px 11px 13px',
-            }}
-          >
-            <Pencil className="w-3.5 h-3.5" />
-            Add your first highlight
-          </button>
-        </div>
-      )
-    }
-
-    return (
-      <div className="space-y-6 pb-4">
-        {sortedPages.map(pageNum => (
-          <div key={pageNum}>
-            {/* Page number divider */}
-            <div className="flex items-center gap-3 mb-3">
-              <div
-                className="text-[10px] font-bold tracking-widest uppercase px-2.5 py-1 flex-none"
-                style={{
-                  backgroundColor: 'var(--color-grove)',
-                  color: 'var(--color-lit-3)',
-                  borderRadius: '8px 6px 7px 9px',
-                  border: '1px solid var(--color-rim)',
-                }}
-              >
-                p.{pageNum}
-              </div>
-              <div className="flex-1 h-px" style={{ backgroundColor: 'var(--color-rim)' }} />
-            </div>
-
-            {/* Highlight cards for this page */}
-            <div className="space-y-3">
-              {highlightsByPage[pageNum].map(highlight => {
-                const isMe = highlight.user.id === user?.id
-                const authorName = highlight.user.display_name || highlight.user.username
-                const authorInitials = authorName.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
-                return (
-                  <div
-                    key={highlight.id}
-                    className="p-4 relative"
-                    style={{
-                      backgroundColor: 'var(--color-grove)',
-                      border: '1px solid var(--color-rim)',
-                      borderLeft: `3px solid ${isMe ? 'var(--color-accent)' : 'var(--color-success)'}`,
-                      borderRadius: '12px 10px 11px 13px',
-                    }}
-                  >
-                    {/* Author row */}
-                    <div className="flex items-center gap-2 mb-2.5">
-                      <div
-                        className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[8px] font-bold"
-                        style={{
-                          backgroundColor: isMe ? 'var(--color-accent)' : 'var(--color-success)',
-                          color: isMe ? 'var(--color-accent-on)' : 'var(--color-canvas)',
-                        }}
-                      >
-                        {isMe ? 'You' : authorInitials}
-                      </div>
-                      <span className="text-[11px] font-bold" style={{ color: isMe ? 'var(--color-accent)' : 'var(--color-success)' }}>
-                        {isMe ? 'You' : authorName}
-                      </span>
-                      <span className="text-[10px] ml-auto" style={{ color: 'var(--color-lit-3)' }}>
-                        {new Date(highlight.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}
-                      </span>
-                    </div>
-
-                    {/* Highlighted passage */}
-                    <blockquote
-                      className="font-serif text-sm italic leading-relaxed"
-                      style={{ color: 'var(--color-lit)' }}
-                    >
-                      &ldquo;{highlight.highlighted_text}&rdquo;
-                    </blockquote>
-
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        ))}
-      </div>
-    )
-  }
-
-  // Message list + composer (shared between desktop column and mobile tab)
-  const DiscussionContent = ({ compact }: { compact?: boolean }) => (
-    <div className={`flex flex-col ${compact ? 'h-full' : 'flex-1 min-h-0 overflow-hidden'}`}>
-      <div className="flex-1 overflow-y-auto px-5 py-3 space-y-4 min-h-0">
-        {messages.length === 0 ? (
-          <div className="text-center py-14 space-y-3">
-            <div
-              className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto"
-              style={{ backgroundColor: 'var(--color-grove)' }}
-            >
-              <MessageCircle className="w-5 h-5" style={{ color: 'var(--color-lit-3)' }} />
-            </div>
-            <p className="text-sm" style={{ color: 'var(--color-lit-3)' }}>
-              {isActive ? 'No messages yet — say something about the book!' : 'Chat unlocks once both of you are in.'}
-            </p>
-          </div>
-        ) : (
-          messages.map(msg => {
-            const isMe = msg.user_id === user?.id
-            const initials = isMe ? null : (
-              msg.user.display_name
-                ? msg.user.display_name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
-                : msg.user.username.slice(0, 2).toUpperCase()
-            )
-            return (
-              <div key={msg.id} className={`flex items-end gap-2.5 ${isMe ? 'flex-row-reverse' : ''}`}>
-                {!isMe ? (
-                  <div
-                    className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold"
-                    style={{ backgroundColor: 'var(--color-success)', color: 'var(--color-canvas)' }}
-                  >
-                    {initials}
-                  </div>
-                ) : (
-                  <div className="w-7 flex-shrink-0" />
-                )}
-                <div style={{ maxWidth: '72%' }}>
-                  {!isMe && (
-                    <p className="text-[11px] font-bold mb-1 ml-1" style={{ color: 'var(--color-success)' }}>
-                      {msg.user.display_name || msg.user.username}
-                      <span className="font-normal ml-2" style={{ color: 'var(--color-lit-3)' }}>
-                        {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </p>
-                  )}
-                  <div
-                    className={`px-4 py-2.5 text-[13px] leading-relaxed ${
-                      isMe ? 'rounded-2xl rounded-br-md' : 'rounded-2xl rounded-bl-md'
-                    }`}
-                    style={{
-                      backgroundColor: isMe ? 'var(--color-accent)' : 'var(--color-surface)',
-                      color: isMe ? 'var(--color-accent-on)' : 'var(--color-lit)',
-                      border: isMe ? 'none' : '1px solid var(--color-rim)',
-                    }}
-                  >
-                    {msg.content}
-                  </div>
-                  {isMe && (
-                    <p className="text-[10px] mt-1 text-right mr-1" style={{ color: 'var(--color-lit-3)' }}>
-                      {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                  )}
-                </div>
-              </div>
-            )
-          })
-        )}
-        <div ref={bottomRef} />
-      </div>
-
-      {isActive && (
-        <div className="flex-none px-4 py-3" style={{ borderTop: '1px solid var(--color-rim)' }}>
-          <div
-            className="flex items-end gap-3 px-3 py-2 transition-all"
-            style={{
-              backgroundColor: 'var(--color-surface)',
-              border: '1px solid var(--color-rim)',
-              borderRadius: '20px 18px 20px 22px',
-            }}
-          >
-            <textarea
-              ref={inputRef}
-              value={messageText}
-              onChange={e => setMessageText(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Say something about the book…"
-              rows={1}
-              className="flex-1 resize-none bg-transparent text-sm outline-none py-1.5 font-serif italic"
-              style={{ color: 'var(--color-lit)', maxHeight: 128, lineHeight: 1.5 }}
-              onInput={e => {
-                const t = e.currentTarget; t.style.height = 'auto'
-                t.style.height = `${Math.min(t.scrollHeight, 128)}px`
-              }}
-            />
-            <button
-              onClick={handleSend}
-              disabled={!messageText.trim() || sending}
-              className="flex-none w-8 h-8 rounded-full flex items-center justify-center transition-all hover:opacity-80 disabled:opacity-30"
-              style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-accent-on)' }}
-            >
-              {sending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-
-  /* ── Banners (pending / closed) ────────────────────────────────── */
+  // ── Status banner ────────────────────────────────────────────────────────────
   const StatusBanner = () => {
     if (isPending && isInvited) return (
       <div
-        className="p-5 space-y-4 flex-none"
+        className="flex-none px-4 py-4"
         style={{ borderBottom: '1px solid var(--color-rim)' }}
       >
         <div
-          className="rounded-2xl p-4 space-y-4"
+          className="rounded-2xl p-4"
           style={{
-            backgroundColor: 'var(--color-surface)',
-            border: '1px solid var(--color-accent)',
-            boxShadow: '0 0 32px rgba(201,168,76,0.06)',
+            background: 'var(--color-surface)',
+            border: '1px solid rgba(201,168,76,0.25)',
+            boxShadow: '0 0 28px rgba(201,168,76,0.06)',
           }}
         >
-          <div className="flex items-start gap-3">
-            <BookOpen className="w-5 h-5 flex-none mt-0.5" style={{ color: 'var(--color-accent)' }} />
+          <div className="flex items-start gap-3 mb-4">
+            <div
+              className="w-8 h-8 rounded-xl flex items-center justify-center flex-none"
+              style={{ background: 'var(--color-accent-subtle)' }}
+            >
+              <BookOpen className="w-4 h-4" style={{ color: 'var(--color-accent)' }} />
+            </div>
             <div>
-              <p className="font-bold text-lit">
-                {session.initiator.display_name || session.initiator.username} wants to read this with you
+              <p className="font-semibold text-sm" style={{ color: 'var(--color-lit)' }}>
+                {session.initiator.display_name || session.initiator.username} wants to read with you
               </p>
-              <p className="text-sm mt-1" style={{ color: 'var(--color-lit-3)' }}>
-                You&apos;ll be able to track each other&apos;s progress and chat as you read.
+              <p className="text-xs mt-0.5" style={{ color: 'var(--color-lit-3)' }}>
+                Track progress and chat as you read together.
               </p>
             </div>
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-2.5">
             <button
               onClick={handleAccept}
               disabled={actionLoading !== null}
-              className="flex-1 flex items-center justify-center gap-2 py-3 font-bold text-sm transition-all disabled:opacity-60"
-              style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-accent-on)', borderRadius: '14px 12px 13px 15px' }}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 font-bold text-sm rounded-xl transition-all duration-200 active:scale-[0.97] disabled:opacity-60"
+              style={{ background: 'var(--color-accent)', color: 'var(--color-accent-on)' }}
             >
-              {actionLoading === 'accept' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-              Accept Invite
+              {actionLoading === 'accept'
+                ? <Loader2 className="w-4 h-4 animate-spin" />
+                : <Check className="w-4 h-4" />
+              }
+              Accept
             </button>
             <button
               onClick={handleDecline}
               disabled={actionLoading !== null}
-              className="flex-1 flex items-center justify-center gap-2 py-3 font-bold text-sm transition-all disabled:opacity-60"
-              style={{ backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-rim)', color: 'var(--color-lit-2)', borderRadius: '14px 12px 13px 15px' }}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 font-bold text-sm rounded-xl transition-all duration-200 active:scale-[0.97] disabled:opacity-60"
+              style={{
+                background: 'var(--color-grove)',
+                border: '1px solid var(--color-rim)',
+                color: 'var(--color-lit-3)',
+              }}
             >
-              {actionLoading === 'decline' ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
+              {actionLoading === 'decline'
+                ? <Loader2 className="w-4 h-4 animate-spin" />
+                : <X className="w-4 h-4" />
+              }
               Decline
             </button>
           </div>
@@ -505,19 +510,25 @@ export default function ReadingBuddySessionPage() {
     )
 
     if (isPending && !isInvited) return (
-      <div className="px-5 pt-4 pb-2 flex-none">
-        <div className="rounded-2xl p-4 flex items-center gap-3" style={{ backgroundColor: 'var(--color-grove)', border: '1px dashed var(--color-rim)' }}>
+      <div className="flex-none px-4 py-3" style={{ borderBottom: '1px solid var(--color-rim)' }}>
+        <div
+          className="flex items-center gap-3 px-4 py-3 rounded-xl"
+          style={{ background: 'var(--color-grove)', border: '1px dashed rgba(237,224,196,0.12)' }}
+        >
           <Clock className="w-4 h-4 flex-none" style={{ color: 'var(--color-lit-3)' }} />
           <p className="text-sm" style={{ color: 'var(--color-lit-3)' }}>
-            Waiting for {partnerName} to respond&hellip;
+            Waiting for {partnerName} to respond…
           </p>
         </div>
       </div>
     )
 
     if (isClosed) return (
-      <div className="px-5 pt-4 pb-2 flex-none">
-        <div className="rounded-2xl p-4 flex items-center gap-3" style={{ backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-rim)' }}>
+      <div className="flex-none px-4 py-3" style={{ borderBottom: '1px solid var(--color-rim)' }}>
+        <div
+          className="flex items-center gap-3 px-4 py-3 rounded-xl"
+          style={{ background: 'var(--color-grove)', border: '1px solid var(--color-rim)' }}
+        >
           <AlertTriangle className="w-4 h-4 flex-none" style={{ color: 'var(--color-lit-3)' }} />
           <p className="text-sm" style={{ color: 'var(--color-lit-3)' }}>
             {session.status === 'declined' ? 'This invite was declined.' : 'This session ended as Did Not Finish.'}
@@ -529,238 +540,429 @@ export default function ReadingBuddySessionPage() {
     return null
   }
 
-  /* ─────────────────────────────────────────────────────────────────
-     RENDER
-     Desktop: 3-column grid (sidebar | highlights | discussion)
-     Mobile:  single column with tab bar
-  ───────────────────────────────────────────────────────────────── */
+  // ── Highlights content ───────────────────────────────────────────────────────
+  const HighlightsContent = () => {
+    if (highlights.length === 0) {
+      return (
+        <div className="flex flex-col items-center text-center py-12 px-4">
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center mb-4"
+            style={{ background: 'var(--color-grove)' }}
+          >
+            <Highlighter className="w-4 h-4" style={{ color: 'var(--color-lit-3)' }} />
+          </div>
+          <p className="font-serif text-base font-semibold mb-1.5" style={{ color: 'var(--color-lit)' }}>
+            No highlights yet
+          </p>
+          <p className="text-sm leading-relaxed max-w-[220px] mb-5" style={{ color: 'var(--color-lit-3)' }}>
+            Capture passages as you read — they&apos;ll appear here alongside {partnerName}&apos;s.
+          </p>
+          {isActive && (
+            <button
+              onClick={() => setShowHighlightModal(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs transition-all duration-200 active:scale-[0.97]"
+              style={{ background: 'var(--color-accent)', color: 'var(--color-accent-on)' }}
+            >
+              <Pencil className="w-3 h-3" />
+              Add first highlight
+            </button>
+          )}
+        </div>
+      )
+    }
+
+    return (
+      <div className="space-y-5 pb-4">
+        {sortedPages.map(pageNum => (
+          <div key={pageNum}>
+            {/* Page divider */}
+            <div className="flex items-center gap-3 mb-3">
+              <span
+                className="text-[9px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full flex-none"
+                style={{
+                  background: 'var(--color-grove)',
+                  color: 'var(--color-lit-3)',
+                  border: '1px solid var(--color-rim)',
+                }}
+              >
+                Page {pageNum}
+              </span>
+              <div className="flex-1 h-px" style={{ background: 'var(--color-rim)' }} />
+            </div>
+
+            <div className="space-y-2.5">
+              {highlightsByPage[pageNum].map(h => (
+                <HighlightCard
+                  key={h.id}
+                  text={h.highlighted_text}
+                  pageNumber={h.page_number}
+                  authorName={h.user.display_name || h.user.username}
+                  isMe={h.user.id === user?.id}
+                  date={new Date(h.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  // ── Discussion content ───────────────────────────────────────────────────────
+  const DiscussionContent = () => (
+    <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 min-h-0">
+        {messages.length === 0 ? (
+          <div className="flex flex-col items-center text-center pt-12 space-y-3">
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center"
+              style={{ background: 'var(--color-grove)' }}
+            >
+              <MessageCircle className="w-4 h-4" style={{ color: 'var(--color-lit-3)' }} />
+            </div>
+            <p className="text-sm" style={{ color: 'var(--color-lit-3)' }}>
+              {isActive
+                ? 'No messages yet — start the conversation.'
+                : 'Chat unlocks once both of you accept.'}
+            </p>
+          </div>
+        ) : (
+          messages.map(msg => {
+            const isMe = msg.user_id === user?.id
+            const name = msg.user.display_name || msg.user.username
+            const initials = name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
+            return (
+              <ChatBubble
+                key={msg.id}
+                content={msg.content}
+                isMe={isMe}
+                authorName={name}
+                authorInitials={initials}
+                time={new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              />
+            )
+          })
+        )}
+        <div ref={bottomRef} />
+      </div>
+
+      {isActive && (
+        <div className="flex-none px-3 py-3" style={{ borderTop: '1px solid var(--color-rim)' }}>
+          <div
+            className="flex items-end gap-2.5 px-3 py-2"
+            style={{
+              background: 'var(--color-surface)',
+              border: '1px solid var(--color-rim)',
+              borderRadius: '18px',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)',
+            }}
+          >
+            <textarea
+              ref={inputRef}
+              value={messageText}
+              onChange={e => setMessageText(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Say something about the book…"
+              rows={1}
+              className="flex-1 resize-none bg-transparent text-sm outline-none py-1.5 font-serif italic"
+              style={{
+                color: 'var(--color-lit)',
+                maxHeight: 120,
+                lineHeight: 1.5,
+                caretColor: 'var(--color-accent)',
+              }}
+              onInput={e => {
+                const t = e.currentTarget
+                t.style.height = 'auto'
+                t.style.height = `${Math.min(t.scrollHeight, 120)}px`
+              }}
+            />
+            <button
+              onClick={handleSend}
+              disabled={!messageText.trim() || sending}
+              className="flex-none w-8 h-8 rounded-full flex items-center justify-center transition-all duration-150 active:scale-[0.93] disabled:opacity-30"
+              style={{ background: 'var(--color-accent)', color: 'var(--color-accent-on)' }}
+            >
+              {sending
+                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                : <Send className="w-3.5 h-3.5" />
+              }
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+
+  // ── Progress sidebar content ─────────────────────────────────────────────────
+  const ProgressContent = () => (
+    <div className="h-full overflow-y-auto">
+
+      {/* Book header */}
+      <div
+        className="flex items-start gap-4 px-5 py-5"
+        style={{ borderBottom: '1px solid var(--color-rim)' }}
+      >
+        <Link href={`/books/${session.book.id}`} className="flex-none group">
+          <div
+            className="overflow-hidden group-hover:scale-[1.02] transition-transform duration-300"
+            style={{
+              width: 72,
+              aspectRatio: '2/3',
+              borderRadius: '6px 3px 3px 6px',
+              boxShadow: '4px 6px 24px rgba(0,0,0,0.6), inset -3px 0 6px rgba(0,0,0,0.35)',
+            }}
+          >
+            <BookCoverImage
+              src={session.book.cover_image_url}
+              title={session.book.title}
+              author={session.book.author_name ?? undefined}
+              size="medium"
+              className="w-full h-full object-cover"
+            />
+          </div>
+        </Link>
+
+        <div className="flex-1 min-w-0 pt-0.5">
+          <h1
+            className="font-serif font-semibold leading-snug"
+            style={{ color: 'var(--color-lit)', fontSize: '1rem' }}
+          >
+            {session.book.title}
+          </h1>
+          {session.book.author_name && (
+            <p className="text-xs mt-1" style={{ color: 'var(--color-lit-3)' }}>
+              {session.book.author_name}
+            </p>
+          )}
+          {/* Partner badge */}
+          <div className="flex items-center gap-1.5 mt-2.5">
+            <Avatar src={partner.avatar_url ?? undefined} name={partnerName} size="xs" />
+            <span className="text-[11px]" style={{ color: 'var(--color-lit-3)' }}>
+              with{' '}
+              <span className="font-medium" style={{ color: 'var(--color-lit-2)' }}>
+                {partnerName}
+              </span>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Progress rings */}
+      <div className="px-5 py-6 space-y-4">
+        <p
+          className="text-[9px] font-bold uppercase tracking-[0.18em]"
+          style={{ color: 'var(--color-lit-3)' }}
+        >
+          Reading Progress
+        </p>
+
+        <div className="flex items-start justify-around">
+          <ProgressRingCard
+            label="You"
+            pct={myPct}
+            pages={myPages}
+            color="var(--color-accent)"
+            isYou
+          />
+          <div className="flex-none w-px self-stretch mx-2" style={{ background: 'var(--color-rim)' }} />
+          <ProgressRingCard
+            label={partnerName}
+            pct={partnerPct}
+            pages={partnerPages}
+            color="var(--color-success)"
+            avatarSrc={partner.avatar_url ?? undefined}
+          />
+        </div>
+
+        {/* Who's ahead */}
+        {isActive && (myPct > 0 || partnerPct > 0) && (
+          <div
+            className="text-center pt-2 pb-1"
+          >
+            {myPct > partnerPct ? (
+              <p className="text-[11px]" style={{ color: 'var(--color-lit-3)' }}>
+                You&apos;re ahead by{' '}
+                <span style={{ color: 'var(--color-accent)', fontWeight: 700 }}>
+                  {myPct - partnerPct}%
+                </span>
+              </p>
+            ) : partnerPct > myPct ? (
+              <p className="text-[11px]" style={{ color: 'var(--color-lit-3)' }}>
+                <span style={{ color: 'var(--color-success)', fontWeight: 700 }}>
+                  {partnerName.split(' ')[0]}
+                </span>{' '}
+                is ahead by{' '}
+                <span style={{ color: 'var(--color-success)', fontWeight: 700 }}>
+                  {partnerPct - myPct}%
+                </span>
+              </p>
+            ) : myPct > 0 ? (
+              <p className="text-[11px]" style={{ color: 'var(--color-lit-3)' }}>
+                You&apos;re at the same spot
+              </p>
+            ) : null}
+          </div>
+        )}
+      </div>
+
+      {/* DNF option for active sessions */}
+      {isActive && (
+        <div className="px-5 pb-6">
+          <div className="h-px mb-5" style={{ background: 'var(--color-rim)' }} />
+          <button
+            onClick={() => setShowDnfConfirm(true)}
+            className="w-full py-2.5 text-xs font-bold rounded-xl transition-all duration-200 active:scale-[0.97]"
+            style={{
+              background: 'var(--color-grove)',
+              border: '1px solid var(--color-rim)',
+              color: 'var(--color-lit-3)',
+            }}
+          >
+            Mark as Did Not Finish
+          </button>
+        </div>
+      )}
+    </div>
+  )
+
+  // ── Panel wrapper ─────────────────────────────────────────────────────────────
+  const panelStyle: React.CSSProperties = {
+    background: 'var(--color-surface)',
+    border: '1px solid var(--color-rim)',
+    borderRadius: '20px',
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+  }
+
+  const panelHeaderStyle: React.CSSProperties = {
+    borderBottom: '1px solid var(--color-rim)',
+    padding: '14px 20px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexShrink: 0,
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col overflow-hidden" style={{ height: 'calc(100vh - 64px)' }}>
 
-      {/* ── Status banners (pending / closed) — shown above grid ── */}
       <StatusBanner />
 
-      {/* ── Main 3-column grid ───────────────────────────────────── */}
-      <div className="flex-1 min-h-0 hidden lg:grid gap-4 p-4" style={{ gridTemplateColumns: '400px 1fr 1fr', maxWidth: '1400px', margin: '0 auto', width: '100%' }}>
-
-        {/* ── LEFT SIDEBAR ─────────────────────────────────────── */}
-        <aside
-          className="flex flex-col overflow-y-auto gap-5 p-5"
-        >
-          {/* Book cover + meta side by side */}
-          <div className="flex items-start gap-4">
-            <Link href={`/books/${session.book.id}`} className="flex-none group">
-              <div
-                className="overflow-hidden transition-transform duration-300 group-hover:scale-[1.02]"
-                style={{
-                  width: 100,
-                  aspectRatio: '2/3',
-                  borderRadius: '8px 4px 4px 8px',
-                  boxShadow: '4px 6px 24px rgba(0,0,0,0.6), inset -3px 0 6px rgba(0,0,0,0.35)',
-                }}
-              >
-                <BookCoverImage
-                  src={session.book.cover_image_url}
-                  title={session.book.title}
-                  author={session.book.author_name ?? undefined}
-                  size="medium"
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            </Link>
-
-            {/* Book title + author */}
-            <div className="flex-1 min-w-0 pt-1">
-              <h1 className="font-serif text-lg font-semibold leading-snug" style={{ color: 'var(--color-lit)' }}>
-                {session.book.title}
-              </h1>
-              {session.book.author_name && (
-                <p className="text-sm mt-1" style={{ color: 'var(--color-lit-3)' }}>{session.book.author_name}</p>
-              )}
-            </div>
-          </div>
-
-          {/* Progress label */}
-          <p
-            className="text-[11px] font-bold uppercase tracking-widest -mb-2"
-            style={{ color: 'var(--color-lit-3)' }}
-          >
-            Reading Progress
-          </p>
-
-          {/* Progress cards */}
-          <div className="flex flex-col gap-3">
-            <ProgressCard
-              label="Your progress"
-              initials="You"
-              pages={myPages}
-              pct={myPct}
-              variant="self"
-              isYou
-            />
-            <ProgressCard
-              label={partnerName}
-              initials={partnerInitials}
-              pages={partnerPages}
-              pct={partnerPct}
-              variant="partner"
-            />
-          </div>
-
+      {/* ── Desktop 3-col grid (lg+) ────────────────────────────── */}
+      <div
+        className="flex-1 min-h-0 hidden lg:grid gap-3 p-3"
+        style={{
+          gridTemplateColumns: '320px 1fr 1fr',
+          maxWidth: 1400,
+          margin: '0 auto',
+          width: '100%',
+        }}
+      >
+        {/* LEFT: Progress sidebar */}
+        <aside style={panelStyle}>
+          <ProgressContent />
         </aside>
 
-        {/* ── CENTER — HIGHLIGHTS ──────────────────────────────── */}
-        <main
-          className="flex flex-col overflow-hidden"
-          style={{
-            backgroundColor: 'var(--color-surface)',
-            border: '1px solid var(--color-rim)',
-            borderRadius: '20px 18px 20px 22px',
-          }}
-        >
-          {/* Panel header */}
-          <div
-            className="flex-none flex items-center justify-between px-6 py-4"
-            style={{ borderBottom: '1px solid var(--color-rim)' }}
-          >
-            <div className="flex items-center gap-2.5 font-serif text-base font-medium" style={{ color: 'var(--color-lit)' }}>
-              <Pencil className="w-4 h-4" style={{ color: 'var(--color-accent)' }} />
+        {/* CENTER: Highlights */}
+        <main style={panelStyle}>
+          <div style={panelHeaderStyle}>
+            <div className="flex items-center gap-2.5 font-serif text-sm font-medium" style={{ color: 'var(--color-lit)' }}>
+              <Highlighter className="w-4 h-4" style={{ color: 'var(--color-accent)' }} />
               Highlights
+              {highlights.length > 0 && (
+                <span
+                  className="text-[10px] font-bold px-2 py-0.5 rounded-full ml-1"
+                  style={{ background: 'var(--color-accent-subtle)', color: 'var(--color-accent)' }}
+                >
+                  {highlights.length}
+                </span>
+              )}
             </div>
             {isActive && (
               <button
                 onClick={() => setShowHighlightModal(true)}
-                className="text-xs font-bold tracking-wide transition-colors hover:opacity-70 flex items-center gap-1"
+                className="flex items-center gap-1.5 text-xs font-bold transition-opacity duration-150 hover:opacity-70 active:scale-[0.97]"
                 style={{ color: 'var(--color-accent)' }}
               >
                 <Pencil className="w-3 h-3" />
-                Add highlight
+                Add
               </button>
             )}
           </div>
-
-          {/* Highlights feed */}
-          <div className="flex-1 overflow-y-auto px-6 py-5">
+          <div className="flex-1 overflow-y-auto px-5 py-4">
             <HighlightsContent />
           </div>
         </main>
 
-        {/* ── RIGHT — DISCUSSION ──────────────────────────────── */}
-        <aside
-          className="flex flex-col overflow-hidden"
-          style={{
-            backgroundColor: 'var(--color-surface)',
-            border: '1px solid var(--color-rim)',
-            borderRadius: '20px 18px 20px 22px',
-          }}
-        >
-          {/* Panel header */}
-          <div
-            className="flex-none flex items-center justify-between px-5 py-4"
-            style={{ borderBottom: '1px solid var(--color-rim)' }}
-          >
-            <div className="flex items-center gap-2.5 font-serif text-base font-medium" style={{ color: 'var(--color-lit)' }}>
+        {/* RIGHT: Discussion */}
+        <aside style={panelStyle}>
+          <div style={panelHeaderStyle}>
+            <div className="flex items-center gap-2.5 font-serif text-sm font-medium" style={{ color: 'var(--color-lit)' }}>
               <MessageCircle className="w-4 h-4" style={{ color: 'var(--color-lit-3)' }} />
               Discussion
             </div>
             {messages.length > 0 && (
               <span
-                className="text-[11px] font-bold px-2.5 py-0.5 rounded-full"
-                style={{ backgroundColor: 'var(--color-grove)', color: 'var(--color-lit-3)' }}
+                className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                style={{ background: 'var(--color-grove)', color: 'var(--color-lit-3)' }}
               >
                 {messages.length}
               </span>
             )}
           </div>
-
           <DiscussionContent />
         </aside>
       </div>
 
-      {/* ── Mobile layout (< lg) ─────────────────────────────────── */}
+      {/* ── Mobile layout (< lg) ────────────────────────────────── */}
       <div className="flex-1 min-h-0 flex flex-col lg:hidden overflow-hidden">
+        <MobileTabBar active={mobileTab} onChange={setMobileTab} />
 
-        {/* Mobile tab bar */}
-        <div
-          className="flex-none flex"
-          style={{ borderBottom: '1px solid var(--color-rim)' }}
-        >
-          {(
-            [
-              { key: 'progress',    icon: <BookOpen size={13} />,    label: 'Progress' },
-              { key: 'highlights',  icon: <Highlighter size={13} />, label: 'Highlights' },
-              { key: 'discussion',  icon: <MessageCircle size={13} />, label: 'Discussion' },
-            ] as { key: MobileTab; icon: React.ReactNode; label: string }[]
-          ).map(tab => (
-            <button
-              key={tab.key}
-              onClick={() => setMobileTab(tab.key)}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold transition-colors"
-              style={{
-                color: mobileTab === tab.key ? 'var(--color-accent)' : 'var(--color-lit-3)',
-                backgroundColor: mobileTab === tab.key ? 'var(--color-accent-subtle)' : 'transparent',
-                borderBottom: mobileTab === tab.key ? '2px solid var(--color-accent)' : '2px solid transparent',
-              }}
-            >
-              {tab.icon} {tab.label}
-            </button>
-          ))}
-        </div>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={mobileTab}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.12, ease: 'easeOut' }}
+            className="flex-1 min-h-0 overflow-hidden flex flex-col"
+          >
+            {mobileTab === 'progress' && (
+              <div className="h-full">
+                <ProgressContent />
+              </div>
+            )}
 
-        {/* Mobile tab content */}
-        <div className="flex-1 min-h-0 overflow-hidden">
-
-          {mobileTab === 'progress' && (
-            <div className="h-full overflow-y-auto px-5 py-5 space-y-4">
-              {/* Compact book header on mobile */}
-              <div className="flex items-center gap-4 pb-4" style={{ borderBottom: '1px solid var(--color-rim)' }}>
-                <Link href={`/books/${session.book.id}`} className="flex-none">
-                  <div className="w-11 rounded-lg overflow-hidden" style={{ aspectRatio: '2/3', boxShadow: '0 4px 16px rgba(0,0,0,0.5)' }}>
-                    <BookCoverImage src={session.book.cover_image_url} title={session.book.title} author={session.book.author_name ?? undefined} size="small" className="w-full h-full object-cover" />
+            {mobileTab === 'highlights' && (
+              <div className="h-full overflow-y-auto">
+                {isActive && highlights.length > 0 && (
+                  <div className="flex justify-end px-4 pt-4 pb-1">
+                    <button
+                      onClick={() => setShowHighlightModal(true)}
+                      className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl transition-all duration-150 active:scale-[0.97]"
+                      style={{ background: 'var(--color-accent)', color: 'var(--color-accent-on)' }}
+                    >
+                      <Pencil className="w-3 h-3" />
+                      Add highlight
+                    </button>
                   </div>
-                </Link>
-                <div className="flex-1 min-w-0">
-                  <h1 className="font-serif text-base font-semibold truncate" style={{ color: 'var(--color-lit)' }}>{session.book.title}</h1>
-                  {session.book.author_name && <p className="text-xs truncate" style={{ color: 'var(--color-lit-3)' }}>{session.book.author_name}</p>}
-                </div>
-                <div className="flex items-center gap-1.5 flex-none">
-                  <Avatar src={partner.avatar_url ?? undefined} name={partnerName} size="xs" />
-                  <span className="text-xs" style={{ color: 'var(--color-lit-3)' }}>with {partnerName}</span>
+                )}
+                <div className="px-4 py-4">
+                  <HighlightsContent />
                 </div>
               </div>
-              <ProgressCard label="Your progress" initials="You" pages={myPages} pct={myPct} variant="self" isYou />
-              <ProgressCard label={partnerName} initials={partnerInitials} pages={partnerPages} pct={partnerPct} variant="partner" />
-            </div>
-          )}
+            )}
 
-          {mobileTab === 'highlights' && (
-            <div className="h-full overflow-y-auto">
-              {isActive && highlights.length > 0 && (
-                <div className="flex justify-end px-5 pt-4 pb-1">
-                  <button
-                    onClick={() => setShowHighlightModal(true)}
-                    className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 transition-all hover:opacity-80"
-                    style={{
-                      backgroundColor: 'var(--color-accent)',
-                      color: 'var(--color-accent-on)',
-                      borderRadius: '10px 8px 9px 11px',
-                    }}
-                  >
-                    <Pencil className="w-3 h-3" />
-                    Add highlight
-                  </button>
-                </div>
-              )}
-              <HighlightsContent />
-            </div>
-          )}
-
-          {mobileTab === 'discussion' && (
-            <div className="h-full flex flex-col overflow-hidden">
-              <DiscussionContent compact />
-            </div>
-          )}
-        </div>
+            {mobileTab === 'discussion' && (
+              <div className="flex flex-col h-full overflow-hidden">
+                <DiscussionContent />
+              </div>
+            )}
+          </motion.div>
+        </AnimatePresence>
       </div>
 
       {/* ── Highlight Capture Modal ─────────────────────────────── */}
@@ -778,53 +980,65 @@ export default function ReadingBuddySessionPage() {
         />
       )}
 
-      {/* ── DNF Confirm Modal ────────────────────────────────────── */}
-      {showDnfConfirm && (
-        <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
-          style={{ backgroundColor: 'rgba(0,0,0,0.72)' }}
-          onClick={e => { if (e.target === e.currentTarget) setShowDnfConfirm(false) }}
-        >
-          <div
-            className="w-full max-w-sm p-6 space-y-4"
-            style={{
-              backgroundColor: 'var(--color-canvas)',
-              border: '1px solid var(--color-rim)',
-              boxShadow: '0 24px 64px rgba(0,0,0,0.6)',
-              borderRadius: '24px 20px 22px 26px',
-            }}
+      {/* ── DNF Confirm Modal ──────────────────────────────────── */}
+      <AnimatePresence>
+        {showDnfConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+            style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}
+            onClick={e => { if (e.target === e.currentTarget) setShowDnfConfirm(false) }}
           >
-            <h3 className="font-serif text-xl font-bold text-lit">Mark as Did Not Finish?</h3>
-            <p className="text-sm leading-relaxed" style={{ color: 'var(--color-lit-3)' }}>
-              This closes the session. Your chat history stays intact and either of you can see it anytime.
-            </p>
-            <div className="flex gap-3 pt-1">
-              <button
-                onClick={() => setShowDnfConfirm(false)}
-                className="flex-1 py-3 font-bold text-sm"
-                style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-accent-on)', borderRadius: '14px 12px 13px 15px' }}
-              >
-                Keep Reading
-              </button>
-              <button
-                onClick={handleDnf}
-                disabled={actionLoading === 'dnf'}
-                className="flex-1 py-3 font-bold text-sm transition-all disabled:opacity-60"
-                style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-rim)', color: 'var(--color-lit-2)', borderRadius: '14px 12px 13px 15px' }}
-              >
-                {actionLoading === 'dnf' ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'DNF it'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <style jsx>{`
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.5; }
-        }
-      `}</style>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 8 }}
+              transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+              className="w-full max-w-sm p-6 space-y-4"
+              style={{
+                background: 'var(--color-canvas)',
+                border: '1px solid var(--color-rim)',
+                borderRadius: '24px',
+                boxShadow: '0 24px 64px rgba(0,0,0,0.6)',
+              }}
+            >
+              <h3 className="font-serif text-xl font-bold" style={{ color: 'var(--color-lit)' }}>
+                Mark as Did Not Finish?
+              </h3>
+              <p className="text-sm leading-relaxed" style={{ color: 'var(--color-lit-3)' }}>
+                This closes the session. Your chat history and highlights stay intact.
+              </p>
+              <div className="flex gap-3 pt-1">
+                <button
+                  onClick={() => setShowDnfConfirm(false)}
+                  className="flex-1 py-3 font-bold text-sm rounded-xl transition-all duration-150 active:scale-[0.97]"
+                  style={{ background: 'var(--color-accent)', color: 'var(--color-accent-on)' }}
+                >
+                  Keep reading
+                </button>
+                <button
+                  onClick={handleDnf}
+                  disabled={actionLoading === 'dnf'}
+                  className="flex-1 py-3 font-bold text-sm rounded-xl transition-all duration-150 active:scale-[0.97] disabled:opacity-60"
+                  style={{
+                    background: 'var(--color-surface)',
+                    border: '1px solid var(--color-rim)',
+                    color: 'var(--color-lit-3)',
+                  }}
+                >
+                  {actionLoading === 'dnf'
+                    ? <Loader2 className="w-4 h-4 animate-spin mx-auto" />
+                    : 'DNF it'
+                  }
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

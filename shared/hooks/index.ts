@@ -52,3 +52,6 @@ export {
 } from './useForumActions'
 
 export { useReadingBuddy } from './useReadingBuddy'
+export { useBookSimilarity } from './useBookSimilarity'
+export { useUserLists } from './useUserLists'
+export { useUserList } from './useUserList'

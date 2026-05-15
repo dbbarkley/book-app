@@ -2,203 +2,513 @@
 
 import { useEffect } from 'react'
 import Link from 'next/link'
-import { BookOpen, Clock, Check, MessageCircle, UserPlus } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { BookOpen, Users } from 'lucide-react'
 import { useReadingBuddy, useAuth } from '@book-app/shared'
 import type { ReadingBuddySession } from '@book-app/shared'
 import Avatar from '@/components/Avatar'
 
-function ProgressBar({ value }: { value: number }) {
+// ─── Mini progress comparison bar ────────────────────────────────────────────
+function CompareBar({
+  myPct,
+  partnerPct,
+  partnerName,
+}: {
+  myPct: number
+  partnerPct: number
+  partnerName: string
+}) {
   return (
-    <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--color-grove)' }}>
-      <div
-        className="h-full rounded-full transition-all"
-        style={{ width: `${Math.min(100, Math.max(0, value))}%`, backgroundColor: 'var(--color-accent)' }}
-      />
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <span
+          className="text-[9px] font-bold uppercase tracking-widest w-14 flex-none"
+          style={{ color: 'var(--color-accent)' }}
+        >
+          You
+        </span>
+        <div
+          className="flex-1 h-[3px] rounded-full overflow-hidden"
+          style={{ backgroundColor: 'var(--color-rim)' }}
+        >
+          <div
+            className="h-full rounded-full"
+            style={{
+              width: `${Math.max(myPct, 1)}%`,
+              background: 'linear-gradient(90deg, var(--color-accent-hover), var(--color-accent))',
+              transition: 'width 0.8s cubic-bezier(0.32,0.72,0,1)',
+            }}
+          />
+        </div>
+        <span
+          className="text-[10px] font-bold tabular-nums w-8 text-right flex-none"
+          style={{ color: 'var(--color-accent)' }}
+        >
+          {myPct}%
+        </span>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <span
+          className="text-[9px] font-bold uppercase tracking-widest w-14 flex-none truncate"
+          style={{ color: 'var(--color-success)' }}
+        >
+          {partnerName.split(' ')[0]}
+        </span>
+        <div
+          className="flex-1 h-[3px] rounded-full overflow-hidden"
+          style={{ backgroundColor: 'var(--color-rim)' }}
+        >
+          <div
+            className="h-full rounded-full"
+            style={{
+              width: `${Math.max(partnerPct, 1)}%`,
+              background: 'linear-gradient(90deg, #3d7a5e, var(--color-success))',
+              transition: 'width 0.8s cubic-bezier(0.32,0.72,0,1)',
+            }}
+          />
+        </div>
+        <span
+          className="text-[10px] font-bold tabular-nums w-8 text-right flex-none"
+          style={{ color: 'var(--color-success)' }}
+        >
+          {partnerPct}%
+        </span>
+      </div>
     </div>
   )
 }
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; dot: string }> = {
-  pending:  { label: 'Awaiting Response', color: 'var(--color-lit-3)',  dot: 'var(--color-lit-3)' },
-  active:   { label: 'Reading Together',  color: '#4ade80',             dot: '#4ade80' },
-  declined: { label: 'Declined',          color: 'var(--color-lit-3)',  dot: 'var(--color-lit-3)' },
-  dnf:      { label: 'Did Not Finish',    color: 'var(--color-lit-3)',  dot: 'var(--color-lit-3)' },
+// ─── Status config ────────────────────────────────────────────────────────────
+const STATUS = {
+  pending:  { label: 'Awaiting',        dot: 'rgba(237,224,196,0.4)',  text: 'rgba(237,224,196,0.55)' },
+  active:   { label: 'Reading',         dot: '#5A9E7A',               text: '#5A9E7A' },
+  declined: { label: 'Declined',        dot: 'rgba(237,224,196,0.3)', text: 'rgba(237,224,196,0.4)' },
+  dnf:      { label: 'Did Not Finish',  dot: 'rgba(237,224,196,0.3)', text: 'rgba(237,224,196,0.4)' },
 }
 
-function SessionCard({ session, userId }: { session: ReadingBuddySession; userId: number | undefined }) {
-  const partner = session.initiator.id === userId ? session.invited : session.initiator
-  const me      = session.initiator.id === userId ? session.initiator : session.invited
-  const cfg     = STATUS_CONFIG[session.status] ?? STATUS_CONFIG.pending
-  const myPct   = me.progress?.completion_percentage ?? 0
-  const ptnPct  = partner.progress?.completion_percentage ?? 0
+// ─── Session card ─────────────────────────────────────────────────────────────
+function SessionCard({
+  session,
+  userId,
+  index,
+}: {
+  session: ReadingBuddySession
+  userId: number | undefined
+  index: number
+}) {
+  const partner     = session.initiator.id === userId ? session.invited   : session.initiator
+  const me          = session.initiator.id === userId ? session.initiator : session.invited
+  const cfg         = STATUS[session.status as keyof typeof STATUS] ?? STATUS.pending
+  const myPct       = me.progress?.completion_percentage      ?? 0
+  const ptnPct      = partner.progress?.completion_percentage ?? 0
+  const partnerName = partner.display_name || partner.username
+  const isActive    = session.status === 'active'
 
   return (
-    <Link
-      href={`/reading-buddy/${session.id}`}
-      className="block rounded-2xl p-5 transition-all hover:opacity-90 hover:translate-y-[-1px]"
-      style={{
-        backgroundColor: 'var(--color-surface)',
-        border: session.status === 'active' ? '1px solid rgba(212,175,55,0.2)' : '1px solid var(--color-rim)',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
-        transition: 'transform 0.15s, opacity 0.15s',
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{
+        delay: index * 0.065,
+        duration: 0.42,
+        ease: [0.22, 1, 0.36, 1],
       }}
     >
-      <div className="flex items-start gap-4">
-        {/* Cover */}
-        {session.book.cover_image_url ? (
-          <div className="flex-none w-12 h-[66px] rounded-lg overflow-hidden shadow-md">
-            <img src={session.book.cover_image_url} alt={session.book.title} className="w-full h-full object-cover" />
-          </div>
-        ) : (
-          <div className="flex-none w-12 h-[66px] rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--color-grove)' }}>
-            <BookOpen className="w-5 h-5" style={{ color: 'var(--color-lit-3)' }} />
-          </div>
-        )}
-
-        {/* Meta */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <p className="font-bold text-lit leading-tight line-clamp-1">{session.book.title}</p>
-              {session.book.author_name && (
-                <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--color-lit-3)' }}>
-                  {session.book.author_name}
-                </p>
+      <Link href={`/reading-buddy/${session.id}`} className="block group">
+        {/* Outer bezel shell */}
+        <div
+          style={{
+            borderRadius: '22px',
+            padding: '5px',
+            background: isActive
+              ? 'linear-gradient(135deg, rgba(201,168,76,0.16) 0%, rgba(201,168,76,0.03) 100%)'
+              : 'rgba(237,224,196,0.03)',
+            border: isActive
+              ? '1px solid rgba(201,168,76,0.2)'
+              : '1px solid rgba(237,224,196,0.07)',
+            transition: 'box-shadow 0.3s cubic-bezier(0.32,0.72,0,1)',
+            boxShadow: '0 2px 12px rgba(0,0,0,0.2)',
+          }}
+          className="group-hover:shadow-[0_6px_28px_rgba(0,0,0,0.35)]"
+        >
+          {/* Inner core */}
+          <div
+            className="px-4 py-4 flex items-start gap-4"
+            style={{
+              borderRadius: '18px',
+              background: 'var(--color-surface)',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
+              transition: 'background 0.2s',
+            }}
+          >
+            {/* Book cover */}
+            <div className="flex-none">
+              {session.book.cover_image_url ? (
+                <div
+                  className="overflow-hidden group-hover:scale-[1.02] transition-transform duration-300"
+                  style={{
+                    width: 52,
+                    height: 78,
+                    borderRadius: '5px 2px 2px 5px',
+                    boxShadow: '3px 5px 18px rgba(0,0,0,0.55), inset -2px 0 5px rgba(0,0,0,0.3)',
+                  }}
+                >
+                  <img
+                    src={session.book.cover_image_url}
+                    alt={session.book.title}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ) : (
+                <div
+                  className="flex items-center justify-center"
+                  style={{
+                    width: 52,
+                    height: 78,
+                    borderRadius: '5px 2px 2px 5px',
+                    background: 'var(--color-grove)',
+                    boxShadow: '3px 5px 18px rgba(0,0,0,0.4)',
+                  }}
+                >
+                  <BookOpen className="w-5 h-5" style={{ color: 'var(--color-lit-3)' }} />
+                </div>
               )}
             </div>
-            <div className="flex items-center gap-1.5 flex-none mt-0.5">
-              <span className="w-1.5 h-1.5 rounded-full flex-none" style={{ backgroundColor: cfg.dot }} />
-              <span className="text-xs font-medium whitespace-nowrap" style={{ color: cfg.color }}>
-                {cfg.label}
-              </span>
+
+            {/* Card body */}
+            <div className="flex-1 min-w-0 space-y-3">
+              {/* Title + status */}
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3
+                    className="font-serif font-semibold leading-snug line-clamp-1"
+                    style={{ color: 'var(--color-lit)', fontSize: '0.9375rem' }}
+                  >
+                    {session.book.title}
+                  </h3>
+                  {session.book.author_name && (
+                    <p className="text-[11px] mt-0.5 truncate" style={{ color: 'var(--color-lit-3)' }}>
+                      {session.book.author_name}
+                    </p>
+                  )}
+                </div>
+
+                {/* Status pill */}
+                <div
+                  className="flex items-center gap-1.5 flex-none mt-0.5 px-2.5 py-1"
+                  style={{
+                    borderRadius: '999px',
+                    background: 'rgba(237,224,196,0.05)',
+                    border: '1px solid rgba(237,224,196,0.08)',
+                  }}
+                >
+                  <span
+                    className="w-1.5 h-1.5 rounded-full flex-none"
+                    style={{
+                      backgroundColor: cfg.dot,
+                      boxShadow: isActive ? `0 0 6px ${cfg.dot}` : 'none',
+                    }}
+                  />
+                  <span
+                    className="text-[10px] font-bold tracking-wide whitespace-nowrap"
+                    style={{ color: cfg.text }}
+                  >
+                    {cfg.label}
+                  </span>
+                </div>
+              </div>
+
+              {/* Partner row */}
+              <div className="flex items-center gap-2">
+                <Avatar src={partner.avatar_url ?? undefined} name={partnerName} size="xs" />
+                <span className="text-[11px]" style={{ color: 'var(--color-lit-3)' }}>
+                  with{' '}
+                  <span className="font-medium" style={{ color: 'var(--color-lit-2)' }}>
+                    {partnerName}
+                  </span>
+                </span>
+              </div>
+
+              {/* Progress — active sessions only */}
+              {isActive && (
+                <CompareBar myPct={myPct} partnerPct={ptnPct} partnerName={partnerName} />
+              )}
             </div>
           </div>
-
-          {/* Partner */}
-          <div className="flex items-center gap-2 mt-3">
-            <Avatar src={partner.avatar_url ?? undefined} name={partner.display_name || partner.username} size="xs" />
-            <span className="text-xs font-medium" style={{ color: 'var(--color-lit-3)' }}>
-              with {partner.display_name || partner.username}
-            </span>
-          </div>
-
-          {/* Progress — only show for active/completed sessions with data */}
-          {session.status === 'active' && (
-            <div className="mt-4 space-y-2">
-              <div className="space-y-1">
-                <div className="flex justify-between text-[10px] font-bold uppercase tracking-wide" style={{ color: 'var(--color-lit-3)' }}>
-                  <span>You</span><span>{myPct}%</span>
-                </div>
-                <ProgressBar value={myPct} />
-              </div>
-              <div className="space-y-1">
-                <div className="flex justify-between text-[10px] font-bold uppercase tracking-wide" style={{ color: 'var(--color-lit-3)' }}>
-                  <span>{partner.display_name || partner.username}</span><span>{ptnPct}%</span>
-                </div>
-                <ProgressBar value={ptnPct} />
-              </div>
-            </div>
-          )}
         </div>
-      </div>
-    </Link>
+      </Link>
+    </motion.div>
   )
 }
 
+// ─── Skeleton loader ──────────────────────────────────────────────────────────
+function SkeletonCard() {
+  return (
+    <div
+      className="animate-pulse"
+      style={{
+        borderRadius: '22px',
+        padding: '5px',
+        background: 'rgba(237,224,196,0.03)',
+        border: '1px solid rgba(237,224,196,0.06)',
+      }}
+    >
+      <div
+        className="px-4 py-4 flex items-start gap-4"
+        style={{ borderRadius: '18px', background: 'var(--color-surface)' }}
+      >
+        <div style={{ width: 52, height: 78, borderRadius: '5px', background: 'var(--color-grove)', flexShrink: 0 }} />
+        <div className="flex-1 space-y-3 pt-1">
+          <div className="h-4 rounded-full w-3/4" style={{ background: 'var(--color-grove)' }} />
+          <div className="h-3 rounded-full w-2/5" style={{ background: 'var(--color-grove)' }} />
+          <div className="h-3 rounded-full w-1/2" style={{ background: 'var(--color-grove)' }} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Section label ────────────────────────────────────────────────────────────
+function SectionLabel({ label, count }: { label: string; count: number }) {
+  return (
+    <div className="flex items-center gap-3 px-1 mb-3">
+      <span
+        className="text-[9px] font-bold uppercase tracking-[0.18em]"
+        style={{ color: 'var(--color-lit-3)' }}
+      >
+        {label}
+      </span>
+      <span
+        className="px-2 py-0.5 text-[10px] font-bold rounded-full"
+        style={{
+          background: 'rgba(237,224,196,0.06)',
+          color: 'var(--color-lit-3)',
+          border: '1px solid rgba(237,224,196,0.09)',
+        }}
+      >
+        {count}
+      </span>
+      <div className="flex-1 h-px" style={{ background: 'var(--color-rim)' }} />
+    </div>
+  )
+}
+
+// ─── Empty state ──────────────────────────────────────────────────────────────
+function EmptyState() {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+      className="flex flex-col items-center text-center pt-6 pb-6"
+    >
+      {/* Book cluster illustration */}
+      <div className="relative mb-10" style={{ width: 120, height: 90 }}>
+        {/* Left book */}
+        <div
+          style={{
+            position: 'absolute',
+            left: 0,
+            bottom: 0,
+            width: 44,
+            height: 64,
+            borderRadius: '5px 2px 2px 5px',
+            background: 'linear-gradient(160deg, var(--color-grove) 0%, var(--color-surface) 100%)',
+            border: '1px solid rgba(237,224,196,0.08)',
+            boxShadow: '3px 5px 18px rgba(0,0,0,0.4)',
+            transform: 'rotate(-7deg)',
+            transformOrigin: 'bottom center',
+          }}
+        />
+        {/* Right book */}
+        <div
+          style={{
+            position: 'absolute',
+            right: 0,
+            bottom: 0,
+            width: 40,
+            height: 58,
+            borderRadius: '5px 2px 2px 5px',
+            background: 'linear-gradient(160deg, rgba(90,158,122,0.18) 0%, var(--color-surface) 100%)',
+            border: '1px solid rgba(90,158,122,0.12)',
+            boxShadow: '3px 5px 18px rgba(0,0,0,0.35)',
+            transform: 'rotate(6deg)',
+            transformOrigin: 'bottom center',
+          }}
+        />
+        {/* Center book */}
+        <div
+          style={{
+            position: 'absolute',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            bottom: 0,
+            width: 50,
+            height: 74,
+            borderRadius: '5px 2px 2px 5px',
+            background: 'linear-gradient(160deg, rgba(201,168,76,0.22) 0%, var(--color-surface) 100%)',
+            border: '1px solid rgba(201,168,76,0.18)',
+            boxShadow: '0 8px 28px rgba(0,0,0,0.5), 0 0 0 1px rgba(201,168,76,0.08)',
+            zIndex: 2,
+          }}
+        />
+        {/* Badge */}
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 3,
+            background: 'var(--color-accent)',
+            borderRadius: '999px',
+            padding: '5px 6px',
+            boxShadow: '0 0 18px rgba(201,168,76,0.35)',
+          }}
+        >
+          <Users className="w-3 h-3" style={{ color: 'var(--color-accent-on)' }} />
+        </div>
+      </div>
+
+      <p className="font-serif font-semibold text-xl mb-2" style={{ color: 'var(--color-lit)' }}>
+        No reading buddies yet
+      </p>
+      <p
+        className="text-sm leading-relaxed max-w-[260px] mb-8"
+        style={{ color: 'var(--color-lit-3)' }}
+      >
+        Find a book, then invite a friend to read it alongside you.
+      </p>
+
+      <Link
+        href="/search"
+        className="group inline-flex items-center gap-3 px-5 py-3 rounded-full font-bold text-sm transition-all duration-200 active:scale-[0.97]"
+        style={{
+          background: 'var(--color-accent)',
+          color: 'var(--color-accent-on)',
+          boxShadow: '0 4px 18px rgba(201,168,76,0.28)',
+        }}
+      >
+        Browse books
+        <span
+          className="w-6 h-6 rounded-full flex items-center justify-center flex-none group-hover:translate-x-0.5 transition-transform duration-200"
+          style={{ background: 'rgba(26,18,5,0.2)' }}
+        >
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+            <path
+              d="M2 5h6M6 3l2 2-2 2"
+              stroke="currentColor"
+              strokeWidth="1.25"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </span>
+      </Link>
+    </motion.div>
+  )
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 export default function ReadingBuddyIndexPage() {
   const { user } = useAuth()
   const { sessions, sessionsLoading, fetchSessions } = useReadingBuddy()
 
   useEffect(() => { fetchSessions() }, [fetchSessions])
 
-  const active   = sessions.filter(s => s.status === 'active')
-  const pending  = sessions.filter(s => s.status === 'pending')
-  const closed   = sessions.filter(s => s.status === 'declined' || s.status === 'dnf')
-
-  const cardStyle = {
-    backgroundColor: 'var(--color-surface)',
-    border: '1px solid var(--color-rim)',
-    boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
-  }
+  const active  = sessions.filter(s => s.status === 'active')
+  const pending = sessions.filter(s => s.status === 'pending')
+  const closed  = sessions.filter(s => s.status === 'declined' || s.status === 'dnf')
 
   return (
-    <div className="container-mobile py-10 pb-24 max-w-2xl space-y-10">
+    <div className="container-mobile py-10 pb-28 max-w-xl mx-auto">
 
-      {/* Header */}
-      <div className="space-y-1">
-        <h1 className="font-serif text-3xl font-bold text-lit">Reading Buddy</h1>
-        <p className="text-sm" style={{ color: 'var(--color-lit-3)' }}>
-          Read books together with friends and track each other's progress in real time.
+      {/* ── Header ────────────────────────────────────────────────── */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+        className="mb-10"
+      >
+        {/* Eyebrow */}
+        <div className="inline-flex items-center gap-2 mb-4">
+          <span
+            className="px-3 py-1 text-[9px] font-bold uppercase tracking-[0.2em] rounded-full"
+            style={{
+              background: 'var(--color-accent-subtle)',
+              color: 'var(--color-accent)',
+              border: '1px solid rgba(201,168,76,0.18)',
+            }}
+          >
+            Together · In sync
+          </span>
+        </div>
+
+        <h1
+          className="font-serif font-bold leading-[0.95] mb-3"
+          style={{
+            fontSize: 'clamp(2rem, 6vw, 2.75rem)',
+            color: 'var(--color-lit)',
+            letterSpacing: '-0.02em',
+          }}
+        >
+          Reading Buddies
+        </h1>
+        <p className="text-sm leading-relaxed" style={{ color: 'var(--color-lit-3)', maxWidth: '28ch' }}>
+          Read with friends. Track progress. Discuss as you go.
         </p>
-      </div>
+      </motion.div>
 
+      {/* ── Content ───────────────────────────────────────────────── */}
       {sessionsLoading ? (
         <div className="space-y-3">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="h-28 rounded-2xl animate-pulse" style={{ backgroundColor: 'var(--color-surface)' }} />
-          ))}
+          {[0, 1, 2].map(i => <SkeletonCard key={i} />)}
         </div>
       ) : sessions.length === 0 ? (
-        <div
-          className="rounded-3xl p-10 flex flex-col items-center text-center space-y-4"
-          style={cardStyle}
-        >
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ backgroundColor: 'var(--color-grove)' }}>
-            <BookOpen className="w-8 h-8" style={{ color: 'var(--color-lit-3)' }} />
-          </div>
-          <div>
-            <p className="font-bold text-lit text-lg">No sessions yet</p>
-            <p className="text-sm mt-1" style={{ color: 'var(--color-lit-3)' }}>
-              Go to a book's page and invite a friend to read together.
-            </p>
-          </div>
-          <Link
-            href="/search"
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all hover:opacity-80"
-            style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-accent-on)' }}
-          >
-            <UserPlus className="w-4 h-4" />
-            Find a Book
-          </Link>
-        </div>
+        <EmptyState />
       ) : (
-        <>
+        <div className="space-y-8">
+
           {active.length > 0 && (
-            <section className="space-y-3">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: '#4ade80' }} />
-                <h2 className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--color-lit-3)' }}>
-                  Active — {active.length}
-                </h2>
+            <section>
+              <SectionLabel label="Active" count={active.length} />
+              <div className="space-y-3">
+                {active.map((s, i) => (
+                  <SessionCard key={s.id} session={s} userId={user?.id} index={i} />
+                ))}
               </div>
-              {active.map(s => <SessionCard key={s.id} session={s} userId={user?.id} />)}
             </section>
           )}
 
           {pending.length > 0 && (
-            <section className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Clock className="w-3 h-3" style={{ color: 'var(--color-lit-3)' }} />
-                <h2 className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--color-lit-3)' }}>
-                  Pending — {pending.length}
-                </h2>
+            <section>
+              <SectionLabel label="Pending" count={pending.length} />
+              <div className="space-y-3">
+                {pending.map((s, i) => (
+                  <SessionCard key={s.id} session={s} userId={user?.id} index={active.length + i} />
+                ))}
               </div>
-              {pending.map(s => <SessionCard key={s.id} session={s} userId={user?.id} />)}
             </section>
           )}
 
           {closed.length > 0 && (
-            <section className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Check className="w-3 h-3" style={{ color: 'var(--color-lit-3)' }} />
-                <h2 className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--color-lit-3)' }}>
-                  Past — {closed.length}
-                </h2>
+            <section>
+              <SectionLabel label="Past" count={closed.length} />
+              <div className="space-y-3">
+                {closed.map((s, i) => (
+                  <SessionCard
+                    key={s.id}
+                    session={s}
+                    userId={user?.id}
+                    index={active.length + pending.length + i}
+                  />
+                ))}
               </div>
-              {closed.map(s => <SessionCard key={s.id} session={s} userId={user?.id} />)}
             </section>
           )}
-        </>
+
+        </div>
       )}
     </div>
   )
