@@ -49,6 +49,8 @@ class UpcomingRelease < ApplicationRecord
     where(id: best_ids)
   }
 
+  has_many :release_reminders, dependent: :destroy
+
   # ── Helpers ─────────────────────────────────────────────────────────────────
 
   def primary_author
