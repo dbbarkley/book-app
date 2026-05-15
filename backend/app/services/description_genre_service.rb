@@ -48,7 +48,7 @@ class DescriptionGenreService
 
     genres = JSON.parse(response.match(/\[.*?\]/m)&.to_s || '[]')
     genres.is_a?(Array) ? genres.reject(&:blank?).first(4).presence : nil
-  rescue JSON::ParserError, => e
+  rescue JSON::ParserError => e
     Rails.logger.warn "DescriptionGenreService parse error: #{e.message}"
     nil
   rescue => e

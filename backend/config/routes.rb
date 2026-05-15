@@ -141,6 +141,9 @@ Rails.application.routes.draw do
                   only: [:index, :create]
       end
 
+      # Release Reminders
+      resources :release_reminders, only: [:create, :destroy]
+
       # Imports (Goodreads, StoryGraph, etc.)
       resources :imports, only: [:index, :show, :create] do
         collection do
