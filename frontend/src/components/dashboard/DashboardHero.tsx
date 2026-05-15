@@ -30,7 +30,7 @@ export default function DashboardHero({ readingBooks, onUpdate, userName, loadin
   }
 
   return (
-    <section className="relative overflow-hidden rounded-[32px] text-lit p-8 md:p-12 shadow-2xl" style={{ backgroundColor: 'var(--color-cave)' }}>
+    <section className="relative overflow-hidden rounded-[24px] text-lit p-8 md:p-12 shadow-2xl" style={{ backgroundColor: 'var(--color-cave)' }}>
       {/* Amber lamp glow — top-right and bottom-left */}
       <div className="absolute top-0 right-0 w-80 h-80 rounded-full -translate-y-1/2 translate-x-1/4 pointer-events-none"
         style={{ background: 'radial-gradient(circle, var(--color-accent) 0%, transparent 70%)', opacity: 0.12, filter: 'blur(40px)' }} />
@@ -71,15 +71,30 @@ export default function DashboardHero({ readingBooks, onUpdate, userName, loadin
             </p>
 
             <div className={`relative transition-all duration-300 ${searchFocused ? 'scale-[1.02]' : ''}`}>
-              <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={24} />
+              <Search
+                className="absolute left-5 top-1/2 -translate-y-1/2"
+                size={22}
+                style={{ color: 'var(--color-lit-3)' }}
+              />
               <Link href="/search?type=books">
-                <div 
-                  className="w-full pl-14 pr-6 py-5 bg-accent-subtle border-2 border-rim-dark rounded-2xl text-lit-3 text-lg transition-all cursor-pointer flex items-center justify-between hover:border-rim-accent"
-                  onMouseEnter={() => setSearchFocused(true)}
-                  onMouseLeave={() => setSearchFocused(false)}
+                <div
+                  className="w-full pl-14 pr-6 py-5 rounded-2xl text-lg transition-all cursor-pointer flex items-center justify-between"
+                  style={{
+                    backgroundColor: 'var(--color-grove)',
+                    border: '1px solid var(--color-rim)',
+                    color: 'var(--color-lit-2)',
+                  }}
+                  onMouseEnter={(e) => {
+                    setSearchFocused(true)
+                    e.currentTarget.style.borderColor = 'var(--color-rim-accent)'
+                  }}
+                  onMouseLeave={(e) => {
+                    setSearchFocused(false)
+                    e.currentTarget.style.borderColor = 'var(--color-rim)'
+                  }}
                 >
-                  <span>Search for a book to add...</span>
-                  <ArrowRight size={20} className="text-slate-500" />
+                  <span>Find a book to start…</span>
+                  <ArrowRight size={20} style={{ color: 'var(--color-lit-3)' }} />
                 </div>
               </Link>
             </div>
@@ -116,18 +131,18 @@ export default function DashboardHero({ readingBooks, onUpdate, userName, loadin
               </h2>
               <p className="text-base text-lit-3 mb-7 italic">by {firstBook?.book?.author_name}</p>
 
-              <div className="max-w-md mx-auto md:mx-0 rounded-2xl p-6 border border-rim-dark backdrop-blur-sm" style={{ backgroundColor: 'rgba(13,26,15,0.6)' }}>
+              <div className="max-w-md mx-auto md:mx-0 rounded-2xl p-6 border border-rim-dark backdrop-blur-sm" style={{ backgroundColor: 'rgba(13,26,15,0.55)' }}>
                 <div className="flex justify-between items-end mb-3">
                   <span className="text-sm font-medium text-lit-2">Your Progress</span>
                   <span className="text-lg font-bold text-accent">{firstBook?.completion_percentage}%</span>
                 </div>
 
-                <div className="w-full h-2.5 rounded-full overflow-hidden mb-4" style={{ backgroundColor: 'var(--color-grove)' }}>
+                <div className="w-full h-2 overflow-hidden mb-4" style={{ backgroundColor: 'var(--color-grove)', borderRadius: 999 }}>
                   <motion.div
-                    className="h-full rounded-full"
+                    className="h-full"
                     style={{
-                      background: 'linear-gradient(90deg, var(--color-accent-hover), var(--color-accent))',
-                      boxShadow: '0 0 12px rgba(201,168,76,0.35)'
+                      backgroundColor: 'var(--color-accent)',
+                      borderRadius: 999,
                     }}
                     initial={{ width: 0 }}
                     animate={{ width: `${firstBook?.completion_percentage}%` }}
@@ -146,17 +161,17 @@ export default function DashboardHero({ readingBooks, onUpdate, userName, loadin
 
                 <div className="flex flex-wrap gap-3 justify-center md:justify-start">
                   <button
-                    className="inline-flex items-center justify-center px-8 py-3 rounded-xl font-semibold text-base transition-all shadow-lg"
-                    style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-accent-on)' }}
+                    className="inline-flex items-center justify-center px-8 py-3 font-semibold text-base transition-all shadow-lg w-full md:w-auto"
+                    style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-accent-on)', borderRadius: 14 }}
                     onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--color-accent-hover)')}
                     onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'var(--color-accent)')}
                     onClick={() => firstBook && handleOpenModal(firstBook)}
                   >
                     Update Progress
                   </button>
-                  <Link href="/library">
-                    <button className="inline-flex items-center justify-center px-8 py-3 rounded-xl font-semibold text-base border border-rim-dark text-lit bg-transparent transition-all"
-                      style={{ borderColor: 'var(--color-rim-dark)', color: 'var(--color-lit)' }}
+                  <Link href="/library" className="hidden md:block">
+                    <button className="inline-flex items-center justify-center px-8 py-3 font-semibold text-base border border-rim-dark text-lit bg-transparent transition-all"
+                      style={{ borderColor: 'var(--color-rim-dark)', color: 'var(--color-lit)', borderRadius: 14 }}
                       onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--color-grove)')}
                       onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}>
                       My Library

@@ -48,8 +48,18 @@ interface PreferencesFormData {
 function SectionHeader({ title, description }: { title: string; description?: string }) {
   return (
     <div className="px-6 py-4" style={{ borderBottom: '1px solid var(--color-rim)', backgroundColor: 'var(--color-grove)' }}>
-      <h2 className="font-serif text-lg font-bold" style={{ color: 'var(--color-lit)' }}>{title}</h2>
-      {description && <p className="text-sm mt-0.5" style={{ color: 'var(--color-lit-2)' }}>{description}</p>}
+      <h2
+        style={{
+          fontSize: 11,
+          fontWeight: 700,
+          letterSpacing: '1px',
+          textTransform: 'uppercase',
+          color: 'var(--color-lit-3)',
+        }}
+      >
+        {title}
+      </h2>
+      {description && <p className="text-sm mt-1" style={{ color: 'var(--color-lit-2)' }}>{description}</p>}
     </div>
   )
 }

@@ -110,12 +110,26 @@ export default function Shelf({
       {/* Shelf Header */}
       <div className="flex items-end justify-between mb-6 px-1">
         <div>
-          <h2 className="text-2xl font-bold flex items-center gap-2" style={{ color: 'var(--color-lit)' }}>
+          <h2
+            className="font-sans flex items-center gap-2"
+            style={{ color: 'var(--color-lit)', fontSize: 18, fontWeight: 700 }}
+          >
             <span className="flex items-center justify-center">{icon}</span>
             {title}
             {books.length > 0 && (
-              <span className="text-sm font-medium ml-1" style={{ color: 'var(--color-lit-3)' }}>
-                ({books.length})
+              <span
+                className="ml-1"
+                style={{
+                  backgroundColor: 'var(--color-grove)',
+                  border: '1px solid var(--color-rim)',
+                  borderRadius: 10,
+                  padding: '2px 7px',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: 'var(--color-lit-2)',
+                }}
+              >
+                {books.length}
               </span>
             )}
           </h2>
@@ -175,10 +189,11 @@ export default function Shelf({
           {viewAllHref && (
             <Link
               href={viewAllHref}
-              className="text-sm font-semibold transition-colors"
-              style={{ color: 'var(--color-accent)' }}
+              className="flex items-center gap-0.5 transition-colors"
+              style={{ color: 'var(--color-lit-2)', fontSize: 13 }}
             >
-              View All
+              See all
+              <ChevronRight size={13} />
             </Link>
           )}
         </div>

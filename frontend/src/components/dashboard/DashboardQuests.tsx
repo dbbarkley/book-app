@@ -32,10 +32,10 @@ export default function DashboardQuests({ quests }: DashboardQuestsProps) {
         <span className="text-xl font-bold text-ink">{completedCount}/{quests.length}</span>
       </div>
 
-      <div className="w-full h-1.5 rounded-full mb-5 overflow-hidden" style={{ backgroundColor: 'var(--color-rim)' }}>
+      <div className="w-full h-1.5 mb-5 overflow-hidden" style={{ backgroundColor: 'var(--color-grove)', borderRadius: 999 }}>
         <motion.div
-          className="h-full rounded-full"
-          style={{ background: 'linear-gradient(90deg, var(--color-accent-hover), var(--color-accent))' }}
+          className="h-full"
+          style={{ backgroundColor: 'var(--color-accent)', borderRadius: 999 }}
           initial={{ width: 0 }}
           animate={{ width: `${progressPercentage}%` }}
           transition={{ duration: 1, ease: "easeOut" }}

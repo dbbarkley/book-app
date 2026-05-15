@@ -1,16 +1,20 @@
 'use client'
 
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import {
   useAuth,
   useUserLibrary,
   useFollows,
   useRecommendedBooks,
   useRecommendedAuthors,
+  useMilestones,
 } from '@book-app/shared'
 import DashboardHero         from '@/components/dashboard/DashboardHero'
 import DashboardActivityFeed from '@/components/dashboard/DashboardActivityFeed'
 import DashboardDiscovery    from '@/components/dashboard/DashboardDiscovery'
+import DashboardUpNext       from '@/components/dashboard/DashboardUpNext'
+import ReadingGoalCard       from '@/components/ReadingGoalCard'
+import GoalSettingModal      from '@/components/library/GoalSettingModal'
 
 export default function DashboardPage() {
   const { user, isAuthenticated } = useAuth()
@@ -22,6 +26,17 @@ export default function DashboardPage() {
   } = useUserLibrary(user?.id)
 
   const readingBooks = groupedLibrary?.reading || []
+  const toReadBooks  = groupedLibrary?.to_read || []
+  const readBooks    = groupedLibrary?.read    || []
+
+  const { readingGoal, setGoal, isLoading: isGoalLoading } = useMilestones()
+  const [isGoalModalOpen, setIsGoalModalOpen] = useState(false)
+
+  const currentYear = new Date().getFullYear()
+  const completedThisYear = readBooks.filter((ub: { finished_at?: string | null }) => {
+    if (!ub.finished_at) return false
+    return new Date(ub.finished_at).getFullYear() === currentYear
+  }).length
 
   const { follows, fetchFollows } = useFollows()
 
@@ -58,6 +73,18 @@ export default function DashboardPage() {
           userName={user?.display_name || user?.username}
         />
 
+        {/* ── Reading Goal card ─────────────────────────────── */}
+        {!libraryLoading && (
+          <ReadingGoalCard
+            goal={readingGoal}
+            completed={completedThisYear}
+            onEdit={() => setIsGoalModalOpen(true)}
+          />
+        )}
+
+        {/* ── Up Next — next 3 books from the to-read shelf ─── */}
+        <DashboardUpNext books={toReadBooks} />
+
         {/* ── 70 / 30 grid — feed left, discovery right ─────── */}
         {/*
           Single column on mobile (<lg), splits into 70/30 on lg+.
@@ -79,6 +106,13 @@ export default function DashboardPage() {
         </div>
 
       </div>
+
+      <GoalSettingModal
+        isOpen={isGoalModalOpen}
+        onClose={() => setIsGoalModalOpen(false)}
+        onSave={setGoal}
+        isLoading={isGoalLoading}
+      />
     </div>
   )
 }

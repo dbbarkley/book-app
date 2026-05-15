@@ -388,7 +388,8 @@ export default function QuickUpdateModal({ userBook, isOpen, onClose, onUpdate }
             isLoading={isBusy}
             fullWidth
             size="md"
-            className="rounded-xl py-3 font-bold"
+            className="font-bold"
+            style={{ height: 48, borderRadius: 14 }}
           >
             Save Updates
           </Button>

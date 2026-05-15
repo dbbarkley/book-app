@@ -4,6 +4,8 @@ import { useEffect, useRef, useCallback } from 'react'
 import { Rss, Loader2 } from 'lucide-react'
 import { useFeed } from '@book-app/shared'
 import FeedEntryCard from '@/components/FeedEntryCard'
+import EmptyState from '@/components/EmptyState'
+import { groupEntriesByDate, DateSeparator } from '@/components/dashboard/DashboardActivityFeed'
 
 export default function FeedPage() {
   const {
@@ -73,27 +75,27 @@ export default function FeedPage() {
 
       {/* Empty state */}
       {!loading && !error && entries.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
-          <div
-            className="w-16 h-16 rounded-full flex items-center justify-center"
-            style={{ backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-rim)' }}
-          >
-            <Rss size={28} style={{ color: 'var(--color-lit-3)' }} />
-          </div>
-          <div>
-            <p className="font-semibold mb-1" style={{ color: 'var(--color-lit)' }}>Nothing here yet</p>
-            <p className="text-sm" style={{ color: 'var(--color-lit-3)' }}>
-              Follow authors, connect with friends, and your activity will show up here.
-            </p>
-          </div>
-        </div>
+        <EmptyState
+          icon={Rss}
+          title="Nothing here yet"
+          body="Follow authors, connect with friends, and your activity will show up here."
+          cta={{ label: 'Find people to follow', href: '/search?type=people' }}
+        />
       )}
 
       {/* Feed entries */}
       {entries.length > 0 && (
         <div className="flex flex-col gap-3">
-          {entries.map((entry) => (
-            <FeedEntryCard key={entry.id} entry={entry} />
+          {groupEntriesByDate(entries).map((group) => (
+            <div key={group.label} className="flex flex-col gap-3">
+              <DateSeparator
+                label={group.label}
+                newCount={group.entries.filter((e) => e.new).length}
+              />
+              {group.entries.map((entry) => (
+                <FeedEntryCard key={entry.id} entry={entry} />
+              ))}
+            </div>
           ))}
 
           {/* Load more */}

@@ -29,10 +29,25 @@ export default function ReadingHero({ books, onUpdate }: ReadingHeroProps) {
       {/* Section heading */}
       <div className="flex items-center gap-2 px-1 mb-6">
         <BookOpen className="w-5 h-5" style={{ color: 'var(--color-accent)' }} />
-        <h2 className="text-2xl font-bold" style={{ color: 'var(--color-lit)' }}>Currently Reading</h2>
-        <span className="text-sm font-medium ml-1" style={{ color: 'var(--color-lit-3)' }}>
-          {books.length > 1 ? `${books.length} books` : ''}
-        </span>
+        <h2 className="font-sans" style={{ color: 'var(--color-lit)', fontSize: 18, fontWeight: 700 }}>
+          Currently Reading
+        </h2>
+        {books.length > 0 && (
+          <span
+            className="ml-1"
+            style={{
+              backgroundColor: 'var(--color-grove)',
+              border: '1px solid var(--color-rim)',
+              borderRadius: 10,
+              padding: '2px 7px',
+              fontSize: 11,
+              fontWeight: 700,
+              color: 'var(--color-lit-2)',
+            }}
+          >
+            {books.length}
+          </span>
+        )}
       </div>
 
       <motion.div
@@ -51,109 +66,79 @@ export default function ReadingHero({ books, onUpdate }: ReadingHeroProps) {
           return (
             <div
               key={currentBook.id}
-              className="rounded-[28px] p-6 md:p-8"
               style={{
                 backgroundColor: 'var(--color-surface)',
                 border: '1px solid var(--color-rim)',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3)',
+                borderRadius: 16,
+                padding: 14,
+                display: 'flex',
+                gap: 14,
               }}
             >
-              <div className="flex flex-col md:flex-row gap-8 items-center md:items-start">
-                {/* Book Cover — portrait 2:3 */}
-                <motion.div
-                  className="w-36 sm:w-44 flex-none rounded-xl overflow-hidden shadow-2xl"
-                  style={{ aspectRatio: '2 / 3' }}
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
+              {/* Book Cover — 72px wide, 2:3 */}
+              <Link href={`/books/${book.id}`} className="flex-none">
+                <div
+                  className="overflow-hidden shadow-lg"
+                  style={{ width: 72, aspectRatio: '2 / 3', borderRadius: 10 }}
                 >
-                  <Link href={`/books/${book.id}`}>
-                    <BookCoverImage
-                      src={book.cover_image_url}
-                      title={book.title}
-                      author={book.author_name}
-                      size="large"
-                      className="w-full h-full"
-                      layoutId={`book-cover-${book.id}`}
-                    />
-                  </Link>
-                </motion.div>
-
-                {/* Book Info & Progress */}
-                <div className="flex-1 text-center md:text-left">
-                  <div className="mb-5">
-                    <h3 className="font-serif text-2xl md:text-3xl font-bold mb-1 leading-tight" style={{ color: 'var(--color-lit)' }}>
-                      {book.title}
-                    </h3>
-                    <p className="text-base italic" style={{ color: 'var(--color-lit-3)' }}>
-                      by {book.author_name}
-                    </p>
-                  </div>
-
-                  <div className="max-w-md mx-auto md:mx-0">
-                    {/* Progress label row */}
-                    <div className="flex justify-between items-end mb-2">
-                      <span className="text-sm font-semibold" style={{ color: 'var(--color-lit-2)' }}>
-                        Progress
-                      </span>
-                      <span className="text-sm font-bold" style={{ color: 'var(--color-accent)' }}>
-                        {completion_percentage}%
-                      </span>
-                    </div>
-
-                    {/* Progress bar */}
-                    <div
-                      className="w-full h-2.5 rounded-full overflow-hidden mb-3"
-                      style={{ backgroundColor: 'var(--color-grove)' }}
-                    >
-                      <motion.div
-                        className="h-full rounded-full"
-                        style={{
-                          background: 'linear-gradient(90deg, var(--color-accent-hover), var(--color-accent))',
-                          boxShadow: '0 0 10px rgba(201,168,76,0.3)',
-                        }}
-                        initial={{ width: 0 }}
-                        whileInView={{ width: `${completion_percentage}%` }}
-                        viewport={{ once: true }}
-                        transition={{ duration: 1, ease: 'easeOut', delay: 0.2 }}
-                      />
-                    </div>
-
-                    {/* Page info */}
-                    <div className="flex justify-between text-xs mb-7" style={{ color: 'var(--color-lit-3)' }}>
-                      <span>Page {pages_read || 0} of {totalPgs || '???'}</span>
-                      <span style={{ color: 'rgba(201,168,76,0.6)' }}>
-                        {pagesLeft !== null ? `${pagesLeft} pages left` : 'Keep reading!'}
-                      </span>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex flex-wrap gap-3 justify-center md:justify-start">
-                      <button
-                        className="inline-flex items-center justify-center px-7 py-2.5 rounded-xl font-semibold text-sm transition-all shadow-md"
-                        style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-accent-on)' }}
-                        onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--color-accent-hover)')}
-                        onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'var(--color-accent)')}
-                        onClick={() => handleOpenModal(currentBook)}
-                      >
-                        Update Progress
-                      </button>
-                      <Link href={`/books/${book.id}`}>
-                        <button
-                          className="inline-flex items-center justify-center px-7 py-2.5 rounded-xl font-semibold text-sm transition-all"
-                          style={{
-                            backgroundColor: 'var(--color-grove)',
-                            border: '1px solid var(--color-rim)',
-                            color: 'var(--color-lit)',
-                          }}
-                          onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--color-rim-accent)')}
-                          onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--color-rim)')}
-                        >
-                          Book Details
-                        </button>
-                      </Link>
-                    </div>
-                  </div>
+                  <BookCoverImage
+                    src={book.cover_image_url}
+                    title={book.title}
+                    author={book.author_name}
+                    size="medium"
+                    className="w-full h-full"
+                  />
                 </div>
+              </Link>
+
+              {/* Info column */}
+              <div className="flex-1 min-w-0 flex flex-col">
+                <h3
+                  className="line-clamp-2"
+                  style={{ color: 'var(--color-lit)', fontSize: 15, fontWeight: 700, lineHeight: '20px' }}
+                >
+                  {book.title}
+                </h3>
+                {book.author_name && (
+                  <p className="truncate mt-0.5" style={{ color: 'var(--color-lit-2)', fontSize: 12 }}>
+                    {book.author_name}
+                  </p>
+                )}
+
+                {/* Progress bar */}
+                <div
+                  className="w-full overflow-hidden mt-3 mb-1.5"
+                  style={{ height: 8, borderRadius: 999, backgroundColor: 'var(--color-grove)' }}
+                >
+                  <motion.div
+                    className="h-full"
+                    style={{ backgroundColor: 'var(--color-accent)', borderRadius: 999 }}
+                    initial={{ width: 0 }}
+                    whileInView={{ width: `${completion_percentage}%` }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 1, ease: 'easeOut', delay: 0.2 }}
+                  />
+                </div>
+
+                {/* Page count text */}
+                <div className="flex justify-between mb-3" style={{ fontSize: 11, color: 'var(--color-lit-3)' }}>
+                  <span>Page {pages_read || 0} of {totalPgs || '???'}</span>
+                  <span style={{ color: 'var(--color-accent)', fontWeight: 700 }}>
+                    {completion_percentage}%
+                    {pagesLeft !== null ? ` · ${pagesLeft} left` : ''}
+                  </span>
+                </div>
+
+                {/* Update Progress button */}
+                <button
+                  className="w-full inline-flex items-center justify-center font-semibold text-sm transition-all mt-auto"
+                  style={{ height: 44, borderRadius: 10, backgroundColor: 'var(--color-accent)', color: 'var(--color-accent-on)' }}
+                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--color-accent-hover)')}
+                  onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'var(--color-accent)')}
+                  onClick={() => handleOpenModal(currentBook)}
+                >
+                  Update Progress
+                </button>
               </div>
             </div>
           )

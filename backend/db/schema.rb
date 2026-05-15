@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_05_14_000004) do
+ActiveRecord::Schema[7.2].define(version: 2026_05_15_185850) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -394,6 +394,18 @@ ActiveRecord::Schema[7.2].define(version: 2026_05_14_000004) do
     t.index ["user_id"], name: "index_recommendations_on_user_id"
   end
 
+  create_table "release_reminders", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "upcoming_release_id", null: false
+    t.datetime "reminded_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["reminded_at"], name: "index_release_reminders_on_reminded_at"
+    t.index ["upcoming_release_id"], name: "index_release_reminders_on_upcoming_release_id"
+    t.index ["user_id", "upcoming_release_id"], name: "index_release_reminders_on_user_id_and_upcoming_release_id", unique: true
+    t.index ["user_id"], name: "index_release_reminders_on_user_id"
+  end
+
   create_table "scraped_books", force: :cascade do |t|
     t.string "title"
     t.string "author_name"
@@ -618,6 +630,8 @@ ActiveRecord::Schema[7.2].define(version: 2026_05_14_000004) do
   add_foreign_key "reading_buddy_sessions", "users", column: "initiator_id"
   add_foreign_key "reading_buddy_sessions", "users", column: "invited_id"
   add_foreign_key "recommendations", "users"
+  add_foreign_key "release_reminders", "upcoming_releases"
+  add_foreign_key "release_reminders", "users"
   add_foreign_key "user_books", "books"
   add_foreign_key "user_books", "users"
   add_foreign_key "user_books", "works"

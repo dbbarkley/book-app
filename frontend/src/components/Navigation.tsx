@@ -74,15 +74,14 @@ export default function Navigation() {
                   <Link
                     key={link.href}
                     href={link.href}
-                    className={`relative flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors duration-150 ${
-                      active ? 'text-accent-on' : 'text-lit hover:text-lit hover:bg-grove'
-                    }`}
+                    className="relative flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors duration-150"
+                    style={{ color: active ? 'var(--color-accent)' : '#6B6352' }}
                   >
                     {active && (
                       <motion.div
                         layoutId="nav-pill"
                         className="absolute inset-0 rounded-xl"
-                        style={{ backgroundColor: 'var(--color-accent)' }}
+                        style={{ backgroundColor: 'rgba(201,168,76,0.12)' }}
                         transition={{ type: 'spring', stiffness: 400, damping: 32 }}
                       />
                     )}
@@ -242,8 +241,8 @@ export default function Navigation() {
                       className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all"
                       style={
                         active
-                          ? { backgroundColor: 'var(--color-accent)', color: 'var(--color-accent-on)' }
-                          : { color: 'var(--color-lit)' }
+                          ? { backgroundColor: 'rgba(201,168,76,0.12)', color: 'var(--color-accent)' }
+                          : { color: '#6B6352' }
                       }
                       onMouseEnter={e => { if (!active) e.currentTarget.style.backgroundColor = 'var(--color-grove)' }}
                       onMouseLeave={e => { if (!active) e.currentTarget.style.backgroundColor = 'transparent' }}
@@ -253,7 +252,7 @@ export default function Navigation() {
                         {badge != null && (
                           <span
                             className="absolute -top-1.5 -right-1.5 min-w-[14px] h-[14px] rounded-full flex items-center justify-center text-[9px] font-bold px-0.5"
-                            style={{ backgroundColor: active ? 'white' : 'var(--color-accent)', color: active ? 'var(--color-accent)' : 'var(--color-accent-on)' }}
+                            style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-accent-on)' }}
                           >
                             {badge}
                           </span>

@@ -4,7 +4,9 @@ import { useEffect, useRef, useCallback } from 'react'
 import { Rss, Loader2, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
 import { useFeed } from '@book-app/shared'
+import type { FeedEntry } from '@book-app/shared'
 import FeedEntryCard from '@/components/FeedEntryCard'
+import EmptyState from '@/components/EmptyState'
 
 const labelStyle = {
   fontSize: 10,
@@ -12,6 +14,57 @@ const labelStyle = {
   letterSpacing: '0.1em',
   textTransform: 'uppercase' as const,
   color: 'var(--color-lit-3)',
+}
+
+// ── Date grouping ─────────────────────────────────────────────────────────────
+
+type DateGroup = { label: string; entries: FeedEntry[] }
+
+export function groupEntriesByDate(entries: FeedEntry[]): DateGroup[] {
+  const now = new Date()
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+  const startOfYesterday = startOfToday - 86_400_000
+  const startOfWeek = startOfToday - 6 * 86_400_000
+
+  const buckets: Record<string, FeedEntry[]> = {
+    Today: [], Yesterday: [], 'This week': [], Earlier: [],
+  }
+
+  for (const entry of entries) {
+    const t = new Date(entry.created_at).getTime()
+    if (t >= startOfToday) buckets['Today'].push(entry)
+    else if (t >= startOfYesterday) buckets['Yesterday'].push(entry)
+    else if (t >= startOfWeek) buckets['This week'].push(entry)
+    else buckets['Earlier'].push(entry)
+  }
+
+  return (['Today', 'Yesterday', 'This week', 'Earlier'] as const)
+    .filter((label) => buckets[label].length > 0)
+    .map((label) => ({ label, entries: buckets[label] }))
+}
+
+export function DateSeparator({ label, newCount }: { label: string; newCount: number }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 16, marginBottom: 10 }}>
+      <div style={{ flex: 1, height: 1, backgroundColor: 'var(--color-rim)' }} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-lit-3)', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+          {label}
+        </span>
+        {newCount > 0 && (
+          <span style={{
+            fontSize: 10, fontWeight: 700, color: 'var(--color-accent)',
+            backgroundColor: 'rgba(201,168,76,0.16)',
+            border: '1px solid rgba(201,168,76,0.33)',
+            borderRadius: 9999, padding: '2px 7px',
+          }}>
+            {newCount} new
+          </span>
+        )}
+      </div>
+      <div style={{ flex: 1, height: 1, backgroundColor: 'var(--color-rim)' }} />
+    </div>
+  )
 }
 
 export default function DashboardActivityFeed() {
@@ -98,29 +151,27 @@ export default function DashboardActivityFeed() {
 
       {/* ── Empty ──────────────────────────────────────────── */}
       {!loading && !error && entries.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
-          <div
-            className="w-14 h-14 rounded-full flex items-center justify-center"
-            style={{ backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-rim)' }}
-          >
-            <Rss size={22} style={{ color: 'var(--color-lit-3)' }} />
-          </div>
-          <div>
-            <p className="font-semibold text-sm mb-1" style={{ color: 'var(--color-lit)' }}>
-              Nothing here yet
-            </p>
-            <p className="text-sm max-w-xs" style={{ color: 'var(--color-lit-3)' }}>
-              Follow authors and connect with friends — their updates will appear here.
-            </p>
-          </div>
-        </div>
+        <EmptyState
+          icon={Rss}
+          title="Nothing here yet"
+          body="Follow authors and connect with friends — their updates will appear here."
+          size="sm"
+        />
       )}
 
       {/* ── Feed entries ────────────────────────────────────── */}
       {entries.length > 0 && (
         <div className="flex flex-col gap-3">
-          {entries.map((entry) => (
-            <FeedEntryCard key={entry.id} entry={entry} />
+          {groupEntriesByDate(entries).map((group) => (
+            <div key={group.label} className="flex flex-col gap-3">
+              <DateSeparator
+                label={group.label}
+                newCount={group.entries.filter((e) => e.new).length}
+              />
+              {group.entries.map((entry) => (
+                <FeedEntryCard key={entry.id} entry={entry} />
+              ))}
+            </div>
           ))}
 
           {/* Load more */}

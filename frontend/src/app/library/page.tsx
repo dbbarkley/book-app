@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
-import { Book as BookIcon, CheckCircle, XCircle, Lock, Search, X, Sparkles, Share2, ChevronRight } from 'lucide-react'
+import { Book as BookIcon, CheckCircle, XCircle, Lock, Search, X, Sparkles, Share2, ChevronRight, ArrowUpDown, Check } from 'lucide-react'
+import type { UserBook } from '@book-app/shared'
 import {
   useAuth,
   usePrivateLibrary,
@@ -16,6 +17,7 @@ import ReadingHero from '@/components/ReadingHero'
 import LibraryStats from '@/components/LibraryStats'
 import BookCard from '@/components/BookCard'
 import GoalSettingModal from '@/components/library/GoalSettingModal'
+import ReadingGoalCard from '@/components/ReadingGoalCard'
 import SuggestToFriendModal from '@/components/SuggestToFriendModal'
 import { BookCoverImage } from '@/components/BookCoverImage'
 import Avatar from '@/components/Avatar'
@@ -27,6 +29,31 @@ const SHELF_LABELS: Record<string, string> = {
   read:     'Completed',
   dnf:      'Did Not Finish',
   private:  'Private',
+}
+
+type LibrarySortKey = 'date_added' | 'title' | 'author' | 'rating'
+
+const LIBRARY_SORT_OPTIONS: { key: LibrarySortKey; label: string }[] = [
+  { key: 'date_added', label: 'Date Added' },
+  { key: 'title',      label: 'Title (A–Z)' },
+  { key: 'author',     label: 'Author (A–Z)' },
+  { key: 'rating',     label: 'Rating' },
+]
+
+function sortLibraryBooks(books: UserBook[], sortKey: LibrarySortKey): UserBook[] {
+  return [...books].sort((a, b) => {
+    switch (sortKey) {
+      case 'title':
+        return (a.book?.title ?? '').localeCompare(b.book?.title ?? '')
+      case 'author':
+        return (a.book?.author_name ?? '').localeCompare(b.book?.author_name ?? '')
+      case 'rating':
+        return (b.rating ?? 0) - (a.rating ?? 0)
+      case 'date_added':
+      default:
+        return (b.id ?? 0) - (a.id ?? 0)
+    }
+  })
 }
 
 export default function BooksLibraryPage() {
@@ -55,6 +82,8 @@ export default function BooksLibraryPage() {
   const [hasAttemptedModal, setHasAttemptedModal] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [suggestModal, setSuggestModal] = useState<{ bookId: number; bookTitle: string } | null>(null)
+  const [sortKey, setSortKey] = useState<LibrarySortKey>('date_added')
+  const [sortOpen, setSortOpen] = useState(false)
 
   useEffect(() => {
     if (isAuthenticated && !hasViewedMilestone('goal_set') && !hasAttemptedModal) {
@@ -73,10 +102,10 @@ export default function BooksLibraryPage() {
     refreshPrivateLibrary()
   }
 
-  const readingBooks = groupedLibrary?.reading || []
-  const toReadBooks  = groupedLibrary?.to_read  || []
-  const readBooks    = groupedLibrary?.read      || []
-  const dnfBooks     = groupedLibrary?.dnf       || []
+  const readingBooks = useMemo(() => sortLibraryBooks(groupedLibrary?.reading || [], sortKey), [groupedLibrary?.reading, sortKey])
+  const toReadBooks  = useMemo(() => sortLibraryBooks(groupedLibrary?.to_read || [], sortKey), [groupedLibrary?.to_read, sortKey])
+  const readBooks    = useMemo(() => sortLibraryBooks(groupedLibrary?.read || [], sortKey), [groupedLibrary?.read, sortKey])
+  const dnfBooks     = useMemo(() => sortLibraryBooks(groupedLibrary?.dnf || [], sortKey), [groupedLibrary?.dnf, sortKey])
 
   const currentYear = new Date().getFullYear()
   const readThisYear = readBooks.filter(ub => {
@@ -163,11 +192,60 @@ export default function BooksLibraryPage() {
               </p>
             )}
           </div>
-          <Link href="/search?type=books" className="flex-none">
-            <Button variant="primary" size="sm" className="shadow-md rounded-xl px-4 py-2 text-sm font-bold">
-              + Add Books
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2 flex-none">
+            {/* Sort button */}
+            <div className="relative">
+              <button
+                onClick={() => setSortOpen((o) => !o)}
+                aria-label="Sort library"
+                className="flex items-center justify-center"
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 12,
+                  background: 'var(--color-surface)',
+                  border: '1px solid var(--color-rim)',
+                }}
+              >
+                <ArrowUpDown size={14} style={{ color: 'var(--color-lit-2)' }} />
+              </button>
+
+              {sortOpen && (
+                <>
+                  {/* click-away backdrop */}
+                  <div className="fixed inset-0 z-10" onClick={() => setSortOpen(false)} />
+                  <div
+                    className="absolute right-0 top-full mt-1 z-20 rounded-xl py-1 min-w-[160px]"
+                    style={{
+                      backgroundColor: 'var(--color-surface)',
+                      border: '1px solid var(--color-rim)',
+                      boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+                    }}
+                  >
+                    {LIBRARY_SORT_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.key}
+                        onClick={() => { setSortKey(opt.key); setSortOpen(false) }}
+                        className="w-full flex items-center justify-between px-4 py-2 text-xs font-medium transition-colors"
+                        style={{
+                          color: sortKey === opt.key ? 'var(--color-accent)' : 'var(--color-lit-2)',
+                        }}
+                      >
+                        {opt.label}
+                        {sortKey === opt.key && <Check size={13} style={{ color: 'var(--color-accent)' }} />}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
+            <Link href="/search?type=books">
+              <Button variant="primary" size="sm" className="shadow-md rounded-xl px-4 py-2 text-sm font-bold">
+                + Add Books
+              </Button>
+            </Link>
+          </div>
         </div>
 
         {/* Search bar */}
@@ -216,6 +294,15 @@ export default function BooksLibraryPage() {
             )}
           </div>
         )}
+
+        {/* Reading Goal card */}
+        <div className="mb-6">
+          <ReadingGoalCard
+            goal={readingGoal}
+            completed={readThisYear}
+            onEdit={() => setIsGoalModalOpen(true)}
+          />
+        </div>
 
         {/* Stats */}
         <LibraryStats stats={stats} goal={readingGoal} onGoalClick={() => setIsGoalModalOpen(true)} />

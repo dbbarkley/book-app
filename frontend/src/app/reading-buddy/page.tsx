@@ -18,63 +18,54 @@ function CompareBar({
   partnerPct: number
   partnerName: string
 }) {
+  const partnerFirstName = partnerName.split(' ')[0]
+  const rows = [
+    { label: 'You', pct: myPct, color: 'var(--color-accent)' },
+    { label: partnerFirstName, pct: partnerPct, color: '#7B8EC4' },
+  ]
   return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-2">
-        <span
-          className="text-[9px] font-bold uppercase tracking-widest w-14 flex-none"
-          style={{ color: 'var(--color-accent)' }}
-        >
-          You
-        </span>
-        <div
-          className="flex-1 h-[3px] rounded-full overflow-hidden"
-          style={{ backgroundColor: 'var(--color-rim)' }}
-        >
-          <div
-            className="h-full rounded-full"
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 4 }}>
+      {rows.map(({ label, pct, color }) => (
+        <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span
+            className="truncate"
             style={{
-              width: `${Math.max(myPct, 1)}%`,
-              background: 'linear-gradient(90deg, var(--color-accent-hover), var(--color-accent))',
-              transition: 'width 0.8s cubic-bezier(0.32,0.72,0,1)',
+              width: 38,
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: '0.3px',
+              textTransform: 'uppercase',
+              color,
             }}
-          />
-        </div>
-        <span
-          className="text-[10px] font-bold tabular-nums w-8 text-right flex-none"
-          style={{ color: 'var(--color-accent)' }}
-        >
-          {myPct}%
-        </span>
-      </div>
-
-      <div className="flex items-center gap-2">
-        <span
-          className="text-[9px] font-bold uppercase tracking-widest w-14 flex-none truncate"
-          style={{ color: 'var(--color-success)' }}
-        >
-          {partnerName.split(' ')[0]}
-        </span>
-        <div
-          className="flex-1 h-[3px] rounded-full overflow-hidden"
-          style={{ backgroundColor: 'var(--color-rim)' }}
-        >
+          >
+            {label}
+          </span>
           <div
-            className="h-full rounded-full"
             style={{
-              width: `${Math.max(partnerPct, 1)}%`,
-              background: 'linear-gradient(90deg, #3d7a5e, var(--color-success))',
-              transition: 'width 0.8s cubic-bezier(0.32,0.72,0,1)',
+              flex: 1,
+              height: 4,
+              borderRadius: 2,
+              backgroundColor: 'rgba(237,228,220,0.1)',
+              overflow: 'hidden',
             }}
-          />
+          >
+            <div
+              style={{
+                width: `${Math.max(pct, 1)}%`,
+                height: '100%',
+                borderRadius: 2,
+                backgroundColor: color,
+                transition: 'width 0.8s cubic-bezier(0.32,0.72,0,1)',
+              }}
+            />
+          </div>
+          <span
+            style={{ width: 28, fontSize: 11, fontWeight: 700, textAlign: 'right', color }}
+          >
+            {pct}%
+          </span>
         </div>
-        <span
-          className="text-[10px] font-bold tabular-nums w-8 text-right flex-none"
-          style={{ color: 'var(--color-success)' }}
-        >
-          {partnerPct}%
-        </span>
-      </div>
+      ))}
     </div>
   )
 }
@@ -116,42 +107,31 @@ function SessionCard({
       }}
     >
       <Link href={`/reading-buddy/${session.id}`} className="block group">
-        {/* Outer bezel shell */}
+        {/* Session card */}
         <div
+          className="flex items-start"
           style={{
-            borderRadius: '22px',
-            padding: '5px',
-            background: isActive
-              ? 'linear-gradient(135deg, rgba(201,168,76,0.16) 0%, rgba(201,168,76,0.03) 100%)'
-              : 'rgba(237,224,196,0.03)',
-            border: isActive
-              ? '1px solid rgba(201,168,76,0.2)'
-              : '1px solid rgba(237,224,196,0.07)',
+            background: 'var(--color-surface)',
+            borderRadius: 16,
+            border: `1px solid ${isActive ? 'rgba(201,168,76,0.45)' : 'var(--color-rim)'}`,
+            padding: 14,
+            gap: 12,
+            boxShadow: isActive
+              ? '0 2px 12px rgba(0,0,0,0.2), 0 0 16px rgba(201,168,76,0.06)'
+              : '0 2px 12px rgba(0,0,0,0.2)',
             transition: 'box-shadow 0.3s cubic-bezier(0.32,0.72,0,1)',
-            boxShadow: '0 2px 12px rgba(0,0,0,0.2)',
           }}
-          className="group-hover:shadow-[0_6px_28px_rgba(0,0,0,0.35)]"
         >
-          {/* Inner core */}
-          <div
-            className="px-4 py-4 flex items-start gap-4"
-            style={{
-              borderRadius: '18px',
-              background: 'var(--color-surface)',
-              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
-              transition: 'background 0.2s',
-            }}
-          >
             {/* Book cover */}
             <div className="flex-none">
               {session.book.cover_image_url ? (
                 <div
                   className="overflow-hidden group-hover:scale-[1.02] transition-transform duration-300"
                   style={{
-                    width: 52,
-                    height: 78,
-                    borderRadius: '5px 2px 2px 5px',
-                    boxShadow: '3px 5px 18px rgba(0,0,0,0.55), inset -2px 0 5px rgba(0,0,0,0.3)',
+                    width: 64,
+                    aspectRatio: '2/3',
+                    borderRadius: 8,
+                    boxShadow: '3px 5px 18px rgba(0,0,0,0.45)',
                   }}
                 >
                   <img
@@ -164,9 +144,9 @@ function SessionCard({
                 <div
                   className="flex items-center justify-center"
                   style={{
-                    width: 52,
-                    height: 78,
-                    borderRadius: '5px 2px 2px 5px',
+                    width: 64,
+                    aspectRatio: '2/3',
+                    borderRadius: 8,
                     background: 'var(--color-grove)',
                     boxShadow: '3px 5px 18px rgba(0,0,0,0.4)',
                   }}
@@ -235,7 +215,6 @@ function SessionCard({
                 <CompareBar myPct={myPct} partnerPct={ptnPct} partnerName={partnerName} />
               )}
             </div>
-          </div>
         </div>
       </Link>
     </motion.div>
@@ -246,24 +225,20 @@ function SessionCard({
 function SkeletonCard() {
   return (
     <div
-      className="animate-pulse"
+      className="animate-pulse flex items-start"
       style={{
-        borderRadius: '22px',
-        padding: '5px',
-        background: 'rgba(237,224,196,0.03)',
-        border: '1px solid rgba(237,224,196,0.06)',
+        borderRadius: 16,
+        padding: 14,
+        gap: 12,
+        background: 'var(--color-surface)',
+        border: '1px solid var(--color-rim)',
       }}
     >
-      <div
-        className="px-4 py-4 flex items-start gap-4"
-        style={{ borderRadius: '18px', background: 'var(--color-surface)' }}
-      >
-        <div style={{ width: 52, height: 78, borderRadius: '5px', background: 'var(--color-grove)', flexShrink: 0 }} />
-        <div className="flex-1 space-y-3 pt-1">
-          <div className="h-4 rounded-full w-3/4" style={{ background: 'var(--color-grove)' }} />
-          <div className="h-3 rounded-full w-2/5" style={{ background: 'var(--color-grove)' }} />
-          <div className="h-3 rounded-full w-1/2" style={{ background: 'var(--color-grove)' }} />
-        </div>
+      <div style={{ width: 64, aspectRatio: '2/3', borderRadius: 8, background: 'var(--color-grove)', flexShrink: 0 }} />
+      <div className="flex-1 space-y-3 pt-1">
+        <div className="h-4 rounded-full w-3/4" style={{ background: 'var(--color-grove)' }} />
+        <div className="h-3 rounded-full w-2/5" style={{ background: 'var(--color-grove)' }} />
+        <div className="h-3 rounded-full w-1/2" style={{ background: 'var(--color-grove)' }} />
       </div>
     </div>
   )

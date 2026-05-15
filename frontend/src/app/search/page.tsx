@@ -15,17 +15,15 @@ import BookCard from '@/components/BookCard'
 import Button from '@/components/Button'
 import Avatar from '@/components/Avatar'
 import BarcodeScannerModal from '@/components/BarcodeScannerModal'
-import UpcomingReleasesSection from '@/components/UpcomingReleasesSection'
+import { BookCoverImage } from '@/components/BookCoverImage'
 import Link from 'next/link'
 import {
   Search, Users, BookOpen, X, AlertCircle,
-  BookMarked, Newspaper, Eye, Zap, Heart, Rocket,
+  Newspaper, Eye, Zap, Heart, Rocket,
   Wand2, Skull, Landmark, User, PenLine, TrendingUp,
   Briefcase, Brain, Feather, Star, Smile, LayoutGrid,
   ScanLine, CalendarDays, ChevronRight,
 } from 'lucide-react'
-
-type ActiveFeature = 'upcoming' | null
 
 type SearchType = 'books' | 'people'
 
@@ -51,6 +49,28 @@ const GENRE_ICONS: Record<string, React.ElementType> = {
   'graphic-novel':LayoutGrid,
 }
 
+// Per-genre accent colors — used for category tile icon backgrounds and borders.
+const GENRE_COLORS: Record<string, string> = {
+  'fiction':       '#5B7FA6',
+  'non-fiction':   '#5A9B72',
+  'mystery':       '#8B6CC7',
+  'thriller':      '#C9A84C',
+  'romance':       '#D4872A',
+  'sci-fi':        '#5B7FA6',
+  'fantasy':       '#8B6CC7',
+  'horror':        '#A14B4B',
+  'historical':    '#A07830',
+  'biography':     '#5A9B72',
+  'memoir':        '#6BAD8B',
+  'self-help':     '#5A9B72',
+  'business':      '#5B7FA6',
+  'philosophy':    '#8B6CC7',
+  'poetry':        '#D4872A',
+  'young-adult':   '#C9A84C',
+  'children':      '#6BAD8B',
+  'graphic-novel': '#8B6CC7',
+}
+
 function SearchContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -66,7 +86,6 @@ function SearchContent() {
   const [searchInput, setSearchInput] = useState(initialQuery)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const [scannerOpen, setScannerOpen] = useState(false)
-  const [activeFeature, setActiveFeature] = useState<ActiveFeature>(null)
 
   // Genre browsing state — separate from text search
   const [selectedGenre, setSelectedGenre] = useState<{ id: string; name: string } | null>(null)
@@ -186,10 +205,13 @@ function SearchContent() {
               onChange={e => handleSearchChange(e.target.value)}
 
               placeholder={activeTab === 'books' ? 'Search titles, authors, ISBN…' : 'Search readers by name or username…'}
-              className="w-full pl-12 pr-10 py-3.5 rounded-2xl text-base font-medium outline-none transition-all"
+              className="w-full pl-12 text-base font-medium outline-none transition-all"
               style={{
+                height: 48,
+                paddingRight: activeTab === 'books' ? 52 : 44,
+                borderRadius: 14,
                 backgroundColor: 'var(--color-grove)',
-                border: '2px solid var(--color-rim)',
+                border: '1px solid var(--color-rim)',
                 color: 'var(--color-lit)',
               }}
               onFocus={e => (e.currentTarget.style.borderColor = 'var(--color-accent)')}
@@ -210,32 +232,46 @@ function SearchContent() {
               <button
                 onClick={() => setScannerOpen(true)}
                 title="Scan book barcode"
-                className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-full transition-all"
-                style={{ color: 'var(--color-lit-3)' }}
-                onMouseEnter={e => (e.currentTarget.style.color = 'var(--color-accent)')}
-                onMouseLeave={e => (e.currentTarget.style.color = 'var(--color-lit-3)')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center justify-center transition-all"
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 10,
+                  backgroundColor: 'rgba(201,168,76,0.12)',
+                  color: 'var(--color-accent)',
+                }}
               >
-                <ScanLine size={18} />
+                <ScanLine size={16} />
               </button>
             )}
           </div>
 
-          {/* Tabs */}
-          <div className="flex items-center gap-2">
+          {/* Segment toggle (Books / People) */}
+          <div
+            style={{
+              display: 'flex',
+              backgroundColor: 'var(--color-surface)',
+              border: '1px solid var(--color-rim)',
+              borderRadius: 12,
+              padding: 3,
+            }}
+          >
             {tabs.map(tab => {
-              const Icon = tab.icon
               const active = activeTab === tab.id
               return (
                 <button
                   key={tab.id}
                   onClick={() => handleTabChange(tab.id)}
-                  className="flex items-center gap-2 px-5 py-2 rounded-full font-bold text-sm transition-all"
-                  style={active
-                    ? { backgroundColor: 'var(--color-accent)', color: 'var(--color-accent-on)' }
-                    : { backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-rim)', color: 'var(--color-lit-2)' }
-                  }
+                  style={{
+                    flex: 1,
+                    padding: '8px 0',
+                    borderRadius: 10,
+                    backgroundColor: active ? 'var(--color-grove)' : 'transparent',
+                    color: active ? 'var(--color-lit)' : 'var(--color-lit-2)',
+                    fontSize: 13,
+                    fontWeight: 600,
+                  }}
                 >
-                  <Icon size={15} />
                   {tab.label}
                 </button>
               )
@@ -296,102 +332,87 @@ function SearchContent() {
         {!isSearching && !selectedGenre && (
           <div className="space-y-10">
 
-            {/* ── Upcoming Releases feature card ── */}
-            <button
-              onClick={() => setActiveFeature(f => f === 'upcoming' ? null : 'upcoming')}
-              className="group relative overflow-hidden rounded-3xl p-6 text-left transition-all w-full"
+            {/* ── Upcoming Releases entry card ── */}
+            <Link
+              href="/upcoming-releases"
+              className="flex items-center gap-3 transition-all w-full"
               style={{
-                backgroundColor:  'var(--color-surface)',
-                border:           activeFeature === 'upcoming'
-                                    ? '2px solid var(--color-accent)'
-                                    : '2px solid var(--color-rim)',
-                boxShadow:        activeFeature === 'upcoming'
-                                    ? '0 0 32px rgba(var(--color-accent-rgb, 200,150,80), 0.2)'
-                                    : '0 4px 24px rgba(0,0,0,0.4)',
-              }}
-              onMouseEnter={e => {
-                if (activeFeature !== 'upcoming')
-                  e.currentTarget.style.borderColor = 'var(--color-rim-accent)'
-              }}
-              onMouseLeave={e => {
-                if (activeFeature !== 'upcoming')
-                  e.currentTarget.style.borderColor = 'var(--color-rim)'
+                backgroundColor: 'var(--color-surface)',
+                borderRadius: 16,
+                border: '1px solid rgba(74,124,89,0.375)',
+                padding: 14,
               }}
             >
               <div
-                className="absolute inset-0 opacity-10 pointer-events-none"
-                style={{ background: 'radial-gradient(ellipse at bottom right, var(--color-accent) 0%, transparent 70%)' }}
-              />
-              <div className="relative space-y-3">
-                <div
-                  className="w-11 h-11 rounded-2xl flex items-center justify-center"
-                  style={{ backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-rim)', color: 'var(--color-accent)' }}
-                >
-                  <CalendarDays size={22} />
-                </div>
-                <div>
-                  <h3 className="font-serif text-lg font-bold leading-tight" style={{ color: 'var(--color-lit)' }}>
-                    Upcoming Releases
-                  </h3>
-                  <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--color-lit-3)' }}>
-                    What's publishing in the next 90 days
-                  </p>
-                </div>
-                <div className="flex items-center gap-1 text-xs font-bold" style={{ color: 'var(--color-accent)' }}>
-                  {activeFeature === 'upcoming' ? 'Hide' : 'Browse'}
-                  <ChevronRight size={13} className={`transition-transform ${activeFeature === 'upcoming' ? 'rotate-90' : ''}`} />
-                </div>
-              </div>
-            </button>
-
-            {/* ── Expanded upcoming panel ── */}
-            {activeFeature === 'upcoming' && (
-              <motion.div
-                key="upcoming"
-                initial={{ opacity: 0, y: -8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                className="rounded-3xl p-6"
-                style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-rim)' }}
+                className="flex items-center justify-center flex-shrink-0"
+                style={{
+                  width: 42,
+                  height: 42,
+                  borderRadius: 13,
+                  background: 'rgba(74,124,89,0.2)',
+                }}
               >
-                <h3 className="font-serif text-lg font-bold mb-5 flex items-center gap-2" style={{ color: 'var(--color-lit)' }}>
-                  <CalendarDays size={18} style={{ color: 'var(--color-accent)' }} /> Upcoming Releases
+                <CalendarDays size={22} style={{ color: '#6BAD8B' }} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 style={{ color: 'var(--color-lit)', fontSize: 15, fontWeight: 700 }}>
+                  Upcoming Releases
                 </h3>
-                <UpcomingReleasesSection />
-              </motion.div>
-            )}
+                <p style={{ color: 'var(--color-lit-3)', fontSize: 11, marginTop: 2 }}>
+                  Browse by week or month · Filter by genre
+                </p>
+              </div>
+              <ChevronRight size={18} style={{ color: 'var(--color-lit-3)' }} className="flex-shrink-0" />
+            </Link>
 
-            {/* ── Explore Genres ── */}
+            {/* ── Browse Categories ── */}
             <section>
-              <h2 className="font-serif text-xl font-bold mb-5 flex items-center gap-2" style={{ color: 'var(--color-lit)' }}>
-                <BookMarked size={20} style={{ color: 'var(--color-accent)' }} />
-                Explore Genres
+              <h2
+                style={{
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: 'var(--color-lit-2)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.8px',
+                  marginBottom: 12,
+                }}
+              >
+                Browse Categories
               </h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+              <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                 {mockGenres.map(genre => {
                   const Icon = GENRE_ICONS[genre.id] || BookOpen
+                  const color = GENRE_COLORS[genre.id] || 'var(--color-accent)'
                   return (
                     <button
                       key={genre.id}
                       onClick={() => handleGenreSelect(genre)}
-                      className="group flex flex-col items-center justify-center gap-3 h-28 rounded-2xl transition-all"
+                      className="flex flex-col transition-all"
                       style={{
                         backgroundColor: 'var(--color-surface)',
-                        border: '1px solid var(--color-rim)',
+                        border: `1px solid ${color}40`,
+                        borderRadius: 16,
+                        padding: 12,
+                        gap: 6,
+                        alignItems: 'flex-start',
                         boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
                       }}
-                      onMouseEnter={e => {
-                        e.currentTarget.style.borderColor = 'var(--color-rim-accent)'
-                        e.currentTarget.style.transform = 'translateY(-2px)'
-                      }}
-                      onMouseLeave={e => {
-                        e.currentTarget.style.borderColor = 'var(--color-rim)'
-                        e.currentTarget.style.transform = 'translateY(0)'
-                      }}
                     >
-                      <Icon size={22} style={{ color: 'var(--color-accent)' }} />
-                      <span className="text-xs font-bold uppercase tracking-wider text-center px-2 leading-tight" style={{ color: 'var(--color-lit)' }}>
+                      <div
+                        className="flex items-center justify-center"
+                        style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: 10,
+                          backgroundColor: `${color}22`,
+                        }}
+                      >
+                        <Icon size={20} style={{ color }} />
+                      </div>
+                      <span
+                        className="text-left"
+                        style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-lit)', lineHeight: '16px' }}
+                      >
                         {genre.name}
                       </span>
                     </button>
@@ -450,9 +471,61 @@ function SearchContent() {
                   </div>
                 ) : books.length > 0 ? (
                   <>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                      {books.map(book => (
-                        <BookCard key={book.google_books_id || book.id} book={book} showDescription={false} coverSize="medium" />
+                    {/* List-view rows — cover + info, navigates to detail */}
+                    <div>
+                      {books.map((book, i) => (
+                        <div key={book.google_books_id || book.id || i}>
+                          {i > 0 && (
+                            <div style={{ height: 1, backgroundColor: 'var(--color-rim)' }} />
+                          )}
+                          <button
+                            onClick={() => router.push(`/books/${book.google_books_id ?? book.id}`)}
+                            className="w-full flex items-center text-left"
+                            style={{ gap: 12, padding: '12px 0' }}
+                          >
+                            {/* Cover */}
+                            <div
+                              className="flex-none overflow-hidden shadow-md"
+                              style={{ width: 52, aspectRatio: '2/3', borderRadius: 8 }}
+                            >
+                              <BookCoverImage
+                                src={book.cover_image_url}
+                                title={book.title}
+                                author={book.author_name}
+                                size="small"
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                            {/* Info */}
+                            <div className="flex-1 min-w-0">
+                              <p className="truncate" style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-lit)' }}>
+                                {book.title}
+                              </p>
+                              {book.author_name && (
+                                <p className="truncate" style={{ fontSize: 12, color: 'var(--color-lit-2)' }}>
+                                  {book.author_name}
+                                </p>
+                              )}
+                              {book.release_date && (
+                                <p style={{ fontSize: 11, color: 'var(--color-lit-3)' }}>
+                                  {String(book.release_date).slice(0, 4)}
+                                </p>
+                              )}
+                            </div>
+                            {/* Action */}
+                            <span
+                              className="flex items-center justify-center flex-none"
+                              style={{
+                                width: 44,
+                                height: 44,
+                                borderRadius: 9999,
+                                backgroundColor: 'var(--color-accent)',
+                              }}
+                            >
+                              <ChevronRight size={18} style={{ color: 'var(--color-accent-on)' }} />
+                            </span>
+                          </button>
+                        </div>
                       ))}
                     </div>
                     {hasMoreBooks && (

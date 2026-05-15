@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { motion, Variants } from 'framer-motion'
 import { useAuth, useFollows, useFriends, useUserLists, useUserList } from '@book-app/shared'
-import { Settings, RefreshCw, BarChart2, Heart, Users, List, Pencil } from 'lucide-react'
+import { Settings, RefreshCw, BarChart2, Heart, Users } from 'lucide-react'
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -19,10 +19,12 @@ import { apiClient } from '@book-app/shared'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import { formatNumber } from '@/utils/format'
 import type { User, Follow, FriendshipStatus } from '@book-app/shared'
-import AuthorCard from '@/components/AuthorCard'
 import BookCard from '@/components/BookCard'
 import Button from '@/components/Button'
 import Avatar from '@/components/Avatar'
+import SocialStatPill from '@/components/SocialStatPill'
+import SocialTabBar from '@/components/SocialTabBar'
+import UserListsCard from '@/components/UserListsCard'
 import UserLibrary from '@/components/UserLibrary'
 import GenreChart from '@/components/charts/GenreChart'
 import TopAuthorsChart from '@/components/charts/TopAuthorsChart'
@@ -68,7 +70,7 @@ function UserProfileContent() {
   const [readingStats, setReadingStats] = useState<ReadingStats | null>(null)
 
   // Lists
-  const { top10, refresh: refreshLists } = useUserLists(isNaN(userId) ? undefined : userId)
+  const { lists, top10, refresh: refreshLists } = useUserLists(isNaN(userId) ? undefined : userId)
   const { toggleLike: toggleTop10Like } = useUserList(
     isNaN(userId) ? undefined : userId,
     top10 ? top10.id : undefined
@@ -242,79 +244,103 @@ function UserProfileContent() {
         )}
 
         {/* ── Header Card ── */}
-        <motion.div variants={itemVariants} className="rounded-[28px] p-6 sm:p-8" style={cardStyle}>
-          <div className="flex flex-col sm:flex-row gap-6">
-            <div className="flex-shrink-0 mx-auto sm:mx-0">
-              <Avatar src={user.avatar_url} name={user.display_name || user.username} size="2xl" />
-            </div>
-            <div className="flex-1 text-center sm:text-left">
-              <h1 className="font-serif text-3xl sm:text-4xl font-bold mb-1" style={{ color: 'var(--color-lit)' }}>
-                {user.display_name || user.username}
-              </h1>
-              {user.display_name && (
-                <p className="mb-4 text-sm" style={{ color: 'var(--color-lit-2)' }}>@{user.username}</p>
-              )}
-
-              {stats && (
-                <div className="flex flex-wrap justify-center sm:justify-start gap-3 mb-6">
-                  <div
-                    className="px-3 py-1.5 rounded-full text-sm"
-                    style={{ backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-rim)' }}
-                  >
-                    <span className="font-bold" style={{ color: 'var(--color-lit)' }}>
-                      {formatNumber(friendsCount)}
-                    </span>
-                    <span style={{ color: 'var(--color-lit-2)' }}> friends</span>
-                  </div>
-                  <div
-                    className="px-3 py-1.5 rounded-full text-sm"
-                    style={{ backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-rim)' }}
-                  >
-                    <span className="font-bold" style={{ color: 'var(--color-lit)' }}>
-                      {formatNumber(stats.followers_count)}
-                    </span>
-                    <span style={{ color: 'var(--color-lit-2)' }}> followers</span>
-                  </div>
-                  <div
-                    className="px-3 py-1.5 rounded-full text-sm"
-                    style={{ backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-rim)' }}
-                  >
-                    <span className="font-bold" style={{ color: 'var(--color-lit)' }}>
-                      {formatNumber(stats.following_count)}
-                    </span>
-                    <span style={{ color: 'var(--color-lit-2)' }}> following</span>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex flex-wrap justify-center sm:justify-start gap-3">
-                {!isOwnProfile && (
-                  <>
-                    <FriendButton
-                      userId={userId}
-                      initialStatus={profileData.friendship?.status ?? 'none'}
-                      initialFriendshipId={profileData.friendship?.friendship_id ?? null}
-                    />
-                    {profileData.currentUserFollow && (
-                      <Button
-                        variant={alreadyFollowing ? 'secondary' : 'primary'}
-                        onClick={handleFollowToggle}
-                        isLoading={followLoading}
-                        disabled={followLoading}
-                      >
-                        {alreadyFollowing ? '✓ Following' : '+ Follow'}
-                      </Button>
-                    )}
-                  </>
-                )}
-                {isOwnProfile && (
-                  <Button variant="outline" onClick={() => router.push('/settings')} className="flex items-center gap-2">
-                    <Settings size={15} />
-                    Settings
-                  </Button>
-                )}
+        <motion.div
+          variants={itemVariants}
+          style={{
+            backgroundColor: 'var(--color-surface)',
+            border: '1px solid var(--color-rim)',
+            borderRadius: 20,
+            padding: 16,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 14,
+          }}
+        >
+          {/* Top row: avatar + info */}
+          <div className="flex gap-4">
+            <div className="flex-shrink-0">
+              <div className="w-[72px] h-[72px]">
+                <Avatar src={user.avatar_url} name={user.display_name || user.username} size="lg" className="w-full h-full" />
               </div>
             </div>
+            <div className="flex-1 min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--color-lit)', letterSpacing: '-0.5px' }}>
+                {user.display_name || user.username}
+              </h1>
+              <p style={{ fontSize: 13, color: 'var(--color-lit-2)' }}>@{user.username}</p>
+              {user.bio && (
+                <p
+                  className="line-clamp-3"
+                  style={{ fontSize: 13, color: 'var(--color-lit-2)', lineHeight: '18px' }}
+                >
+                  {user.bio}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Stats row */}
+          {stats && (
+            <div className="flex gap-2">
+              <SocialStatPill value={formatNumber(friendsCount)} label="Friends" />
+              <SocialStatPill value={formatNumber(stats.followers_count)} label="Followers" />
+              <SocialStatPill value={formatNumber(stats.following_count)} label="Following" />
+            </div>
+          )}
+
+          {/* Action buttons row */}
+          <div className="flex flex-wrap gap-3">
+            {!isOwnProfile && (
+              <>
+                <FriendButton
+                  userId={userId}
+                  initialStatus={profileData.friendship?.status ?? 'none'}
+                  initialFriendshipId={profileData.friendship?.friendship_id ?? null}
+                />
+                {profileData.currentUserFollow && (
+                  <Button
+                    variant={alreadyFollowing ? 'secondary' : 'primary'}
+                    onClick={handleFollowToggle}
+                    isLoading={followLoading}
+                    disabled={followLoading}
+                  >
+                    {alreadyFollowing ? '✓ Following' : '+ Follow'}
+                  </Button>
+                )}
+              </>
+            )}
+            {isOwnProfile && (
+              <>
+                <button
+                  onClick={() => router.push('/settings')}
+                  style={{
+                    flex: 1,
+                    backgroundColor: 'var(--color-accent)',
+                    color: 'var(--color-accent-on)',
+                    borderRadius: 12,
+                    padding: '9px 0',
+                    fontWeight: 700,
+                    fontSize: 14,
+                  }}
+                >
+                  Edit Profile
+                </button>
+                <button
+                  onClick={() => router.push('/settings')}
+                  aria-label="Settings"
+                  className="flex items-center justify-center flex-shrink-0"
+                  style={{
+                    width: 38,
+                    height: 38,
+                    borderRadius: 12,
+                    background: 'var(--color-grove)',
+                    border: '1px solid var(--color-rim)',
+                  }}
+                >
+                  <Settings size={16} style={{ color: 'var(--color-lit-2)' }} />
+                </button>
+              </>
+            )}
           </div>
         </motion.div>
 
@@ -354,12 +380,12 @@ function UserProfileContent() {
           ) : (hasGenres || hasAuthors) ? (
             <div className="grid sm:grid-cols-2 gap-5">
               {hasGenres && (
-                <div className="rounded-[28px] p-6 sm:p-8" style={cardStyle}>
+                <div style={{ ...cardStyle, borderRadius: 16, padding: 18 }}>
                   <GenreChart data={readingStats!.genres} />
                 </div>
               )}
               {hasAuthors && (
-                <div className="rounded-[28px] p-6 sm:p-8" style={cardStyle}>
+                <div style={{ ...cardStyle, borderRadius: 16, padding: 18 }}>
                   <TopAuthorsChart data={readingStats!.top_authors} />
                 </div>
               )}
@@ -394,122 +420,15 @@ function UserProfileContent() {
           </motion.div>
         )}
 
-        {/* ── Top 10 ── */}
-        {(top10 || isOwnProfile) && (
-          <motion.div variants={itemVariants} className="rounded-[28px] p-6 sm:p-8" style={cardStyle}>
-            {/* Header */}
-            <div className="flex items-center justify-between mb-5">
-              <div className="flex items-center gap-2">
-                <List size={18} style={{ color: 'var(--color-accent)' }} />
-                <h3 className="font-serif text-lg font-bold" style={{ color: 'var(--color-lit)' }}>
-                  My Top 10
-                </h3>
-                {top10 && top10.likes_count > 0 && (
-                  <span
-                    className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold"
-                    style={{
-                      backgroundColor: 'var(--color-grove)',
-                      border: '1px solid var(--color-rim)',
-                      color: 'var(--color-accent)',
-                    }}
-                  >
-                    ♥ {top10.likes_count}
-                  </span>
-                )}
-              </div>
-              {isOwnProfile ? (
-                <button
-                  onClick={() => router.push('/settings?tab=lists')}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors"
-                  style={{
-                    backgroundColor: 'var(--color-grove)',
-                    border: '1px solid var(--color-rim)',
-                    color: 'var(--color-lit-2)',
-                  }}
-                >
-                  <Pencil size={12} />
-                  Edit List
-                </button>
-              ) : top10 && (
-                <button
-                  onClick={toggleTop10Like}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors"
-                  style={{
-                    backgroundColor: top10.liked_by_current_user ? 'var(--color-accent)' : 'var(--color-grove)',
-                    border: `1px solid ${top10.liked_by_current_user ? 'var(--color-accent)' : 'var(--color-rim)'}`,
-                    color: top10.liked_by_current_user ? 'var(--color-accent-on)' : 'var(--color-lit-2)',
-                  }}
-                >
-                  {top10.liked_by_current_user ? '♥ Liked' : '♡ Like'}
-                </button>
-              )}
-            </div>
-
-            {/* Empty state */}
-            {(!top10 || !top10.items || top10.items.length === 0) && (
-              <div className="text-center py-10">
-                <p className="text-sm" style={{ color: 'var(--color-lit-3)' }}>
-                  {isOwnProfile
-                    ? 'You haven\'t added any books yet.'
-                    : 'This user hasn\'t added any books yet.'}
-                </p>
-                {isOwnProfile && (
-                  <button
-                    onClick={() => router.push('/settings?tab=lists')}
-                    className="mt-4 px-4 py-2 rounded-xl text-sm font-bold transition-colors"
-                    style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-accent-on)' }}
-                  >
-                    Add Books
-                  </button>
-                )}
-              </div>
-            )}
-
-            {/* Grid */}
-            {top10?.items && top10.items.length > 0 && (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {top10.items.map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => router.push(`/books/${item.book.google_books_id ?? item.book.id}`)}
-                    className="group text-left"
-                  >
-                    <div className="relative mb-2">
-                      {/* Rank badge */}
-                      <span
-                        className="absolute top-2 left-2 z-10 px-1.5 py-0.5 rounded text-xs font-black"
-                        style={{
-                          backgroundColor: item.position === 1 ? 'rgba(255,180,0,0.9)' : 'rgba(0,0,0,0.65)',
-                          color: item.position === 1 ? '#1a1000' : '#fff',
-                        }}
-                      >
-                        #{item.position}
-                      </span>
-                      {item.book.cover_image_url ? (
-                        <img
-                          src={item.book.cover_image_url}
-                          alt={item.book.title}
-                          className="w-full aspect-[2/3] object-cover rounded-xl group-hover:opacity-90 transition-opacity"
-                        />
-                      ) : (
-                        <div
-                          className="w-full aspect-[2/3] rounded-xl flex items-center justify-center text-xs font-bold p-2 text-center"
-                          style={{ backgroundColor: 'var(--color-grove)', color: 'var(--color-lit-3)' }}
-                        >
-                          {item.book.title}
-                        </div>
-                      )}
-                    </div>
-                    <p className="text-xs font-semibold line-clamp-2 leading-snug" style={{ color: 'var(--color-lit)' }}>
-                      {item.book.title}
-                    </p>
-                    <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--color-lit-3)' }}>
-                      {item.book.author_name}
-                    </p>
-                  </button>
-                ))}
-              </div>
-            )}
+        {/* ── Lists (Top 10 + custom) ── */}
+        {(top10 || lists.length > 0 || isOwnProfile) && (
+          <motion.div variants={itemVariants}>
+            <UserListsCard
+              lists={lists}
+              top10={top10}
+              isOwnProfile={isOwnProfile}
+              onToggleTop10Like={toggleTop10Like}
+            />
           </motion.div>
         )}
 
@@ -519,39 +438,20 @@ function UserProfileContent() {
         </motion.div>
 
         {/* ── Friends / Following / Followers ── */}
-        <motion.div variants={itemVariants} className="rounded-[28px] overflow-hidden" style={cardStyle}>
+        <motion.div variants={itemVariants} className="rounded-[28px]" style={{ ...cardStyle, padding: 16 }}>
           {/* Tab bar */}
-          <div
-            className="flex px-2 pt-2 gap-1"
-            style={{ borderBottom: '1px solid var(--color-rim)' }}
-          >
-            {(['friends', 'following', 'followers'] as const).map(tab => {
-              const active = activeTab === tab
-              const count =
-                tab === 'friends' ? friendsCount :
-                tab === 'following' ? following.length :
-                followers.length
-              return (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className="relative px-5 py-3 text-sm font-bold capitalize transition-colors rounded-t-xl"
-                  style={{ color: active ? 'var(--color-accent)' : 'var(--color-lit-2)' }}
-                >
-                  {tab} <span style={{ color: active ? 'var(--color-accent)' : 'var(--color-lit-3)' }}>({count})</span>
-                  {active && (
-                    <span
-                      className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full"
-                      style={{ backgroundColor: 'var(--color-accent)' }}
-                    />
-                  )}
-                </button>
-              )
-            })}
-          </div>
+          <SocialTabBar
+            activeTab={activeTab}
+            onSelect={(t) => setActiveTab(t)}
+            tabs={[
+              { key: 'friends',   label: 'Friends',   count: friendsCount },
+              { key: 'following', label: 'Following', count: following.length },
+              { key: 'followers', label: 'Followers', count: followers.length },
+            ]}
+          />
 
           {/* Tab content */}
-          <div className="p-5">
+          <div>
 
             {/* Friends tab */}
             {activeTab === 'friends' && (
@@ -606,7 +506,46 @@ function UserProfileContent() {
                 <div className="space-y-3">
                   {following.map(f => {
                     if (f.followable_type === 'Author' && f.followable) {
-                      return <AuthorCard key={f.id} author={f.followable as any} showFollowButton={!isOwnProfile} />
+                      const author = f.followable as any
+                      return (
+                        <button
+                          key={f.id}
+                          onClick={() => author.id && router.push(`/authors/${author.id}`)}
+                          className="w-full flex items-center text-left"
+                          style={{
+                            backgroundColor: 'var(--color-grove)',
+                            border: '1px solid var(--color-rim)',
+                            borderRadius: 14,
+                            padding: '10px 12px',
+                            gap: 10,
+                          }}
+                        >
+                          <span
+                            className="flex-shrink-0"
+                            style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: 'var(--color-accent)' }}
+                          />
+                          <span
+                            className="flex-1 min-w-0 truncate"
+                            style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-lit)' }}
+                          >
+                            {author.name}
+                          </span>
+                          <span
+                            className="flex-shrink-0"
+                            style={{
+                              backgroundColor: 'var(--color-surface)',
+                              border: '1px solid var(--color-rim)',
+                              borderRadius: 9999,
+                              padding: '2px 8px',
+                              fontSize: 11,
+                              fontWeight: 700,
+                              color: 'var(--color-lit-2)',
+                            }}
+                          >
+                            Author
+                          </span>
+                        </button>
+                      )
                     }
                     if (f.followable_type === 'Book' && f.followable) {
                       return <BookCard key={f.id} book={f.followable as any} showDescription={true} />
