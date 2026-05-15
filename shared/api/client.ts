@@ -735,6 +735,17 @@ export class ApiClient {
     return response.data
   }
 
+  async createReleaseReminder(upcomingReleaseId: number): Promise<{ id: number }> {
+    const response = await this.client.post<{ id: number }>('/release_reminders', {
+      upcoming_release_id: upcomingReleaseId,
+    })
+    return response.data
+  }
+
+  async deleteReleaseReminder(reminderId: number): Promise<void> {
+    await this.client.delete(`/release_reminders/${reminderId}`)
+  }
+
   // Notification endpoints
   async getNotifications() {
     const response = await this.client.get<{ notifications: Notification[] }>('/notifications')

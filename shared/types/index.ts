@@ -500,6 +500,7 @@ export interface UpcomingRelease {
   msrp:            number | null
   pages:           number | null   // page count from ISBNdb
   days_until:      number | null   // days from today until release
+  reminder_id:     number | null
 }
 
 export interface UpcomingReleasesMeta {
