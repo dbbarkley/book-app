@@ -18,4 +18,10 @@ RSpec.describe ReleaseReminder, type: :model do
     duplicate = build(:release_reminder, user: reminder.user, upcoming_release: reminder.upcoming_release)
     expect(duplicate).not_to be_valid
   end
+
+  it 'is enforced at the database level' do
+    reminder = create(:release_reminder)
+    duplicate = build(:release_reminder, user: reminder.user, upcoming_release: reminder.upcoming_release)
+    expect { duplicate.save(validate: false) }.to raise_error(ActiveRecord::RecordNotUnique)
+  end
 end
