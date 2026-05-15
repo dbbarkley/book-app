@@ -18,8 +18,11 @@ module Api
         reminder = current_user.release_reminders.find_by(id: params[:id])
         return render json: { error: 'Reminder not found' }, status: :not_found unless reminder
 
-        reminder.destroy
-        head :no_content
+        if reminder.destroy
+          head :no_content
+        else
+          render json: { errors: reminder.errors.full_messages }, status: :unprocessable_entity
+        end
       end
     end
   end
