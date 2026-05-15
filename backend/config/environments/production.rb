@@ -8,6 +8,16 @@ Rails.application.configure do
   config.log_level = :info
   config.log_tags = [ :request_id ]
   config.action_mailer.perform_caching = false
+  config.action_mailer.delivery_method = :smtp
+  config.action_mailer.smtp_settings = {
+    address:              ENV.fetch('SMTP_HOST',     'smtp.sendgrid.net'),
+    port:                 ENV.fetch('SMTP_PORT',     '587').to_i,
+    user_name:            ENV.fetch('SMTP_USERNAME', ''),
+    password:             ENV.fetch('SMTP_PASSWORD', ''),
+    authentication:       :plain,
+    enable_starttls_auto: true,
+  }
+  config.action_mailer.default_url_options = { host: ENV.fetch('FRONTEND_URL', 'https://libraio.app') }
 
   # Use Redis as the cache store so author_works (and other Rails.cache calls)
   # persist across dynos and survive deploys. Falls back to memory_store if

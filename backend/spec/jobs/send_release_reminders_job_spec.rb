@@ -1,8 +1,12 @@
 require 'rails_helper'
 
 RSpec.describe SendReleaseRemindersJob, type: :job do
-  before { ActiveJob::Base.queue_adapter = :test }
-  after  { ActiveJob::Base.queue_adapter = :sidekiq }
+  around do |example|
+    orig = ActiveJob::Base.queue_adapter
+    ActiveJob::Base.queue_adapter = :test
+    example.run
+    ActiveJob::Base.queue_adapter = orig
+  end
 
   describe '#perform' do
     let(:user_a) { create(:user) }

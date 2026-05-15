@@ -6,6 +6,6 @@ Hi <%= @user.display_name.presence || @user.username %>,
 - <%= release.title %> by <%= release.authors.first %>
 <% end %>
 
-View all upcoming releases: <%= ENV.fetch('FRONTEND_URL', 'http://localhost:3001') %>/upcoming-releases
+View all upcoming releases: <%= ENV.fetch('FRONTEND_URL', 'http://localhost:3002') %>/upcoming-releases
 
 © <%= Time.current.year %> Libraio

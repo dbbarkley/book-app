@@ -15,10 +15,11 @@
       queue: low_priority
       description: "Deletes feed items older than 90 days to keep the table lean"
     send_release_reminders:
-      cron: "0 8 * * *"  # Daily at 8:00 AM
+      cron: "0 8 * * *"  # Daily at 8:00 AM UTC
       class: SendReleaseRemindersJob
       queue: default
       description: "Sends day-before release reminders to users who set the bell"
+      timezone: "UTC"
     # scrape_new_releases:
     #   cron: "0 3 */3 * *" # Every 3 days at 3:00 AM (disabled — replaced by ISBNdb)
     #   class: ScrapeNewReleasesJob
