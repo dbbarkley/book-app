@@ -38,6 +38,7 @@ export default function UpcomingReleaseCard({ book }: UpcomingReleaseCardProps) 
   const { label: dateLabel, urgent } = formatReleaseDate(book.date_published, book.days_until)
 
   const [reminderId, setReminderId] = useState<number | null>(book.reminder_id ?? null)
+  const [pending, setPending] = useState(false)
 
   const isUnreleased = book.days_until !== null && book.days_until > 0
 
@@ -47,23 +48,29 @@ export default function UpcomingReleaseCard({ book }: UpcomingReleaseCardProps) 
 
   const handleBellClick = async (e: React.MouseEvent) => {
     e.stopPropagation()
+    if (pending) return
 
     if (reminderId !== null) {
       const prev = reminderId
       setReminderId(null)
+      setPending(true)
       try {
         await apiClient.deleteReleaseReminder(prev)
       } catch {
         setReminderId(prev)
+      } finally {
+        setPending(false)
       }
     } else {
-      const tempId = -1
-      setReminderId(tempId)
+      setReminderId(-1)
+      setPending(true)
       try {
         const { id } = await apiClient.createReleaseReminder(book.id)
         setReminderId(id)
       } catch {
         setReminderId(null)
+      } finally {
+        setPending(false)
       }
     }
   }
@@ -143,6 +150,8 @@ export default function UpcomingReleaseCard({ book }: UpcomingReleaseCardProps) 
           {isUnreleased && (
             <button
               onClick={handleBellClick}
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') e.stopPropagation() }}
+              disabled={pending}
               aria-label={reminderId !== null ? 'Remove reminder' : 'Set reminder'}
               className="ml-auto opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity p-1 rounded-full"
               style={{ color: reminderId !== null ? 'var(--color-accent)' : 'var(--color-lit-3)' }}
