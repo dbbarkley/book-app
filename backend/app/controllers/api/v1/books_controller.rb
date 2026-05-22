@@ -126,7 +126,11 @@ module Api
         # 3. Live fallback — fetch directly from Google Books API and cache
         book_data = fetch_google_book(google_books_id)
         if book_data
-          BookCatalog.upsert_book(book_data.transform_keys(&:to_sym).merge(source: 'google_books'))
+          begin
+            BookCatalog.upsert_book(book_data.transform_keys(&:to_sym).merge(source: 'google_books'))
+          rescue => e
+            Rails.logger.warn("[show_by_google] catalog write failed: #{e.message}")
+          end
           render json: { book: book_data }, status: :ok
         else
           render json: { error: 'Book not found' }, status: :not_found
@@ -262,6 +266,20 @@ module Api
           )
           book.update_column(:work_id, work.id)
         end
+
+        # Keep catalog current regardless of whether book was found or created
+        BookCatalog.upsert_book({
+          google_books_id: book.google_books_id,
+          isbn:            book.isbn,
+          title:           book.title,
+          author_name:     book.author&.name,
+          cover_image_url: book.cover_image_url,
+          description:     book.description,
+          published_date:  book.release_date&.to_s,
+          page_count:      book.page_count,
+          categories:      book.categories,
+          source:          'ensure_book',
+        })
 
         render json: { id: book.id, title: book.title }, status: :ok
       rescue => e

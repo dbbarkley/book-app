@@ -50,6 +50,27 @@ RSpec.describe 'Api::V1::Books', type: :request do
     end
   end
 
+  describe 'POST /api/v1/books/ensure (catalog write)' do
+    let(:user)    { create(:user) }
+    let(:token)   { JwtService.encode_access(user.id) }
+    let(:headers) { { 'Authorization' => "Bearer #{token}" } }
+
+    it 'upserts the book into book_catalog' do
+      expect {
+        post '/api/v1/books/ensure', params: {
+          title:           'New Book',
+          author_name:     'New Author',
+          google_books_id: 'gb_ensure_test',
+          cover_image_url: 'https://example.com/cover.jpg',
+          release_date:    '2024-01-01',
+        }, headers: headers
+      }.to change(BookCatalog, :count).by(1)
+
+      expect(response).to have_http_status(:ok)
+      expect(BookCatalog.find_by(google_books_id: 'gb_ensure_test')).not_to be_nil
+    end
+  end
+
   describe 'POST /api/v1/books/catalog_bulk_upsert' do
     let(:books_payload) do
       [

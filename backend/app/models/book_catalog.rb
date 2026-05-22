@@ -64,6 +64,11 @@ class BookCatalog < ApplicationRecord
       average_rating:  average_rating,
       ratings_count:   ratings_count,
       categories:      categories || [],
+      # Fields present in serialize_book_detail but not in catalog — send nil/zero
+      # so the frontend can safely access them without undefined-access errors.
+      author_id:       nil,
+      author:          nil,
+      followers_count: 0,
     }
   end
 
