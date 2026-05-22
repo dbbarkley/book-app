@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_05_15_185850) do
+ActiveRecord::Schema[7.2].define(version: 2026_05_22_180811) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -71,6 +71,29 @@ ActiveRecord::Schema[7.2].define(version: 2026_05_15_185850) do
     t.index ["data_source"], name: "index_bisac_categories_on_data_source"
     t.index ["display_order"], name: "index_bisac_categories_on_display_order"
     t.index ["parent_code"], name: "index_bisac_categories_on_parent_code"
+  end
+
+  create_table "book_catalog", force: :cascade do |t|
+    t.string "google_books_id", null: false
+    t.string "isbn"
+    t.string "title", null: false
+    t.string "author_name"
+    t.string "cover_image_url"
+    t.text "description"
+    t.string "published_date"
+    t.integer "page_count"
+    t.decimal "average_rating", precision: 3, scale: 2
+    t.integer "ratings_count", default: 0, null: false
+    t.jsonb "categories", default: [], null: false
+    t.string "source"
+    t.datetime "cached_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.virtual "search_vector", type: :tsvector, as: "to_tsvector('english'::regconfig, (((COALESCE(title, ''::character varying))::text || ' '::text) || (COALESCE(author_name, ''::character varying))::text))", stored: true
+    t.index ["cached_at"], name: "index_book_catalog_on_cached_at"
+    t.index ["google_books_id"], name: "index_book_catalog_on_google_books_id", unique: true
+    t.index ["isbn"], name: "index_book_catalog_on_isbn", unique: true, where: "(isbn IS NOT NULL)"
+    t.index ["search_vector"], name: "index_book_catalog_on_search_vector", using: :gin
   end
 
   create_table "book_suggestions", force: :cascade do |t|
@@ -348,10 +371,23 @@ ActiveRecord::Schema[7.2].define(version: 2026_05_15_185850) do
     t.integer "char_end", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.text "note"
+    t.text "moods", default: [], array: true
+    t.boolean "spoiler_lock", default: false, null: false
     t.index ["reading_buddy_session_id", "created_at"], name: "index_rb_highlights_on_session_and_created"
     t.index ["reading_buddy_session_id", "page_number"], name: "index_rb_highlights_on_session_and_page"
     t.index ["reading_buddy_session_id"], name: "index_reading_buddy_highlights_on_reading_buddy_session_id"
     t.index ["user_id"], name: "index_reading_buddy_highlights_on_user_id"
+  end
+
+  create_table "reading_buddy_message_reactions", force: :cascade do |t|
+    t.bigint "reading_buddy_message_id", null: false
+    t.bigint "user_id", null: false
+    t.string "emoji", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["reading_buddy_message_id", "user_id", "emoji"], name: "idx_rb_msg_reactions_unique", unique: true
+    t.index ["user_id"], name: "index_reading_buddy_message_reactions_on_user_id"
   end
 
   create_table "reading_buddy_messages", force: :cascade do |t|
@@ -624,6 +660,8 @@ ActiveRecord::Schema[7.2].define(version: 2026_05_15_185850) do
   add_foreign_key "imports", "users"
   add_foreign_key "reading_buddy_highlights", "reading_buddy_sessions"
   add_foreign_key "reading_buddy_highlights", "users"
+  add_foreign_key "reading_buddy_message_reactions", "reading_buddy_messages"
+  add_foreign_key "reading_buddy_message_reactions", "users"
   add_foreign_key "reading_buddy_messages", "reading_buddy_sessions"
   add_foreign_key "reading_buddy_messages", "users"
   add_foreign_key "reading_buddy_sessions", "books"
