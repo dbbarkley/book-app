@@ -84,53 +84,50 @@ export function useBookDetails(
       // If the cache misses (hard-refresh / direct link), we try a live title search
       // via our proxy so the page still works without a stale URL.
       if (bookIdOrBook.startsWith('ol_')) {
+        // Check Zustand cache first (populated when user navigated from a results page).
         const cached = getSearchResultByGoogleId(bookIdOrBook)
         if (cached) {
           setBook(cached)
           setLoading(false)
           return
         }
-        // Cache miss — attempt a live search using the OL works API through our proxy.
-        // If that also fails we surface a helpful error rather than a blank page.
+        // Cache miss — OL IDs are stored in book_catalog.google_books_id, so
+        // show_by_google can resolve them. Try the backend before any live fallback.
         setLoading(true)
         setError(null)
         try {
-          const olWorkId = bookIdOrBook.replace(/^ol_/, '') // e.g. "OL1234W"
-          const olRes = await fetch(`https://openlibrary.org/works/${olWorkId}.json`)
+          const bookData = await apiClient.getBookByGoogleId(bookIdOrBook)
+          setBook(bookData)
+          if (bookData?.id && bookData.id > 0) {
+            setResolvedInternalId(bookData.id)
+            try { await fetchUserBook(bookData.id) } catch { /* not on shelf */ }
+          }
+          setLoading(false)
+          return
+        } catch {
+          // Not in book_catalog yet — fall through to live OL lookup.
+        }
+        try {
+          const olWorkId = bookIdOrBook.replace(/^ol_/, '') // e.g. "41943074W"
+          const olRes = await fetch(`https://openlibrary.org/works/OL${olWorkId}.json`)
           if (olRes.ok) {
             const olData = await olRes.json()
             const title = olData.title as string | undefined
             if (title) {
-              // Use our search proxy (Google Books primary, OL fallback) to get
-              // a properly-structured book with a stable ID.
-              const params = new URLSearchParams({ q: `intitle:"${title}"`, maxResults: '1', type: 'books' })
-              const origin = (typeof window !== 'undefined' && window.location != null) ? window.location.origin : ''
-              const token = apiClient.getToken()
-              const searchRes = await fetch(`${origin}/api/books/search?${params}`, {
-                headers: token ? { Authorization: `Bearer ${token}` } : {},
-              })
-              if (searchRes.ok) {
-                const searchData = await searchRes.json()
-                const item = searchData.items?.[0]
-                if (item?.volumeInfo) {
-                  const v = item.volumeInfo
-                  const resolved: Book = {
-                    id: null,
-                    title: v.title || title,
-                    author_name: (v.authors || []).join(', '),
-                    description: v.description,
-                    cover_image_url: v.imageLinks?.thumbnail || v.imageLinks?.smallThumbnail,
-                    release_date: v.publishedDate,
-                    page_count: v.pageCount,
-                    isbn: v.industryIdentifiers?.find((x: any) => x.type === 'ISBN_13')?.identifier ||
-                          v.industryIdentifiers?.find((x: any) => x.type === 'ISBN_10')?.identifier,
-                    google_books_id: item.id,
-                  }
-                  setBook(resolved)
-                  setLoading(false)
-                  return
-                }
+              const resolved: Book = {
+                id: null,
+                google_books_id: bookIdOrBook,
+                title,
+                author_name: undefined,
+                cover_image_url: undefined,
+                description: undefined,
+                release_date: undefined,
+                page_count: undefined,
+                isbn: undefined,
               }
+              setBook(resolved)
+              setLoading(false)
+              return
             }
           }
         } catch {
