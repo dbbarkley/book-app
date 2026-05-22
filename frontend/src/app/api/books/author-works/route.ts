@@ -75,9 +75,8 @@ async function fetchFromOpenLibrary(author: string, excludeTitle: string) {
     .sort((a, b) => ((b.readinglog_count || 0) + (b.ratings_count || 0)) - ((a.readinglog_count || 0) + (a.ratings_count || 0)))
     .slice(0, 20)
     .map(doc => ({
-      // Normalize OL work key "/works/OL12345W" → "ol_OL12345W" so it matches
-      // the format used throughout the app and resolves via show_by_google.
-      key:              `ol_${(doc.key as string).replace('/works/', '')}`,
+      // Normalize OL work key "/works/OL12345W" → "ol_12345W" for clean URLs.
+      key:              `ol_${(doc.key as string).replace('/works/OL', '')}`,
       title:            doc.title,
       year:             doc.first_publish_year || null,
       cover_url:        `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg`,
