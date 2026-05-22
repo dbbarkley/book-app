@@ -2,6 +2,30 @@ import { NextRequest, NextResponse } from 'next/server'
 
 const GOOGLE_BOOKS_BASE = 'https://www.googleapis.com/books/v1'
 const OPEN_LIBRARY_BASE = 'https://openlibrary.org'
+const RAILS_API         = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1'
+
+type Work = { key: string; title: string; year: number | null; cover_url: string | null; author_name?: string; ratings_average: number | null; readinglog_count: number }
+
+/** Write fetched author works to book_catalog so show_by_google can resolve them. */
+function writeToCatalog(works: Work[], author: string): void {
+  const books = works
+    .filter(w => w.key && w.title && w.cover_url)
+    .map(w => ({
+      google_books_id: w.key,
+      title:           w.title,
+      author_name:     author,
+      cover_image_url: w.cover_url,
+      published_date:  w.year ? String(w.year) : null,
+    }))
+
+  if (books.length === 0) return
+
+  fetch(`${RAILS_API}/books/catalog_bulk_upsert`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ books, source: 'google_books' }),
+  }).catch(err => console.warn('[author-works catalog write]', err))
+}
 
 // ── Primary: Google Books ─────────────────────────────────────────────────────
 
@@ -47,13 +71,16 @@ async function fetchFromOpenLibrary(author: string, excludeTitle: string) {
 
   return data
     .filter(doc => doc.title?.toLowerCase() !== excludeTitle)
+    .filter(doc => doc.cover_i)
     .sort((a, b) => ((b.readinglog_count || 0) + (b.ratings_count || 0)) - ((a.readinglog_count || 0) + (a.ratings_count || 0)))
     .slice(0, 20)
     .map(doc => ({
-      key:              doc.key,
+      // Normalize OL work key "/works/OL12345W" → "ol_OL12345W" so it matches
+      // the format used throughout the app and resolves via show_by_google.
+      key:              `ol_${(doc.key as string).replace('/works/', '')}`,
       title:            doc.title,
       year:             doc.first_publish_year || null,
-      cover_url:        doc.cover_i ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg` : null,
+      cover_url:        `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg`,
       ratings_average:  doc.ratings_average ? Math.round(doc.ratings_average * 10) / 10 : null,
       readinglog_count: doc.readinglog_count || 0,
     }))
@@ -70,6 +97,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const works = await fetchFromGoogleBooks(author, excludeTitle)
+    writeToCatalog(works, author)
     return NextResponse.json({ works, _source: 'google_books' })
   } catch (err) {
     console.warn('[author-works] Google Books failed, falling back to Open Library:', err)
@@ -77,6 +105,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const works = await fetchFromOpenLibrary(author, excludeTitle)
+    writeToCatalog(works, author)
     return NextResponse.json({ works, _source: 'open_library' })
   } catch (err) {
     console.error('[author-works] Both sources failed:', err)
