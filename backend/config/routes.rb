@@ -73,6 +73,10 @@ Rails.application.routes.draw do
         end
       end
       
+      # Circle (social aggregation)
+      get 'circle/trending',     to: 'circle#trending'
+      get 'circle/genre_reads',  to: 'circle#genre_reads'
+
       # Feed
       get  'feed',             to: 'feed#index'
       post 'feed/mark_viewed', to: 'feed#mark_viewed'
@@ -107,6 +111,8 @@ Rails.application.routes.draw do
           get  'by_isbn/:isbn',              action: :show_by_isbn,   constraints: { isbn: /\d{10,13}/ }
           get  'author_works', action: :author_works
           get  'genre',        action: :genre
+          get  'catalog_search',       action: :catalog_search
+          post 'catalog_bulk_upsert',  action: :catalog_bulk_upsert
           post 'ensure',       action: :ensure_book
         end
       end
@@ -135,7 +141,13 @@ Rails.application.routes.draw do
                 only: [:index, :create, :show, :update] do
         resources :reading_buddy_messages,
                   path: 'messages',
-                  only: [:create]
+                  only: [:create] do
+          resources :reading_buddy_message_reactions,
+                    path: 'reactions',
+                    only: [] do
+            collection { post :toggle }
+          end
+        end
         resources :reading_buddy_highlights,
                   path: 'highlights',
                   only: [:index, :create]

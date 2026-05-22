@@ -5,35 +5,50 @@ module Api
   module V1
     class BooksController < ApplicationController
       include Authenticable
-      skip_before_action :authenticate_user!, only: [:index, :show, :show_by_google, :show_by_isbn, :author_works, :genre]
+      skip_before_action :authenticate_user!, only: [
+        :index, :show, :show_by_google, :show_by_isbn,
+        :author_works, :genre, :catalog_search, :catalog_bulk_upsert
+      ]
       # Disable Rails ParamsWrapper so POST bodies are accessible as flat params
       # (e.g. params[:title]) instead of being nested under params[:book].
       wrap_parameters false
 
+      # ── Catalog constants ─────────────────────────────────────────────────────
+
+      CATALOG_SOURCES = %w[google_books hardcover nyt open_library curated ensure_book serp unknown].freeze
+
       # ── Genre constants ────────────────────────────────────────────────────────
 
       NYT_LIST_MAP = {
-        'fiction'      => 'combined-print-and-e-book-fiction',
-        'non-fiction'  => 'combined-print-and-e-book-nonfiction',
-        'mystery'      => 'mysteries-thrillers',
-        'thriller'     => 'mysteries-thrillers',
-        'self-help'    => 'advice-how-to-and-miscellaneous',
-        'business'     => 'business-books',
-        'young-adult'  => 'young-adult',
-        'children'     => 'childrens-middle-grade',
-        'graphic-novel'=> 'graphic-books-and-manga',
+        'fiction'          => 'combined-print-and-e-book-fiction',
+        'non-fiction'      => 'combined-print-and-e-book-nonfiction',
+        'mystery'          => 'mysteries-thrillers',
+        'thriller'         => 'mysteries-thrillers',
+        'mystery-thriller' => 'mysteries-thrillers',
+        'self-help'        => 'advice-how-to-and-miscellaneous',
+        'business'         => 'business-books',
+        'young-adult'      => 'young-adult',
+        'children'         => 'childrens-middle-grade',
+        'graphic-novel'    => 'graphic-books-and-manga',
+        'graphic-novels'   => 'graphic-books-and-manga',
       }.freeze
 
       OL_SUBJECT_MAP = {
-        'romance'    => 'romance',
-        'sci-fi'     => 'science_fiction',
-        'fantasy'    => 'fantasy',
-        'horror'     => 'horror',
-        'historical' => 'historical_fiction',
-        'biography'  => 'biography',
-        'memoir'     => 'autobiography',
-        'philosophy' => 'philosophy',
-        'poetry'     => 'poetry',
+        'romance'             => 'romance',
+        'sci-fi'              => 'science_fiction',
+        'science-fiction'     => 'science_fiction',
+        'fantasy'             => 'fantasy',
+        'horror'              => 'horror',
+        'historical'          => 'historical_fiction',
+        'historical-fiction'  => 'historical_fiction',
+        'literary-fiction'    => 'fiction',
+        'biography'           => 'biography',
+        'memoir'              => 'autobiography',
+        'philosophy'          => 'philosophy',
+        'poetry'              => 'poetry',
+        'young-adult'         => 'young_adult',
+        'self-help'           => 'self_help',
+        'graphic-novels'      => 'comics_and_graphic_novels',
       }.freeze
 
       def index
@@ -157,6 +172,43 @@ module Api
         else
           render json: { error: 'Book not found' }, status: :not_found
         end
+      end
+
+      # GET /api/v1/books/catalog_search?q=<query>&limit=<n>
+      # Unauthenticated — returns public book metadata from book_catalog.
+      def catalog_search
+        q     = params[:q].to_s.strip
+        limit = params[:limit].to_i
+        limit = 20 if limit < 1
+        limit = [limit, 40].min
+
+        return render json: { books: [], count: 0 } if q.blank?
+
+        books = BookCatalog.search(q, limit: limit).map(&:to_api_hash)
+        render json: { books: books, count: books.size }
+      end
+
+      # POST /api/v1/books/catalog_bulk_upsert
+      # Called by the Next.js proxy (fire-and-forget) to write Google Books results
+      # into the catalog. Unauthenticated — only writes public book metadata.
+      def catalog_bulk_upsert
+        source = params[:source].to_s.presence
+        source = 'google_books' unless CATALOG_SOURCES.include?(source)
+
+        raw_books = params[:books]
+        unless raw_books.is_a?(Array) || raw_books.respond_to?(:to_unsafe_h)
+          return render json: { ok: false, error: 'books must be an array' }, status: :bad_request
+        end
+
+        books = Array(raw_books).map do |b|
+          b.respond_to?(:to_unsafe_h) ? b.to_unsafe_h.symbolize_keys : b.to_h.symbolize_keys
+        end
+
+        BookCatalog.upsert_many(books, source: source)
+        render json: { ok: true, count: books.size }
+      rescue => e
+        Rails.logger.error("[catalog_bulk_upsert] #{e.class}: #{e.message}\n#{e.backtrace.first(5).join("\n")}")
+        render json: { ok: false }, status: :unprocessable_entity
       end
 
       # POST /api/v1/books/ensure
@@ -295,7 +347,7 @@ module Api
         end
 
         # Open Library fallback (or primary for non-NYT genres)
-        ol_subject = OL_SUBJECT_MAP[genre_id] || genre_id.gsub(/\s+/, '_')
+        ol_subject = OL_SUBJECT_MAP[genre_id] || genre_id.gsub(/[\s-]+/, '_')
         begin
           books = fetch_genre_from_open_library(ol_subject)
           render json: { books: books, _source: 'open_library' }
