@@ -16,6 +16,77 @@ async function fetchWithRetry(url: string, retries = MAX_RETRIES): Promise<Respo
   return res
 }
 
+const RAILS_API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1'
+
+/** Query the local book_catalog via Rails. Returns items in volumeInfo envelope shape. */
+async function searchCatalog(q: string, limit: number): Promise<any[]> {
+  try {
+    const url = `${RAILS_API}/books/catalog_search?q=${encodeURIComponent(q)}&limit=${limit}`
+    const res = await fetch(url, { next: { revalidate: 30 } })
+    if (!res.ok) return []
+    const data = await res.json()
+    const books: any[] = data.books || []
+    // Wrap catalog records back into the volumeInfo envelope so transformBook() in
+    // googleBooksService.ts handles them identically to live Google Books results.
+    return books.map((b: any) => ({
+      id: b.google_books_id,
+      volumeInfo: {
+        title:       b.title,
+        authors:     b.author_name ? [b.author_name] : [],
+        publishedDate: b.release_date,
+        pageCount:   b.page_count,
+        description: b.description,
+        imageLinks:  b.cover_image_url
+          ? { thumbnail: b.cover_image_url, smallThumbnail: b.cover_image_url }
+          : undefined,
+        industryIdentifiers: b.isbn
+          ? [{ type: 'ISBN_13', identifier: b.isbn }]
+          : [],
+        categories:       b.categories || [],
+        averageRating:    b.average_rating,
+        ratingsCount:     b.ratings_count,
+      },
+      _source: 'catalog',
+    }))
+  } catch {
+    return []
+  }
+}
+
+/** Write Google Books items to the catalog (fire-and-forget — never awaited). */
+function writeToCatalog(items: any[]): void {
+  const books = items
+    .filter((item: any) => item.id && item.volumeInfo?.title)
+    .map((item: any) => {
+      const v = item.volumeInfo || {}
+      const isbn =
+        v.industryIdentifiers?.find((x: any) => x.type === 'ISBN_13')?.identifier ||
+        v.industryIdentifiers?.find((x: any) => x.type === 'ISBN_10')?.identifier ||
+        null
+      return {
+        google_books_id: item.id,
+        isbn,
+        title:           v.title,
+        author_name:     (v.authors || [])[0] || null,
+        cover_image_url: v.imageLinks?.thumbnail?.replace('http://', 'https://') || null,
+        description:     v.description || null,
+        published_date:  v.publishedDate || null,
+        page_count:      v.pageCount || null,
+        average_rating:  v.averageRating || null,
+        ratings_count:   v.ratingsCount || 0,
+        categories:      v.categories || [],
+      }
+    })
+
+  if (books.length === 0) return
+
+  fetch(`${RAILS_API}/books/catalog_bulk_upsert`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ books, source: 'google_books' }),
+  }).catch((err) => console.warn('[catalog write-through]', err))
+}
+
 function stripHtml(raw: string | undefined | null): string | undefined {
   if (!raw) return undefined
   return raw
@@ -196,6 +267,17 @@ export async function GET(req: NextRequest) {
   const isbnMatch = q.match(/^isbn:(\d[\d\-]+\d)$/i)
   if (isbnMatch) return handleIsbnSearch(isbnMatch[1])
 
+  // ── Catalog-first (books only) ────────────────────────────────────────────
+  // Check our local Postgres catalog before hitting Google Books.
+  // If we have enough results, return them immediately — zero API quota used.
+  let catalogItems: any[] = []
+  if (type === 'books') {
+    catalogItems = await searchCatalog(q, maxResults)
+    if (catalogItems.length >= maxResults) {
+      return NextResponse.json({ items: catalogItems, _source: 'catalog' })
+    }
+  }
+
   // ── Primary: Google Books ─────────────────────────────────────────────────
   // Best-in-class for specific title/author/ISBN searches. Handles typos,
   // partial titles, and has the largest index of any free book API.
@@ -211,12 +293,24 @@ export async function GET(req: NextRequest) {
       let items: any[] = data.items || []
 
       if (type === 'books') {
-        items = filterQuality(items)                // drop no-cover results
+        items = filterQuality(items)
         items = deduplicateItems(items).slice(0, maxResults)
         items = items.map(item => {
           const v = item.volumeInfo
           return v ? { ...item, volumeInfo: { ...v, description: stripHtml(v.description) } } : item
         })
+
+        // Write-through cache — fire-and-forget, never blocks response.
+        writeToCatalog(items)
+
+        // Merge: catalog results first (already retrieved above), then Google Books
+        // results whose google_books_id isn't already in the catalog set.
+        if (catalogItems.length > 0) {
+          const catalogIds = new Set(catalogItems.map((c: any) => c.id))
+          const gbOnly = items.filter((i: any) => !catalogIds.has(i.id))
+          const merged = [...catalogItems, ...gbOnly].slice(0, maxResults)
+          return NextResponse.json({ items: merged, _source: 'merged' })
+        }
       }
 
       return NextResponse.json({ ...data, items, _source: 'google_books' })
