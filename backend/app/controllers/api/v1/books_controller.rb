@@ -103,13 +103,11 @@ module Api
       def show_by_google
         google_books_id = params[:google_books_id]
 
-        # Allowlist: Google Books IDs are alphanumeric + underscores/hyphens (8-20 chars).
-        # OL IDs use our "ol_OL..." prefix convention. Reject anything outside this set.
-        unless google_books_id.match?(/\A(ol_)?[a-zA-Z0-9_\-]{2,40}\z/)
+        unless google_books_id.match?(/\A(ol_|hc_)?[a-zA-Z0-9_\-]{2,40}\z/)
           return render json: { error: 'Invalid book ID' }, status: :bad_request
         end
 
-        # DB hit first — most common path after a book has been added to any shelf
+        # 1. DB books table — most common path after a user has shelved this book
         book = Book.includes(:author).find_by(google_books_id: google_books_id)
         if book
           backfill_description(book)
@@ -117,17 +115,18 @@ module Api
           return
         end
 
-        # Curated shelf fallback — hc_ and ol_ IDs won't resolve via Google Books,
-        # but they are always stored in curated_shelf_books after the populator runs.
-        curated = CuratedShelfBook.find_by(google_books_id: google_books_id)
-        if curated
-          render json: { book: curated.as_book_json }, status: :ok
+        # 2. book_catalog — covers Hardcover (hc_), OpenLibrary (ol_), and any book
+        #    previously written through from Google Books searches
+        catalog = BookCatalog.find_by(google_books_id: google_books_id)
+        if catalog
+          render json: { book: catalog.to_api_hash }, status: :ok
           return
         end
 
-        # Live fallback — fetch directly from Google Books API
+        # 3. Live fallback — fetch directly from Google Books API and cache
         book_data = fetch_google_book(google_books_id)
         if book_data
+          BookCatalog.upsert_book(book_data.transform_keys(&:to_sym).merge(source: 'google_books'))
           render json: { book: book_data }, status: :ok
         else
           render json: { error: 'Book not found' }, status: :not_found

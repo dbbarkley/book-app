@@ -28,6 +28,28 @@ RSpec.describe 'Api::V1::Books', type: :request do
     end
   end
 
+  describe 'GET /api/v1/books/by_google/:google_books_id (catalog path)' do
+    context 'when book is in book_catalog but not in books table' do
+      before do
+        BookCatalog.upsert_book({
+          google_books_id: 'hc_catalog_only',
+          title: 'Catalog Only Book',
+          author_name: 'Catalog Author',
+          cover_image_url: 'https://example.com/cat.jpg',
+          source: 'hardcover',
+        })
+      end
+
+      it 'returns the book from catalog without hitting Google Books' do
+        get '/api/v1/books/by_google/hc_catalog_only'
+        expect(response).to have_http_status(:ok)
+        json = JSON.parse(response.body)
+        expect(json['book']['title']).to eq('Catalog Only Book')
+        expect(json['book']['google_books_id']).to eq('hc_catalog_only')
+      end
+    end
+  end
+
   describe 'POST /api/v1/books/catalog_bulk_upsert' do
     let(:books_payload) do
       [
