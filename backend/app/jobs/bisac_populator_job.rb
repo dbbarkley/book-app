@@ -184,6 +184,10 @@ class BisacPopulatorJob < ApplicationJob
           contributions(limit: 1) {
             author { name }
           }
+          editions(limit: 1) {
+            isbn_13
+            isbn_10
+          }
         }
       }
     GRAPHQL
@@ -231,8 +235,12 @@ class BisacPopulatorJob < ApplicationJob
     cover = item.dig('image', 'url').to_s.gsub('http://', 'https://')
     return nil if cover.blank?
 
+    edition = (item['editions'] || []).first || {}
+    isbn = edition['isbn_13'].presence || edition['isbn_10'].presence
+
     {
       google_books_id: "hc_#{item['id']}",
+      isbn:            isbn,
       title:           item['title'].presence || 'Unknown Title',
       author_name:     item.dig('contributions', 0, 'author', 'name'),
       cover_image_url: cover,
@@ -600,7 +608,11 @@ class BisacPopulatorJob < ApplicationJob
                     .where.not(google_books_id: current_ids)
                     .delete_all
 
+    # Dual-write to book_catalog — same data, upserted as a batch
+    source = category.data_source.presence || 'curated'
+    BookCatalog.upsert_many(books, source: source)
+
     category.update_column(:last_populated_at, now)
-    Rails.logger.info("[BisacPopulator] #{category.code} — #{books.size} books saved")
+    Rails.logger.info("[BisacPopulator] #{category.code} — #{books.size} books saved (catalog updated)")
   end
 end
