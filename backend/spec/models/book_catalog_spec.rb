@@ -203,4 +203,30 @@ RSpec.describe BookCatalog, type: :model do
       expect(described_class.find_by(google_books_id: 'lang_test_1').language).to eq('en')
     end
   end
+
+  describe '.search weighted ranking (title > author)' do
+    before do
+      BookCatalog.upsert_book({
+        google_books_id: 'weight_title',
+        title:           'The Story',
+        author_name:     'John Smith',
+        source:          'google_books',
+      })
+      BookCatalog.upsert_book({
+        google_books_id: 'weight_author',
+        title:           'A Novel',
+        author_name:     'Story Writer',
+        source:          'google_books',
+      })
+    end
+
+    it 'ranks title-match above author-name-only match' do
+      results = BookCatalog.search('story')
+      title_pos  = results.index { |r| r.google_books_id == 'weight_title' }
+      author_pos = results.index { |r| r.google_books_id == 'weight_author' }
+      expect(title_pos).not_to be_nil
+      expect(author_pos).not_to be_nil
+      expect(title_pos).to be < author_pos
+    end
+  end
 end
