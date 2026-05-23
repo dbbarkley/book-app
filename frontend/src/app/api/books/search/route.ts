@@ -303,13 +303,11 @@ export async function GET(req: NextRequest) {
         // Write-through cache — fire-and-forget, never blocks response.
         writeToCatalog(items)
 
-        // Merge: catalog results first (already retrieved above), then Google Books
-        // results whose google_books_id isn't already in the catalog set.
+        // Merge: catalog results first (already retrieved above), then all Google Books
+        // results. deduplicateItems handles cross-source title+author matching.
         if (catalogItems.length > 0) {
-          const catalogIds = new Set(catalogItems.map((c: any) => c.id))
-          const gbOnly = items.filter((i: any) => !catalogIds.has(i.id))
-          const merged = [...catalogItems, ...gbOnly].slice(0, maxResults)
-          return NextResponse.json({ items: merged, _source: 'merged' })
+          const combined = deduplicateItems([...catalogItems, ...items]).slice(0, maxResults)
+          return NextResponse.json({ items: combined, _source: 'merged' })
         }
       }
 
