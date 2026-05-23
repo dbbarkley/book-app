@@ -439,6 +439,13 @@ export class ApiClient {
     }
   }
 
+  async searchExternal(query: string, maxResults: number = 20, type: string = 'books'): Promise<{ items: any[]; _source: string }> {
+    const response = await this.client.get<{ items: any[]; _source: string }>('/books/search', {
+      params: { q: query, maxResults, type },
+    })
+    return { items: response.data.items || [], _source: response.data._source || '' }
+  }
+
   async searchBooks(query: string, page: number = 1, perPage: number = 20) {
     const response = await this.client.get<{ books: Book[]; pagination?: PaginationMeta }>('/books', {
       params: {
@@ -744,6 +751,61 @@ export class ApiClient {
 
   async deleteReleaseReminder(reminderId: number): Promise<void> {
     await this.client.delete(`/release_reminders/${reminderId}`)
+  }
+
+  // ── Circle ──────────────────────────────────────────────────────────────────
+
+  async getCircleTrending(days = 30): Promise<import('../types').CircleTrendingResponse> {
+    const response = await this.client.get<import('../types').CircleTrendingResponse>(
+      `/circle/trending?days=${days}`
+    )
+    return response.data
+  }
+
+  async getCircleGenreReads(genre: string, days = 30): Promise<import('../types').CircleGenreReadsResponse> {
+    const response = await this.client.get<import('../types').CircleGenreReadsResponse>(
+      `/circle/genre_reads?genre=${encodeURIComponent(genre)}&days=${days}`
+    )
+    return response.data
+  }
+
+  async getCuratedShelfBooks(bisacCode: string): Promise<{ books: Book[]; populated: boolean; stale: boolean }> {
+    const response = await this.client.get<{
+      books: Array<{
+        google_books_id: string
+        title: string
+        author_name: string | null
+        cover_image_url: string | null
+        description?: string
+        published_date?: string
+        page_count?: number
+        average_rating?: number
+        ratings_count?: number
+        rank: number
+      }>
+      populated: boolean
+      stale: boolean
+    }>(`/bisac_categories/${encodeURIComponent(bisacCode)}/books`)
+
+    const books: Book[] = (response.data.books || []).map(b => ({
+      id: null,
+      title: b.title,
+      google_books_id: b.google_books_id,
+      cover_image_url: b.cover_image_url ?? undefined,
+      author_name: b.author_name ?? undefined,
+      description: b.description,
+      release_date: b.published_date ?? '',
+      page_count: b.page_count,
+    }))
+
+    return { books, populated: response.data.populated, stale: response.data.stale }
+  }
+
+  async getGenreBooks(genreId: string): Promise<{ books: Book[]; source: string | null }> {
+    const response = await this.client.get<{ books: Book[]; _source: string | null }>(
+      `/books/genre?id=${encodeURIComponent(genreId)}`
+    )
+    return { books: response.data.books || [], source: response.data._source ?? null }
   }
 
   // Notification endpoints
@@ -1259,7 +1321,7 @@ export class ApiClient {
 
   async updateReadingBuddySession(
     sessionId: number,
-    actionType: 'accept' | 'decline' | 'dnf'
+    actionType: 'accept' | 'decline' | 'dnf' | 'cancel'
   ) {
     const response = await this.client.patch<{ session: import('../types').ReadingBuddySession }>(
       `/reading_buddy/sessions/${sessionId}`,
@@ -1274,6 +1336,14 @@ export class ApiClient {
       { content }
     )
     return response.data.message
+  }
+
+  async toggleMessageReaction(sessionId: number, messageId: number, emoji: string) {
+    const response = await this.client.post<{ reactions: import('../types').ReadingBuddyMessageReaction[] }>(
+      `/reading_buddy/sessions/${sessionId}/messages/${messageId}/reactions/toggle`,
+      { emoji }
+    )
+    return response.data.reactions
   }
 
   async getReadingBuddyHighlights(sessionId: number) {
@@ -1301,6 +1371,9 @@ export class ApiClient {
       formData.append('highlighted_text', payload.highlighted_text)
       formData.append('char_start',       String(payload.char_start))
       formData.append('char_end',         String(payload.char_end))
+      if (payload.note) formData.append('note', payload.note)
+      if (payload.moods) payload.moods.forEach(m => formData.append('moods[]', m))
+      if (payload.spoiler_lock) formData.append('spoiler_lock', 'true')
       formData.append('page_image',       payload.page_image, 'page.jpg')
 
       const response = await this.client.post<{ highlight: import('../types').ReadingBuddyHighlight }>(
@@ -1319,6 +1392,9 @@ export class ApiClient {
         highlighted_text: payload.highlighted_text,
         char_start:       payload.char_start,
         char_end:         payload.char_end,
+        note:             payload.note || undefined,
+        moods:            payload.moods?.length ? payload.moods : undefined,
+        spoiler_lock:     payload.spoiler_lock || undefined,
       }
     )
     return response.data.highlight

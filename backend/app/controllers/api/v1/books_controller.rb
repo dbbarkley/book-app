@@ -8,7 +8,7 @@ module Api
       skip_before_action :authenticate_user!, only: [
         :index, :show, :show_by_google, :show_by_isbn,
         :author_works, :genre, :catalog_search, :catalog_bulk_upsert,
-        :external_search, :isbn_search
+        :search, :external_search, :isbn_search
       ]
       # Disable Rails ParamsWrapper so POST bodies are accessible as flat params
       # (e.g. params[:title]) instead of being nested under params[:book].
@@ -288,25 +288,39 @@ module Api
         render json: { error: 'Could not save book' }, status: :unprocessable_entity
       end
 
-      # GET /api/v1/books/external_search?q=...&limit=20&type=books|authors
-      # Proxies Google Books search (with API key) to Next.js, falling back to
-      # Open Library when Google rate-limits. Returns items in the Google Books
-      # volumeInfo envelope so the Next.js merge/dedup logic is unchanged.
-      def external_search
+      # GET /api/v1/books/search?q=...&maxResults=20&type=books|authors
+      # Unified book search: catalog-first, then Google Books (with API key),
+      # then Open Library fallback. Merges and deduplicates by title+author.
+      # The frontend calls this directly — no Next.js proxy needed.
+      def search
         q     = params[:q].to_s.strip
-        limit = [[params[:limit].to_i, 1].max, 40].min
-        limit = 20 if params[:limit].blank?
+        limit = [[params[:maxResults].to_i, 1].max, 40].min
+        limit = 20 if params[:maxResults].blank?
         type  = params[:type].to_s.presence || 'books'
 
         return render json: { items: [] } if q.blank?
 
-        items = gb_search(q, limit, type)
-        return render json: { items: items, _source: 'google_books' } if items.any?
+        catalog_items = []
+        if type == 'books'
+          catalog_books = BookCatalog.search(q, limit: limit)
+          catalog_items = catalog_books.map { |b| catalog_book_to_volume_item(b) }
+          if catalog_items.length >= limit
+            return render json: { items: catalog_items.first(limit), _source: 'catalog' }
+          end
+        end
 
-        items = ol_search(q, limit, type)
-        render json: { items: items, _source: 'open_library' }
+        external_items = gb_search(q, limit, type)
+        external_items = ol_search(q, limit, type) if external_items.empty?
+
+        if catalog_items.any?
+          combined = dedup_volume_items([*catalog_items, *external_items]).first(limit)
+          render json: { items: combined, _source: 'merged' }
+        else
+          items = dedup_volume_items(external_items).first(limit)
+          render json: { items: items, _source: 'google_books' }
+        end
       rescue => e
-        Rails.logger.error("[external_search] #{e.class}: #{e.message}")
+        Rails.logger.error("[books/search] #{e.class}: #{e.message}")
         render json: { items: [] }
       end
 
@@ -466,6 +480,53 @@ module Api
         vi = item['volumeInfo']
         return item unless vi
         item.merge('volumeInfo' => vi.merge('description' => strip_html(vi['description'])))
+      end
+
+      def catalog_book_to_volume_item(book)
+        {
+          'id'         => book.google_books_id,
+          'volumeInfo' => {
+            'title'               => book.title,
+            'authors'             => book.author_name.present? ? [book.author_name] : [],
+            'publishedDate'       => book.published_date,
+            'pageCount'           => book.page_count,
+            'description'         => book.description,
+            'imageLinks'          => book.cover_image_url.present? ? {
+              'thumbnail'      => book.cover_image_url,
+              'smallThumbnail' => book.cover_image_url,
+            } : nil,
+            'industryIdentifiers' => book.isbn.present? ? [{ 'type' => 'ISBN_13', 'identifier' => book.isbn }] : [],
+            'averageRating'       => book.average_rating,
+            'ratingsCount'        => book.ratings_count,
+          }.compact,
+          '_source'    => 'catalog',
+        }
+      end
+
+      def normalize_dedup(s)
+        s.downcase.gsub(/[^a-z0-9]/, '')
+      end
+
+      # Dedup by title+author, keeping the richest edition.
+      # Map insertion order preserves catalog-first positioning.
+      def dedup_volume_items(items)
+        best  = {}
+        order = []
+        items.each do |item|
+          vi    = item['volumeInfo'] || {}
+          key   = "#{normalize_dedup(vi['title'].to_s)}::#{normalize_dedup(Array(vi['authors']).first.to_s)}"
+          score = (vi.dig('imageLinks', 'thumbnail').present? ? 4 : 0) +
+                  (vi['description'].present? ? 2 : 0) +
+                  (vi['pageCount'].present? ? 1 : 0)
+          if best[key].nil?
+            order << key
+            best[key] = { item: item, score: score }
+          elsif score > best[key][:score]
+            best[key][:item]   = item
+            best[key][:score]  = score
+          end
+        end
+        order.map { |k| best[k][:item] }
       end
 
       def gb_search(q, limit, type)
