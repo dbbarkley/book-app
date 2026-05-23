@@ -32,7 +32,8 @@ class BookCatalog < ApplicationRecord
     upsert(record,
       unique_by: :google_books_id,
       update_only: %i[isbn title author_name cover_image_url description published_date
-                       page_count average_rating ratings_count categories source cached_at])
+                       page_count average_rating ratings_count categories language
+                       source cached_at])
   end
 
   def self.upsert_many(books, source:)
@@ -47,7 +48,29 @@ class BookCatalog < ApplicationRecord
     upsert_all(records,
       unique_by: :google_books_id,
       update_only: %i[isbn title author_name cover_image_url description published_date
-                       page_count average_rating ratings_count categories source cached_at])
+                       page_count average_rating ratings_count categories language
+                       source cached_at])
+  end
+
+  def self.upsert_author_works(works, author:)
+    return if works.blank?
+    book_hashes = works.filter_map do |w|
+      next if w[:key].blank? || w[:title].blank?
+      {
+        google_books_id: w[:key],
+        title:           w[:title],
+        author_name:     author,
+        cover_image_url: w[:cover_url],
+        published_date:  w[:year]&.to_s,
+        average_rating:  w[:ratings_average],
+        ratings_count:   w[:ratings_count].to_i,
+        language:        w[:language],
+        isbn:            w[:isbn],
+        description:     w[:description],
+        page_count:      w[:page_count],
+      }
+    end
+    upsert_many(book_hashes, source: 'google_books')
   end
 
   def to_api_hash
@@ -85,6 +108,7 @@ class BookCatalog < ApplicationRecord
       average_rating:  book_hash[:average_rating]&.to_f&.round(2),
       ratings_count:   book_hash[:ratings_count].to_i,
       categories:      Array(book_hash[:categories]),
+      language:        book_hash[:language].presence,
       source:          book_hash[:source].to_s.presence || 'unknown',
       cached_at:       now,
       created_at:      now,

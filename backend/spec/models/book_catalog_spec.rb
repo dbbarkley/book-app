@@ -137,4 +137,70 @@ RSpec.describe BookCatalog, type: :model do
       expect(hash[:release_date]).to eq('2020-01-01')
     end
   end
+
+  describe '.upsert_author_works' do
+    let(:works) do
+      [
+        { key: 'gb_abc123', title: 'Iron Flame', year: 2023,
+          cover_url: 'https://example.com/cover.jpg',
+          ratings_average: 4.5, ratings_count: 1000,
+          language: 'en', isbn: '9781649375858',
+          description: 'A great book.', page_count: 858 },
+        { key: 'gb_def456', title: 'Fourth Wing', year: 2023,
+          cover_url: 'https://example.com/cover2.jpg',
+          ratings_average: nil, ratings_count: 0,
+          language: 'en', isbn: nil,
+          description: nil, page_count: nil },
+      ]
+    end
+
+    it 'upserts works into book_catalog with correct field mapping' do
+      expect {
+        described_class.upsert_author_works(works, author: 'Rebecca Yarros')
+      }.to change(described_class, :count).by(2)
+
+      iron = described_class.find_by(google_books_id: 'gb_abc123')
+      expect(iron.title).to eq('Iron Flame')
+      expect(iron.author_name).to eq('Rebecca Yarros')
+      expect(iron.cover_image_url).to eq('https://example.com/cover.jpg')
+      expect(iron.published_date).to eq('2023')
+      expect(iron.average_rating).to eq(4.5)
+      expect(iron.ratings_count).to eq(1000)
+      expect(iron.language).to eq('en')
+      expect(iron.isbn).to eq('9781649375858')
+      expect(iron.description).to eq('A great book.')
+      expect(iron.page_count).to eq(858)
+      expect(iron.source).to eq('google_books')
+    end
+
+    it 'skips works with blank key or title' do
+      bad_works = [
+        { key: '', title: 'No Key', year: 2023, cover_url: nil,
+          ratings_average: nil, ratings_count: 0, language: 'en',
+          isbn: nil, description: nil, page_count: nil },
+        { key: 'gb_xyz', title: '', year: 2023, cover_url: nil,
+          ratings_average: nil, ratings_count: 0, language: 'en',
+          isbn: nil, description: nil, page_count: nil },
+      ]
+      expect {
+        described_class.upsert_author_works(bad_works, author: 'Test Author')
+      }.not_to change(described_class, :count)
+    end
+
+    it 'is a no-op for empty array' do
+      expect { described_class.upsert_author_works([], author: 'Nobody') }.not_to change(described_class, :count)
+    end
+  end
+
+  describe 'language field' do
+    it 'is persisted through upsert_book' do
+      described_class.upsert_book({
+        google_books_id: 'lang_test_1',
+        title:           'English Book',
+        language:        'en',
+        source:          'google_books',
+      })
+      expect(described_class.find_by(google_books_id: 'lang_test_1').language).to eq('en')
+    end
+  end
 end
