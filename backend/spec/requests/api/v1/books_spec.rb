@@ -96,4 +96,53 @@ RSpec.describe 'Api::V1::Books', type: :request do
       expect(JSON.parse(response.body)['ok']).to be true
     end
   end
+
+  describe 'GET /api/v1/books/author_works (catalog write)' do
+    let(:google_books_response_body) do
+      {
+        items: [
+          {
+            id: 'gbooks_abc',
+            volumeInfo: {
+              title:         'Iron Flame',
+              authors:       ['Rebecca Yarros'],
+              publishedDate: '2023',
+              language:      'en',
+              averageRating: 4.5,
+              ratingsCount:  1000,
+              pageCount:     858,
+              description:   'A book.',
+              industryIdentifiers: [{ type: 'ISBN_13', identifier: '9781649375858' }],
+              imageLinks:    { thumbnail: 'https://example.com/cover.jpg' },
+            },
+          },
+        ],
+      }.to_json
+    end
+
+    before do
+      # Clear the Rails cache so each example starts on a cache miss
+      Rails.cache.clear
+
+      # Stub Net::HTTP#get to return a fake 200 response without hitting the network
+      fake_response = instance_double(Net::HTTPOK, body: google_books_response_body)
+      allow_any_instance_of(Net::HTTP).to receive(:get).and_return(fake_response)
+    end
+
+    it 'writes fetched works to book_catalog on cache miss' do
+      expect {
+        get '/api/v1/books/author_works', params: { author: 'Rebecca Yarros' }
+      }.to change(BookCatalog, :count).by(1)
+
+      expect(response).to have_http_status(:ok)
+      works = JSON.parse(response.body)['works']
+      expect(works.first['key']).to eq('gbooks_abc')
+      expect(works.first['ratings_average']).to eq(4.5)
+
+      catalog = BookCatalog.find_by(google_books_id: 'gbooks_abc')
+      expect(catalog).not_to be_nil
+      expect(catalog.language).to eq('en')
+      expect(catalog.isbn).to eq('9781649375858')
+    end
+  end
 end

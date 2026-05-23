@@ -317,7 +317,14 @@ module Api
         works = Rails.cache.read(cache_key)
         if works.nil?
           works = fetch_author_works_from_google(author)
-          Rails.cache.write(cache_key, works, expires_in: AUTHOR_WORKS_CACHE_TTL) if works.any?
+          if works.any?
+            Rails.cache.write(cache_key, works, expires_in: AUTHOR_WORKS_CACHE_TTL)
+            begin
+              BookCatalog.upsert_author_works(works, author: author)
+            rescue => e
+              Rails.logger.warn("[author_works] catalog write failed for '#{author}': #{e.message}")
+            end
+          end
         end
 
         # Normalize the exclude title so variants like "Project Hail Mary (Movie Tie-In)"
@@ -409,8 +416,17 @@ module Api
       def fetch_author_works_from_google(author)
         query   = "inauthor:\"#{author}\""
         api_key = ENV['GOOGLE_BOOKS_API_KEY']
-        fields  = 'items/id,items/volumeInfo/title,items/volumeInfo/publishedDate,' \
-                  'items/volumeInfo/imageLinks,items/volumeInfo/authors'
+        fields  = 'items/id,' \
+                  'items/volumeInfo/title,' \
+                  'items/volumeInfo/authors,' \
+                  'items/volumeInfo/publishedDate,' \
+                  'items/volumeInfo/imageLinks,' \
+                  'items/volumeInfo/averageRating,' \
+                  'items/volumeInfo/ratingsCount,' \
+                  'items/volumeInfo/language,' \
+                  'items/volumeInfo/industryIdentifiers,' \
+                  'items/volumeInfo/description,' \
+                  'items/volumeInfo/pageCount'
         url     = "https://www.googleapis.com/books/v1/volumes" \
                   "?q=#{URI.encode_www_form_component(query)}" \
                   "&maxResults=40&orderBy=relevance&printType=books&langRestrict=en" \
@@ -419,7 +435,7 @@ module Api
 
         uri  = URI.parse(url)
         http = Net::HTTP.new(uri.host, uri.port)
-        http.use_ssl     = true
+        http.use_ssl      = true
         http.read_timeout = GOOGLE_BOOKS_READ_TIMEOUT
         http.open_timeout = GOOGLE_BOOKS_READ_TIMEOUT
 
@@ -432,26 +448,33 @@ module Api
         items
           .select { |item| item.dig('volumeInfo', 'imageLinks', 'thumbnail').present? }
           .select { |item|
-            # Only include books where the searched author is the primary (first-listed) author.
-            # This prevents anthology contributions (e.g. "Forward" by Blake Crouch, where Andy
-            # Weir wrote one story) from appearing in the author's own catalog.
             authors = Array(item.dig('volumeInfo', 'authors'))
             next true if authors.empty?
             WorkResolutionService.normalize_author(authors.first) == author_norm
           }
           .first(20)
           .map do |item|
-            vi = item['volumeInfo'] || {}
+            vi   = item['volumeInfo'] || {}
+            isbn = Array(vi['industryIdentifiers'])
+                     .find { |id| id['type'] == 'ISBN_13' }&.dig('identifier') ||
+                   Array(vi['industryIdentifiers'])
+                     .find { |id| id['type'] == 'ISBN_10' }&.dig('identifier')
             {
-              key:       item['id'],
-              title:     vi['title'],
-              year:      vi['publishedDate'] ? vi['publishedDate'].to_i : nil,
-              cover_url: vi.dig('imageLinks', 'thumbnail'),
+              key:             item['id'],
+              title:           vi['title'],
+              year:            vi['publishedDate'] ? vi['publishedDate'].to_i : nil,
+              cover_url:       vi.dig('imageLinks', 'thumbnail'),
+              ratings_average: vi['averageRating'] ? vi['averageRating'].to_f.round(1) : nil,
+              ratings_count:   vi['ratingsCount'].to_i,
+              language:        vi['language'],
+              isbn:            isbn,
+              description:     vi['description'],
+              page_count:      vi['pageCount']&.to_i,
             }
           end
       rescue Net::ReadTimeout, Net::OpenTimeout => e
         Rails.logger.warn("[author_works] Google Books timed out for '#{author}': #{e.message}")
-        [] # return empty — caller will render { works: [] }
+        []
       rescue => e
         Rails.logger.error("[author_works] Google Books fetch failed for '#{author}': #{e.message}")
         []
