@@ -229,4 +229,44 @@ RSpec.describe BookCatalog, type: :model do
       expect(title_pos).to be < author_pos
     end
   end
+
+  describe '.search exact and prefix title boost' do
+    before do
+      BookCatalog.upsert_book({
+        google_books_id: 'boost_exact',
+        title:           'Funny Story',
+        author_name:     'Emily Henry',
+        source:          'google_books',
+      })
+      BookCatalog.upsert_book({
+        google_books_id: 'boost_prefix',
+        title:           'Funny Stories for Everyone',
+        author_name:     'Jane Doe',
+        source:          'google_books',
+      })
+      BookCatalog.upsert_book({
+        google_books_id: 'boost_neither',
+        title:           'The Funny Story of My Life',
+        author_name:     'Bob Smith',
+        source:          'google_books',
+      })
+    end
+
+    it 'ranks exact title match first for multi-word query' do
+      results = BookCatalog.search('funny story')
+      exact_pos   = results.index { |r| r.google_books_id == 'boost_exact' }
+      neither_pos = results.index { |r| r.google_books_id == 'boost_neither' }
+      expect(exact_pos).not_to be_nil
+      expect(exact_pos).to eq(0)
+    end
+
+    it 'ranks prefix title match above non-prefix match for incomplete query' do
+      results = BookCatalog.search('funny stori')
+      prefix_pos  = results.index { |r| r.google_books_id == 'boost_prefix' }
+      neither_pos = results.index { |r| r.google_books_id == 'boost_neither' }
+      expect(prefix_pos).not_to be_nil
+      expect(neither_pos).not_to be_nil
+      expect(prefix_pos).to be < neither_pos
+    end
+  end
 end

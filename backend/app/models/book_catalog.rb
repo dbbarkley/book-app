@@ -5,9 +5,18 @@ class BookCatalog < ApplicationRecord
   validates :title, presence: true
 
   scope :full_text_search, ->(q) {
-    tsquery = Arel.sql("plainto_tsquery('english', #{connection.quote(q)})")
-    where("search_vector @@ #{tsquery}")
-      .order(Arel.sql("ts_rank(search_vector, #{tsquery}) DESC"))
+    tsquery  = Arel.sql("plainto_tsquery('english', #{connection.quote(q)})")
+    q_lower  = q.downcase
+    q_exact  = connection.quote(q_lower)
+    q_prefix = connection.quote("#{sanitize_sql_like(q_lower)}%")
+    boost    = Arel.sql(
+      "CASE WHEN lower(title) = #{q_exact}     THEN 2.0
+            WHEN lower(title) LIKE #{q_prefix} THEN 1.0
+            ELSE 0.0 END"
+    )
+    ilike_pattern = "%#{sanitize_sql_like(q_lower)}%"
+    where("search_vector @@ #{tsquery} OR title ILIKE ? OR author_name ILIKE ?", ilike_pattern, ilike_pattern)
+      .order(Arel.sql("(#{boost} + ts_rank(search_vector, #{tsquery})) DESC"))
   }
 
   scope :prefix_search, ->(q) {
