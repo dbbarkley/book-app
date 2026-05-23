@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_05_22_180811) do
+ActiveRecord::Schema[7.2].define(version: 2026_05_23_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -90,6 +90,8 @@ ActiveRecord::Schema[7.2].define(version: 2026_05_22_180811) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.virtual "search_vector", type: :tsvector, as: "to_tsvector('english'::regconfig, (((COALESCE(title, ''::character varying))::text || ' '::text) || (COALESCE(author_name, ''::character varying))::text))", stored: true
+    t.string "language"
+    t.index ["author_name"], name: "index_book_catalog_on_author_name"
     t.index ["cached_at"], name: "index_book_catalog_on_cached_at"
     t.index ["google_books_id"], name: "index_book_catalog_on_google_books_id", unique: true
     t.index ["isbn"], name: "index_book_catalog_on_isbn", unique: true, where: "(isbn IS NOT NULL)"
