@@ -59,7 +59,7 @@ export default function BookPage() {
   const [notes, setNotes] = useState('')
   const [notesSaved, setNotesSaved] = useState(false)
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
-  const [otherWorks, setOtherWorks] = useState<{ key: string; title: string; year: number | null; cover_url: string | null; ratings_average: number | null; readinglog_count: number }[]>([])
+  const [otherWorks, setOtherWorks] = useState<{ key: string; title: string; year: number | null; cover_url: string | null; ratings_average: number | null }[]>([])
   const [otherWorksLoading, setOtherWorksLoading] = useState(false)
   const [navigatingKey, setNavigatingKey] = useState<string | null>(null)
   const [canGoBack, setCanGoBack] = useState(false)
