@@ -7,7 +7,8 @@ module Api
       include Authenticable
       skip_before_action :authenticate_user!, only: [
         :index, :show, :show_by_google, :show_by_isbn,
-        :author_works, :genre, :catalog_search, :catalog_bulk_upsert
+        :author_works, :genre, :catalog_search, :catalog_bulk_upsert,
+        :external_search, :isbn_search
       ]
       # Disable Rails ParamsWrapper so POST bodies are accessible as flat params
       # (e.g. params[:title]) instead of being nested under params[:book].
@@ -287,6 +288,47 @@ module Api
         render json: { error: 'Could not save book' }, status: :unprocessable_entity
       end
 
+      # GET /api/v1/books/external_search?q=...&limit=20&type=books|authors
+      # Proxies Google Books search (with API key) to Next.js, falling back to
+      # Open Library when Google rate-limits. Returns items in the Google Books
+      # volumeInfo envelope so the Next.js merge/dedup logic is unchanged.
+      def external_search
+        q     = params[:q].to_s.strip
+        limit = [[params[:limit].to_i, 1].max, 40].min
+        limit = 20 if params[:limit].blank?
+        type  = params[:type].to_s.presence || 'books'
+
+        return render json: { items: [] } if q.blank?
+
+        items = gb_search(q, limit, type)
+        return render json: { items: items, _source: 'google_books' } if items.any?
+
+        items = ol_search(q, limit, type)
+        render json: { items: items, _source: 'open_library' }
+      rescue => e
+        Rails.logger.error("[external_search] #{e.class}: #{e.message}")
+        render json: { items: [] }
+      end
+
+      # GET /api/v1/books/isbn_search?isbn=9781234567890
+      # Proxies Google Books ISBN lookup (with API key), falling back to the
+      # Open Library /isbn/:isbn.json endpoint. Used by the barcode scanner.
+      def isbn_search
+        isbn = params[:isbn].to_s.gsub(/\D/, '')
+        return render json: { items: [] } if isbn.blank?
+
+        item = gb_isbn(isbn)
+        return render json: { items: [item], _source: 'google_books' } if item
+
+        item = ol_isbn(isbn)
+        return render json: { items: [item], _source: 'open_library' } if item
+
+        render json: { items: [] }
+      rescue => e
+        Rails.logger.error("[isbn_search] #{e.class}: #{e.message}")
+        render json: { items: [] }
+      end
+
       # GET /api/v1/books/author_works?author=Matt+Dinniman&exclude=Dungeon+Crawler+Carl
       # Proxies to Google Books API (inauthor: query) so mobile gets the same
       # rich results as the web without needing the Next.js server route.
@@ -407,6 +449,173 @@ module Api
       end
 
       private
+
+      # ── External search helpers (Google Books + Open Library) ─────────────────
+
+      GB_SEARCH_TIMEOUT = 10
+
+      def gb_http_client(host = 'www.googleapis.com')
+        http = Net::HTTP.new(host, 443)
+        http.use_ssl = true
+        http.open_timeout = 5
+        http.read_timeout = GB_SEARCH_TIMEOUT
+        http
+      end
+
+      def gb_item_clean(item)
+        vi = item['volumeInfo']
+        return item unless vi
+        item.merge('volumeInfo' => vi.merge('description' => strip_html(vi['description'])))
+      end
+
+      def gb_search(q, limit, type)
+        api_key = ENV['GOOGLE_BOOKS_API_KEY']
+        search_q = type == 'authors' ? "inauthor:\"#{q}\"" : q
+        fetch_count = [limit * 2, 40].min
+
+        params = {
+          'q'          => search_q,
+          'maxResults' => fetch_count.to_s,
+          'orderBy'    => 'relevance',
+          'printType'  => 'books',
+          'fields'     => 'items/id,items/volumeInfo',
+        }
+        params['key'] = api_key if api_key.present?
+
+        uri = URI('https://www.googleapis.com/books/v1/volumes')
+        uri.query = URI.encode_www_form(params)
+
+        response = gb_http_client.get(uri.request_uri)
+        return [] unless response.is_a?(Net::HTTPSuccess)
+
+        (JSON.parse(response.body)['items'] || []).map { |item| gb_item_clean(item) }
+      rescue Net::ReadTimeout, Net::OpenTimeout
+        Rails.logger.warn('[external_search] Google Books timed out')
+        []
+      rescue => e
+        Rails.logger.warn("[external_search] Google Books failed: #{e.message}")
+        []
+      end
+
+      def ol_search(q, limit, type)
+        param  = type == 'authors' ? 'author' : 'q'
+        fields = 'key,title,author_name,cover_i,isbn,first_publish_year,number_of_pages_median'
+
+        uri = URI('https://openlibrary.org/search.json')
+        uri.query = URI.encode_www_form(param => q, 'limit' => (limit * 2).to_s,
+                                        'fields' => fields, 'sort' => 'readinglog')
+
+        http = Net::HTTP.new(uri.host, 443)
+        http.use_ssl = true
+        http.open_timeout = 5
+        http.read_timeout = GB_SEARCH_TIMEOUT
+
+        response = http.get(uri.request_uri)
+        raise "Open Library responded with #{response.code}" unless response.is_a?(Net::HTTPSuccess)
+
+        (JSON.parse(response.body)['docs'] || [])
+          .select { |doc| doc['cover_i'].present? }
+          .first(limit)
+          .each_with_index
+          .map { |doc, idx| ol_doc_to_volume_item(doc, idx) }
+      end
+
+      def ol_doc_to_volume_item(doc, idx)
+        raw_key = doc['key'].to_s
+        ol_id   = raw_key.sub(%r{\A/works/OL}, '').presence || idx.to_s
+        cover_i = doc['cover_i']
+        isbn    = Array(doc['isbn']).find { |i| i.to_s.length == 13 } || Array(doc['isbn']).first
+
+        {
+          'id'         => "ol_#{ol_id}",
+          'volumeInfo' => {
+            'title'               => doc['title'] || 'Unknown Title',
+            'authors'             => Array(doc['author_name']),
+            'publishedDate'       => doc['first_publish_year']&.to_s,
+            'pageCount'           => doc['number_of_pages_median'],
+            'imageLinks'          => cover_i ? {
+              'thumbnail'      => "https://covers.openlibrary.org/b/id/#{cover_i}-M.jpg",
+              'smallThumbnail' => "https://covers.openlibrary.org/b/id/#{cover_i}-S.jpg",
+            } : nil,
+            'industryIdentifiers' => isbn ? [{ 'type' => 'ISBN_13', 'identifier' => isbn.to_s }] : [],
+            'infoLink'            => "https://openlibrary.org#{doc['key']}",
+          }.compact,
+          '_source'    => 'open_library',
+        }
+      end
+
+      def gb_isbn(isbn)
+        api_key = ENV['GOOGLE_BOOKS_API_KEY']
+        params  = { 'q' => "isbn:#{isbn}", 'maxResults' => '1', 'printType' => 'books',
+                    'fields' => 'items/id,items/volumeInfo' }
+        params['key'] = api_key if api_key.present?
+
+        uri = URI('https://www.googleapis.com/books/v1/volumes')
+        uri.query = URI.encode_www_form(params)
+
+        response = gb_http_client.get(uri.request_uri)
+        return nil unless response.is_a?(Net::HTTPSuccess)
+
+        item = Array(JSON.parse(response.body)['items']).first
+        item ? gb_item_clean(item) : nil
+      rescue => e
+        Rails.logger.warn("[isbn_search] Google Books failed for #{isbn}: #{e.message}")
+        nil
+      end
+
+      def ol_isbn(isbn)
+        uri      = URI("https://openlibrary.org/isbn/#{isbn}.json")
+        http     = Net::HTTP.new(uri.host, 443)
+        http.use_ssl = true
+        http.open_timeout = 5
+        http.read_timeout = GB_SEARCH_TIMEOUT
+
+        response = http.get(uri.request_uri)
+        return nil unless response.is_a?(Net::HTTPSuccess)
+
+        ol = JSON.parse(response.body)
+        title = ol['title'].presence
+        return nil unless title
+
+        work_key = (Array(ol['works']).first&.dig('key') || ol['key']).to_s
+        ol_id    = work_key.sub(%r{\A/works/OL}, '').presence || isbn
+        cover_id = Array(ol['covers']).first
+
+        author_name = ''
+        author_key  = Array(ol['authors']).first&.dig('key')
+        if author_key.present?
+          begin
+            a_uri  = URI("https://openlibrary.org#{author_key}.json")
+            a_http = Net::HTTP.new(a_uri.host, 443)
+            a_http.use_ssl = true
+            a_http.open_timeout = 3
+            a_http.read_timeout = 5
+            a_resp = a_http.get(a_uri.request_uri)
+            author_name = JSON.parse(a_resp.body)['name'].to_s if a_resp.is_a?(Net::HTTPSuccess)
+          rescue => e
+            Rails.logger.warn("[isbn_search] OL author fetch failed: #{e.message}")
+          end
+        end
+
+        {
+          'id'         => "ol_#{ol_id}",
+          'volumeInfo' => {
+            'title'               => title,
+            'authors'             => author_name.present? ? [author_name] : [],
+            'publishedDate'       => ol['publish_date'],
+            'pageCount'           => ol['number_of_pages'],
+            'imageLinks'          => cover_id ? {
+              'thumbnail'      => "https://covers.openlibrary.org/b/id/#{cover_id}-M.jpg",
+              'smallThumbnail' => "https://covers.openlibrary.org/b/id/#{cover_id}-S.jpg",
+            } : nil,
+            'industryIdentifiers' => [{ 'type' => 'ISBN_13', 'identifier' => isbn }],
+          }.compact,
+          '_source'    => 'open_library',
+        }
+      rescue => e
+        Rails.logger.warn("[isbn_search] Open Library failed for #{isbn}: #{e.message}")
+        nil
+      end
 
       # ── Author works helper ───────────────────────────────────────────────────
 

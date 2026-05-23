@@ -109,10 +109,12 @@ Rails.application.routes.draw do
         collection do
           get  'by_google/:google_books_id', action: :show_by_google, constraints: { google_books_id: /[^\/]+/ }
           get  'by_isbn/:isbn',              action: :show_by_isbn,   constraints: { isbn: /\d{10,13}/ }
-          get  'author_works', action: :author_works
-          get  'genre',        action: :genre
-          get  'catalog_search',       action: :catalog_search
-          post 'catalog_bulk_upsert',  action: :catalog_bulk_upsert
+          get  'external_search',     action: :external_search
+          get  'isbn_search',         action: :isbn_search
+          get  'author_works',        action: :author_works
+          get  'genre',               action: :genre
+          get  'catalog_search',      action: :catalog_search
+          post 'catalog_bulk_upsert', action: :catalog_bulk_upsert
           post 'ensure',       action: :ensure_book
         end
       end
