@@ -5,8 +5,8 @@ class BookCatalog < ApplicationRecord
   validates :title, presence: true
 
   scope :full_text_search, ->(q) {
-    tsquery  = Arel.sql("plainto_tsquery('english', #{connection.quote(q)})")
     q_lower  = q.downcase
+    tsquery  = Arel.sql("plainto_tsquery('english', #{connection.quote(q_lower)})")
     q_exact  = connection.quote(q_lower)
     q_prefix = connection.quote("#{sanitize_sql_like(q_lower)}%")
     boost    = Arel.sql(

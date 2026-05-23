@@ -255,13 +255,12 @@ RSpec.describe BookCatalog, type: :model do
     it 'ranks exact title match first for multi-word query' do
       results = BookCatalog.search('funny story')
       exact_pos   = results.index { |r| r.google_books_id == 'boost_exact' }
-      neither_pos = results.index { |r| r.google_books_id == 'boost_neither' }
       expect(exact_pos).not_to be_nil
       expect(exact_pos).to eq(0)
     end
 
     it 'ranks prefix title match above non-prefix match for incomplete query' do
-      results = BookCatalog.search('funny stori')
+      results = BookCatalog.search('funny stories')
       prefix_pos  = results.index { |r| r.google_books_id == 'boost_prefix' }
       neither_pos = results.index { |r| r.google_books_id == 'boost_neither' }
       expect(prefix_pos).not_to be_nil
