@@ -124,9 +124,12 @@ RSpec.describe 'Api::V1::Books', type: :request do
       # Clear the Rails cache so each example starts on a cache miss
       Rails.cache.clear
 
-      # Stub Net::HTTP#get to return a fake 200 response without hitting the network
-      fake_response = instance_double(Net::HTTPOK, body: google_books_response_body)
-      allow_any_instance_of(Net::HTTP).to receive(:get).and_return(fake_response)
+      stub_request(:get, /googleapis\.com\/books\/v1\/volumes/)
+        .to_return(
+          status: 200,
+          body: google_books_response_body,
+          headers: { 'Content-Type' => 'application/json' },
+        )
     end
 
     it 'writes fetched works to book_catalog on cache miss' do

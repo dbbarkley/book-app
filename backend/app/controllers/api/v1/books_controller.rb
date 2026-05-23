@@ -318,11 +318,11 @@ module Api
         if works.nil?
           works = fetch_author_works_from_google(author)
           if works.any?
-            Rails.cache.write(cache_key, works, expires_in: AUTHOR_WORKS_CACHE_TTL)
             begin
+              Rails.cache.write(cache_key, works, expires_in: AUTHOR_WORKS_CACHE_TTL)
               BookCatalog.upsert_author_works(works, author: author)
             rescue => e
-              Rails.logger.warn("[author_works] catalog write failed for '#{author}': #{e.message}")
+              Rails.logger.warn("[author_works] cache/catalog write failed for '#{author}': #{e.message}")
             end
           end
         end
@@ -455,9 +455,9 @@ module Api
           .first(20)
           .map do |item|
             vi   = item['volumeInfo'] || {}
-            isbn = Array(vi['industryIdentifiers'])
+            isbn = Array(vi['industryIdentifiers']).compact
                      .find { |id| id['type'] == 'ISBN_13' }&.dig('identifier') ||
-                   Array(vi['industryIdentifiers'])
+                   Array(vi['industryIdentifiers']).compact
                      .find { |id| id['type'] == 'ISBN_10' }&.dig('identifier')
             {
               key:             item['id'],
