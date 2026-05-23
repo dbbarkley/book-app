@@ -309,8 +309,10 @@ module Api
           end
         end
 
-        external_items = gb_search(q, limit, type)
-        external_items = ol_search(q, limit, type) if external_items.empty?
+        gb_items = gb_search(q, limit, type)
+        external_items = gb_items.any? ? gb_items : ol_search(q, limit, type)
+
+        write_to_catalog(gb_items) if gb_items.any? && type == 'books'
 
         if catalog_items.any?
           combined = dedup_volume_items([*catalog_items, *external_items]).first(limit)
@@ -501,6 +503,35 @@ module Api
           }.compact,
           '_source'    => 'catalog',
         }
+      end
+
+      def write_to_catalog(volume_items)
+        books = volume_items.filter_map do |item|
+          vi = item['volumeInfo']
+          # Only cache books with cover images — same quality bar as the search results.
+          next unless item['id'].present? && vi&.dig('title').present? &&
+                      vi.dig('imageLinks', 'thumbnail').present?
+          isbn = Array(vi['industryIdentifiers'])
+                   .find { |x| x['type'] == 'ISBN_13' }&.dig('identifier') ||
+                 Array(vi['industryIdentifiers'])
+                   .find { |x| x['type'] == 'ISBN_10' }&.dig('identifier')
+          {
+            google_books_id: item['id'],
+            isbn:            isbn,
+            title:           vi['title'],
+            author_name:     Array(vi['authors']).first,
+            cover_image_url: vi.dig('imageLinks', 'thumbnail')&.sub('http://', 'https://'),
+            description:     vi['description'],
+            published_date:  vi['publishedDate'],
+            page_count:      vi['pageCount'],
+            average_rating:  vi['averageRating'],
+            ratings_count:   vi['ratingsCount'].to_i,
+            categories:      Array(vi['categories']),
+          }
+        end
+        BookCatalog.upsert_many(books, source: 'google_books') if books.any?
+      rescue => e
+        Rails.logger.warn("[books/search] catalog write failed: #{e.message}")
       end
 
       def normalize_dedup(s)
