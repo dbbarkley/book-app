@@ -14,8 +14,7 @@ class BookCatalog < ApplicationRecord
             WHEN lower(title) LIKE #{q_prefix} THEN 1.0
             ELSE 0.0 END"
     )
-    ilike_pattern = "%#{sanitize_sql_like(q_lower)}%"
-    where("search_vector @@ #{tsquery} OR title ILIKE ? OR author_name ILIKE ?", ilike_pattern, ilike_pattern)
+    where("search_vector @@ #{tsquery}")
       .order(Arel.sql("(#{boost} + ts_rank(search_vector, #{tsquery})) DESC"))
   }
 

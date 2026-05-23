@@ -246,7 +246,7 @@ RSpec.describe BookCatalog, type: :model do
       })
       BookCatalog.upsert_book({
         google_books_id: 'boost_neither',
-        title:           'The Funny Story of My Life',
+        title:           'A Collection of Funny and Exciting Stories',
         author_name:     'Bob Smith',
         source:          'google_books',
       })
