@@ -34,16 +34,19 @@ import {
   Share2,
 } from 'lucide-react'
 
+
 export default function BookPage() {
   const params = useParams()
   const searchParams = useSearchParams()
   const fromScanner = searchParams.get('scanner') === 'true'
   const rawParam = params.id as string
 
-  // Detect whether this is a numeric internal ID or a Google Books ID string
+  // ISBNs look like integers but must be routed as strings so useBookDetails
+  // hits the by_isbn endpoint rather than the books/:id endpoint.
+  const isIsbn = /^\d{13}$/.test(rawParam) || /^\d{9}[\dX]$/i.test(rawParam)
   const numericId = parseInt(rawParam, 10)
-  const isNumeric = !isNaN(numericId) && String(numericId) === rawParam
-  // The identifier we pass to useBookDetails: number for DB books, string for Google Books IDs
+  const isNumeric = !isNaN(numericId) && String(numericId) === rawParam && !isIsbn
+  // The identifier we pass to useBookDetails: number for DB books, string for Google Books / ISBN
   const bookIdentifier: number | string = isNumeric ? numericId : rawParam
 
   const { book, userBook, loading, error, refetch } = useBookDetails(bookIdentifier)
@@ -118,24 +121,23 @@ export default function BookPage() {
     if (!loading && book) window.scrollTo(0, 0)
   }, [rawParam, loading, !!book])
 
-  // Fetch other works by the same author via Open Library (sorted by popularity)
+  // Fetch other works by the same author
   useEffect(() => {
     if (!book?.author_name) return
     let cancelled = false
     const fetchOtherWorks = async () => {
       setOtherWorksLoading(true)
       try {
-        const p = new URLSearchParams({
-          author: book.author_name!,
-          exclude: book.title,
-        })
-        const token = apiClient.getToken()
-        const res = await fetch(`/api/books/author-works?${p}`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        })
-        if (!res.ok || cancelled) return
-        const data = await res.json()
-        if (!cancelled) setOtherWorks(data.works || [])
+        const works = await apiClient.getAuthorWorks(book.author_name!, book.title)
+        if (!cancelled) {
+          setOtherWorks(works.map(w => ({
+            key:             w.google_books_id ?? '',
+            title:           w.title,
+            year:            w.release_date ? parseInt(w.release_date.substring(0, 4), 10) || null : null,
+            cover_url:       w.cover_image_url ?? null,
+            ratings_average: null,
+          })))
+        }
       } catch (err) {
         console.error('Failed to fetch other works:', err)
       } finally {
@@ -198,8 +200,8 @@ export default function BookPage() {
   }
 
   const catalogNo       = String(book.id ?? '').padStart(3, '0') || '—'
-  const avgRating       = (book as any).average_rating as number | undefined
-  const ratingsCount    = (book as any).ratings_count  as number | undefined
+  const avgRating       = (book as any).average_rating != null ? parseFloat(String((book as any).average_rating)) || undefined : undefined
+  const ratingsCount    = (book as any).ratings_count  != null ? parseInt(String((book as any).ratings_count), 10) || undefined : undefined
   const genre           = getDisplayGenre(book.categories)
   const subGenres       = book.categories?.slice(1, 3) ?? []
   const friendsFinished = friends.filter((f: { status: string }) => f.status === 'read').length
@@ -232,16 +234,36 @@ export default function BookPage() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--color-canvas)', position: 'relative' }}>
 
-      {/* ── Teal gradient hero background ── */}
+      {/* ── Cover-derived hero background — blurred cover fades to canvas ── */}
       <div
         aria-hidden
         style={{
           position: 'absolute', top: 0, left: 0, right: 0,
-          height: 400,
-          background: 'linear-gradient(to bottom, var(--color-accent-teal) 0%, rgba(35,74,90,0) 100%)',
+          height: 420, overflow: 'hidden',
           zIndex: 0, pointerEvents: 'none',
         }}
-      />
+      >
+        {book.cover_image_url ? (
+          <img
+            src={book.cover_image_url.replace('http://', 'https://')}
+            alt=""
+            style={{
+              width: '100%', height: '100%',
+              objectFit: 'cover',
+              filter: 'blur(48px) brightness(0.38) saturate(180%)',
+              transform: 'scale(1.25)',
+              transformOrigin: 'top center',
+            }}
+          />
+        ) : (
+          <div style={{ width: '100%', height: '100%', backgroundColor: 'var(--color-accent-teal)' }} />
+        )}
+        {/* Fade to canvas at the bottom */}
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: 'linear-gradient(to bottom, transparent 45%, var(--color-canvas) 100%)',
+        }} />
+      </div>
 
       <div className="relative" style={{ zIndex: 1 }}>
 
@@ -299,10 +321,10 @@ export default function BookPage() {
           <div className="grid lg:grid-cols-[3fr_7fr] gap-10">
 
             {/* LEFT: Cover + action buttons */}
-            <div className="flex flex-col items-start lg:-mt-[42px] lg:relative lg:z-[2]">
+            <div className="flex flex-col items-center lg:items-start lg:-mt-[42px] lg:relative lg:z-[2]">
               <div
+                className="w-[180px] sm:w-[220px] lg:w-full"
                 style={{
-                  width: '100%',
                   borderRadius: 10,
                   overflow: 'hidden',
                   border: '2px solid var(--color-ink)',
@@ -321,7 +343,7 @@ export default function BookPage() {
               </div>
 
               {isAuthenticated ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
+                <div className="w-[180px] sm:w-[220px] lg:w-full" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {/* Shelf / Add button */}
                   {userBook ? (
                     <button
