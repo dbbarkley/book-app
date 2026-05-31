@@ -1,313 +1,216 @@
 'use client'
 
 import Link from 'next/link'
-import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { Home, BookOpen, Compass, Users, User, Settings } from 'lucide-react'
 import { useAuth } from '@book-app/shared'
 import Avatar from './Avatar'
-import {
-  Home,
-  BookOpen,
-  Search,
-  User,
-  Menu,
-  X,
-  Settings,
-  Users,
-} from 'lucide-react'
+
+// ── Bottom tab bar config ─────────────────────────────────────────────────────
+const TABS = [
+  { id: 'home',     label: 'Home',     Icon: Home,     href: '/dashboard'     },
+  { id: 'library',  label: 'Library',  Icon: BookOpen, href: '/library'       },
+  { id: 'discover', label: 'Discover', Icon: Compass,  href: '/discover'      },
+  { id: 'buddies',  label: 'Buddies',  Icon: Users,    href: '/reading-buddy' },
+  { id: 'you',      label: 'You',      Icon: User,     href: '/users'         },
+] as const
 
 export default function Navigation() {
   const pathname = usePathname()
-  const { isAuthenticated, user } = useAuth()
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const { isAuthenticated, user, logout } = useAuth()
+  const isOnboarding = pathname === '/onboarding'
 
-  const navLinks = isAuthenticated ? [
-    { href: '/dashboard',         label: 'Home',    icon: Home     },
-    { href: '/library',           label: 'Library', icon: BookOpen },
-    { href: '/search',            label: 'Discover',icon: Search   },
-    { href: '/reading-buddy',     label: 'Buddies', icon: Users    },
-    { href: `/users/${user?.id}`, label: 'Profile', icon: User     },
+  const isActive = (href: string) => {
+    if (href === '/users') return pathname.startsWith(`/users/${user?.id}`)
+    return pathname === href || pathname.startsWith(href + '/')
+  }
+
+  const desktopLinks = isAuthenticated ? [
+    { href: '/dashboard',         label: 'Home'     },
+    { href: '/library',           label: 'Library'  },
+    { href: '/discover',          label: 'Discover' },
+    { href: '/reading-buddy',     label: 'Buddies'  },
+    { href: `/users/${user?.id}`, label: 'Profile'  },
   ] : [
-    { href: '/search', label: 'Discover', icon: Search },
+    { href: '/discover', label: 'Discover' },
   ]
-
-  const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/')
-
-  const close = () => setMobileMenuOpen(false)
 
   return (
     <>
+      {/* ── Top bar ─────────────────────────────────────────────────────────── */}
       <nav
-        className="sticky top-0 z-50 backdrop-blur-md"
-        style={{
-          backgroundColor: 'rgba(12, 23, 14, 0.85)',
-          borderBottom: '1px solid rgba(237, 224, 196, 0.07)',
-          boxShadow: '0 2px 16px rgba(0,0,0,0.5)',
-        }}
+        className="sticky top-0 z-50"
+        style={{ backgroundColor: 'var(--color-canvas)', borderBottom: '2px solid var(--color-ink)' }}
       >
-        <div className="container-mobile">
-          <div className="flex items-center justify-between h-16">
+        <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 md:px-14">
+          <div className="flex items-center justify-between" style={{ height: 82 }}>
 
             {/* Logo */}
-            <Link href="/" className="flex items-center flex-shrink-0 transition-opacity hover:opacity-75">
-              <div className="relative h-10 w-36">
-                <Image
-                  src="/logo.png"
-                  alt="Libraio"
-                  fill
-                  className="object-contain object-left"
-                  style={{ filter: 'brightness(0) invert(1) sepia(1) saturate(2) hue-rotate(5deg)' }}
-                  priority
-                />
+            <Link href="/" className="flex items-center gap-3 flex-shrink-0 hover:opacity-80 transition-opacity">
+              <div
+                className="flex items-center justify-center flex-shrink-0"
+                style={{
+                  width: 38, height: 38, borderRadius: 10,
+                  backgroundColor: 'var(--color-accent-orange)',
+                  border: '2px solid var(--color-ink)',
+                  boxShadow: '3px 3px 0px var(--color-ink)',
+                }}
+              >
+                <span style={{
+                  fontFamily: 'var(--font-playfair), Georgia, serif',
+                  fontSize: 22, fontWeight: 800,
+                  color: 'var(--color-accent-on)',
+                  lineHeight: 1, letterSpacing: '-0.5px',
+                }}>W</span>
               </div>
+              <span
+                className="hidden sm:block"
+                style={{
+                  fontFamily: 'var(--font-playfair), Georgia, serif',
+                  fontSize: 20, fontWeight: 700,
+                  letterSpacing: '-0.44px', color: 'var(--color-ink)',
+                }}
+              >WellRead</span>
             </Link>
 
-            {/* Desktop nav links */}
-            <div className="hidden md:flex items-center gap-1 flex-1 justify-center">
-              {navLinks.map((link) => {
-                const Icon = link.icon
-                const active = isActive(link.href)
-                const badge = 'badge' in link ? link.badge : null
-                return (
+            {/* Desktop nav links — hidden on mobile and during onboarding */}
+            {!isOnboarding && (
+              <div className="hidden md:flex items-center gap-8 flex-1 justify-center">
+                {desktopLinks.map((link) => (
                   <Link
                     key={link.href}
                     href={link.href}
-                    className="relative flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors duration-150"
-                    style={{ color: active ? 'var(--color-accent)' : '#6B6352' }}
+                    className="relative text-[13px] font-bold tracking-[0.78px] uppercase transition-colors duration-150"
+                    style={{ color: isActive(link.href) ? 'var(--color-accent)' : 'var(--color-ink)' }}
                   >
-                    {active && (
-                      <motion.div
-                        layoutId="nav-pill"
-                        className="absolute inset-0 rounded-xl"
-                        style={{ backgroundColor: 'rgba(201,168,76,0.12)' }}
-                        transition={{ type: 'spring', stiffness: 400, damping: 32 }}
-                      />
-                    )}
-                    <span className="relative z-10 flex items-center gap-2">
-                      <span className="relative">
-                        <Icon size={16} />
-                        {badge != null && (
-                          <span
-                            className="absolute -top-1.5 -right-1.5 min-w-[14px] h-[14px] rounded-full flex items-center justify-center text-[9px] font-bold px-0.5"
-                            style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-accent-on)' }}
-                          >
-                            {badge}
-                          </span>
-                        )}
-                      </span>
-                      <span>{link.label}</span>
-                    </span>
+                    {link.label}
                   </Link>
-                )
-              })}
-            </div>
+                ))}
+              </div>
+            )}
 
             {/* Right section */}
-            <div className="flex items-center gap-2 flex-shrink-0">
-              {!isAuthenticated ? (
-                <div className="hidden md:flex items-center gap-2">
-                  <Link
-                    href="/login"
-                    className="px-4 py-2 text-sm font-semibold text-lit hover:text-lit transition-colors rounded-xl hover:bg-grove"
+            <div className="flex items-center gap-3 flex-shrink-0">
+              {isOnboarding ? (
+                <div className="hidden md:flex items-center gap-4">
+                  <span className="text-[12px] font-bold tracking-[0.18em] uppercase" style={{ color: 'var(--color-ink-3)' }}>
+                    Setting Up
+                    <span style={{ margin: '0 6px', color: 'var(--color-rim-accent)' }}>·</span>
+                    {user?.username}@
+                  </span>
+                  <button
+                    onClick={() => logout()}
+                    className="text-[12px] font-black tracking-[0.18em] uppercase transition-opacity hover:opacity-70"
+                    style={{ color: 'var(--color-ink)', textDecoration: 'underline', textUnderlineOffset: 3, background: 'none', border: 'none', cursor: 'pointer' }}
                   >
-                    Login
-                  </Link>
-                  <Link
-                    href="/signup"
-                    className="px-4 py-2 text-sm font-semibold rounded-xl transition-all"
-                    style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-accent-on)' }}
-                  >
-                    Sign Up
-                  </Link>
+                    Log Out
+                  </button>
                 </div>
-              ) : (
-                <div className="flex items-center gap-1">
-                  <Link
-                    href="/settings"
-                    className="p-2 rounded-xl text-lit-2 hover:text-lit hover:bg-grove transition-colors hidden sm:flex"
-                    aria-label="Settings"
-                  >
-                    <Settings size={18} />
-                  </Link>
-                  <div className="hidden sm:block w-px h-6 mx-1" style={{ backgroundColor: 'var(--color-rim)' }} />
-                  <Link
-                    href={`/users/${user?.id}`}
-                    className="flex items-center gap-2 px-2 py-1.5 rounded-xl hover:bg-grove transition-colors"
-                  >
-                    <Avatar
-                      src={user?.avatar_url}
-                      name={user?.display_name || user?.username}
-                      size="sm"
-                    />
-                    <span className="hidden lg:block text-sm font-semibold text-lit">
-                      {user?.display_name || user?.username}
-                    </span>
-                  </Link>
-                </div>
-              )}
-
-              {/* Mobile hamburger */}
-              <button
-                onClick={() => setMobileMenuOpen(true)}
-                className="md:hidden p-2 rounded-xl text-lit hover:bg-grove transition-colors"
-                aria-label="Open menu"
-              >
-                <Menu size={22} />
-              </button>
-            </div>
-          </div>
-        </div>
-      </nav>
-
-      {/* ── Mobile drawer — rendered outside nav so it's truly full-screen ── */}
-      <AnimatePresence>
-        {mobileMenuOpen && (
-          <>
-            {/* Backdrop */}
-            <motion.div
-              key="backdrop"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="fixed inset-0 z-[60] md:hidden"
-              style={{ backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(2px)' }}
-              onClick={close}
-            />
-
-            {/* Drawer panel */}
-            <motion.div
-              key="drawer"
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-              className="fixed top-0 right-0 h-full w-72 z-[70] md:hidden flex flex-col"
-              style={{
-                backgroundColor: 'var(--color-surface)',
-                borderLeft: '1px solid var(--color-rim)',
-                boxShadow: '-8px 0 32px rgba(0,0,0,0.5)',
-              }}
-            >
-              {/* Drawer header */}
-              <div
-                className="flex items-center justify-between px-4 h-16 flex-shrink-0"
-                style={{ borderBottom: '1px solid var(--color-rim)' }}
-              >
-                <span className="text-sm font-semibold" style={{ color: 'var(--color-lit-2)' }}>Menu</span>
-                <button
-                  onClick={close}
-                  className="p-2 rounded-xl transition-colors"
-                  style={{ color: 'var(--color-lit)' }}
-                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--color-grove)')}
-                  onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
-                  aria-label="Close menu"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-
-              {/* User info strip */}
-              {isAuthenticated && user && (
-                <div
-                  className="flex items-center gap-3 mx-3 mt-4 mb-2 px-3 py-3 rounded-2xl flex-shrink-0"
-                  style={{ backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-rim)' }}
-                >
-                  <Avatar src={user.avatar_url} name={user.display_name || user.username} size="md" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold truncate" style={{ color: 'var(--color-lit)' }}>
-                      {user.display_name || user.username}
-                    </p>
-                    <p className="text-xs truncate" style={{ color: 'var(--color-lit-2)' }}>
-                      @{user.username}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* Nav links */}
-              <div className="flex flex-col gap-0.5 px-3 py-3 flex-1">
-                {navLinks.map((link) => {
-                  const Icon = link.icon
-                  const active = isActive(link.href)
-                  const badge = 'badge' in link ? link.badge : null
-                  return (
-                    <Link
-                      key={link.href}
-                      href={link.href}
-                      onClick={close}
-                      className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all"
-                      style={
-                        active
-                          ? { backgroundColor: 'rgba(201,168,76,0.12)', color: 'var(--color-accent)' }
-                          : { color: '#6B6352' }
-                      }
-                      onMouseEnter={e => { if (!active) e.currentTarget.style.backgroundColor = 'var(--color-grove)' }}
-                      onMouseLeave={e => { if (!active) e.currentTarget.style.backgroundColor = 'transparent' }}
-                    >
-                      <span className="relative flex-shrink-0">
-                        <Icon size={18} />
-                        {badge != null && (
-                          <span
-                            className="absolute -top-1.5 -right-1.5 min-w-[14px] h-[14px] rounded-full flex items-center justify-center text-[9px] font-bold px-0.5"
-                            style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-accent-on)' }}
-                          >
-                            {badge}
-                          </span>
-                        )}
-                      </span>
-                      <span className="flex-1">{link.label}</span>
-                    </Link>
-                  )
-                })}
-              </div>
-
-              {/* Bottom actions */}
-              <div
-                className="flex flex-col gap-2 px-3 py-4 flex-shrink-0"
-                style={{ borderTop: '1px solid var(--color-rim)' }}
-              >
-                {isAuthenticated ? (
-                  <Link
-                    href="/settings"
-                    onClick={close}
-                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all"
-                    style={{ color: 'var(--color-lit-2)' }}
-                    onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--color-grove)')}
-                    onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
-                  >
-                    <Settings size={18} />
-                    <span>Settings</span>
-                  </Link>
-                ) : (
-                  <>
+              ) : !isAuthenticated ? (
+                <>
+                  {/* Desktop auth buttons */}
+                  <div className="hidden md:flex items-center gap-3">
                     <Link
                       href="/login"
-                      onClick={close}
-                      className="flex justify-center px-4 py-3 rounded-xl text-sm font-semibold transition-colors"
-                      style={{ color: 'var(--color-lit-2)' }}
-                      onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--color-grove)')}
-                      onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+                      className="text-[13px] font-bold tracking-[0.78px] uppercase transition-opacity hover:opacity-60"
+                      style={{ color: 'var(--color-ink)' }}
                     >
                       Login
                     </Link>
                     <Link
                       href="/signup"
-                      onClick={close}
-                      className="flex justify-center px-4 py-3 rounded-xl text-sm font-semibold transition-all"
-                      style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-accent-on)' }}
+                      className="text-[13px] font-extrabold tracking-[0.78px] uppercase px-[18px] py-[10px] transition-opacity hover:opacity-80"
+                      style={{ borderRadius: 20, backgroundColor: 'var(--color-ink)', color: 'var(--color-canvas)' }}
                     >
-                      Sign Up
+                      Get Started
                     </Link>
-                  </>
-                )}
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+                  </div>
+                  {/* Mobile auth buttons — inline in top bar */}
+                  <div className="flex md:hidden items-center gap-2">
+                    <Link
+                      href="/login"
+                      className="text-[12px] font-bold tracking-[0.06em] uppercase px-3 py-2 transition-opacity hover:opacity-60"
+                      style={{ color: 'var(--color-ink)' }}
+                    >
+                      Login
+                    </Link>
+                    <Link
+                      href="/signup"
+                      className="text-[12px] font-extrabold tracking-[0.06em] uppercase px-4 py-2 transition-opacity hover:opacity-80"
+                      style={{ borderRadius: 20, backgroundColor: 'var(--color-ink)', color: 'var(--color-canvas)' }}
+                    >
+                      Join
+                    </Link>
+                  </div>
+                </>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <Link
+                    href="/settings"
+                    className="hidden md:flex p-2 transition-opacity hover:opacity-60"
+                    aria-label="Settings"
+                    style={{ color: 'var(--color-ink-2)' }}
+                  >
+                    <Settings size={18} />
+                  </Link>
+                  <Link href={`/users/${user?.id}`} className="flex items-center gap-2 transition-opacity hover:opacity-70">
+                    <Avatar src={user?.avatar_url} name={user?.display_name || user?.username} size="sm" />
+                    <span className="hidden lg:block text-[13px] font-bold tracking-[0.78px] uppercase" style={{ color: 'var(--color-ink)' }}>
+                      {user?.display_name || user?.username}
+                    </span>
+                  </Link>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      {/* ── Mobile bottom tab bar — authenticated only, hidden on md+ ────────── */}
+      {isAuthenticated && !isOnboarding && (
+        <div
+          className="fixed bottom-0 left-0 right-0 z-50 md:hidden"
+          style={{
+            backgroundColor: 'var(--color-canvas)',
+            borderTop: '2px solid var(--color-ink)',
+            paddingBottom: 'env(safe-area-inset-bottom, 16px)',
+          }}
+        >
+          <div className="flex items-stretch">
+            {TABS.map((tab) => {
+              const href = tab.id === 'you' ? `/users/${user?.id}` : tab.href
+              const active = isActive(tab.href)
+              const { Icon } = tab
+              return (
+                <Link
+                  key={tab.id}
+                  href={href}
+                  className="flex flex-col items-center gap-1 flex-1 pt-2 pb-1"
+                >
+                  <div
+                    style={{
+                      width: 44, height: 28, borderRadius: 99,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      backgroundColor: active ? 'var(--color-accent)' : 'transparent',
+                      border: active ? '1.5px solid var(--color-ink)' : '1.5px solid transparent',
+                      boxShadow: active ? '2px 2px 0 var(--color-ink)' : 'none',
+                      transition: 'all 120ms',
+                    }}
+                  >
+                    <Icon size={16} color={active ? '#fff' : 'var(--color-ink-2)'} />
+                  </div>
+                  <span
+                    className="text-[9px] font-bold uppercase tracking-[0.06em]"
+                    style={{ color: active ? 'var(--color-ink)' : 'var(--color-ink-3)' }}
+                  >
+                    {tab.label}
+                  </span>
+                </Link>
+              )
+            })}
+          </div>
+        </div>
+      )}
     </>
   )
 }
