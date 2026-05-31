@@ -1,96 +1,116 @@
 'use client'
 
-import { CheckCircle } from 'lucide-react'
-
 interface ReadingGoalCardProps {
-  /** The target number of books for the year, or null if not set. */
   goal: number | null
-  /** Books completed this year (counts toward the goal). */
   completed: number
-  /** Opens the goal-setting modal. */
   onEdit: () => void
 }
 
-/**
- * Reading Goal card — mirrors the mobile `goalCard` on the home / library
- * screens. Solid accent progress bar, large count, complete-pill.
- */
 export default function ReadingGoalCard({ goal, completed, onEdit }: ReadingGoalCardProps) {
   const year = new Date().getFullYear()
   const pct = goal ? Math.min(100, Math.round((completed / goal) * 100)) : 0
+  const booksLeft = goal ? Math.max(0, goal - completed) : 0
   const isComplete = !!goal && completed >= goal
 
+  const monthsElapsed = new Date().getMonth() + 1
+  const expectedByNow = goal ? Math.round((monthsElapsed / 12) * goal) : 0
+  const paceAhead = completed - expectedByNow
+
+  const RADIUS = 38
+  const CIRC = 2 * Math.PI * RADIUS
+  const dash = (pct / 100) * CIRC
+
+  let paceMsg = ''
+  if (goal) {
+    if (isComplete) paceMsg = 'Goal complete. You crushed it.'
+    else if (paceAhead > 0) paceMsg = `You're ${paceAhead} book${paceAhead !== 1 ? 's' : ''} ahead of pace. Keep it boring.`
+    else if (paceAhead < 0) paceMsg = `You're ${Math.abs(paceAhead)} book${Math.abs(paceAhead) !== 1 ? 's' : ''} behind pace. Time to read.`
+    else paceMsg = 'Right on pace. Keep going.'
+  }
+
   return (
-    <button
-      onClick={onEdit}
-      className="w-full text-left"
+    <div
+      className="h-full"
       style={{
-        background: 'var(--color-surface)',
+        backgroundColor: 'var(--color-canvas)',
+        border: '2px solid var(--color-ink)',
         borderRadius: 16,
-        border: '1px solid var(--color-rim)',
-        padding: '14px 16px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 10,
+        boxShadow: '6px 6px 0px var(--color-accent-yellow)',
+        padding: 'clamp(14px, 4vw, 24px)',
       }}
     >
-      {/* Header row */}
-      <div className="flex items-center justify-between">
-        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-lit)' }}>
-          Reading Goal{' '}
-          <span style={{ color: 'var(--color-lit-3)', fontWeight: 600 }}>· {year}</span>
+      {/* Eyebrow */}
+      <div className="flex items-center gap-3 mb-5">
+        <div style={{ width: 24, height: 2, backgroundColor: 'var(--color-accent)' }} />
+        <span className="text-[11px] font-bold uppercase tracking-[0.2em]" style={{ color: 'var(--color-accent)' }}>
+          {year} Reading Goal
         </span>
-        {isComplete ? (
-          <span
-            className="flex items-center gap-1"
-            style={{
-              backgroundColor: 'var(--color-success)',
-              borderRadius: 9999,
-              padding: '4px 10px',
-              fontSize: 11,
-              fontWeight: 700,
-              color: '#fff',
-            }}
-          >
-            <CheckCircle size={11} />
-            Complete!
-          </span>
-        ) : (
-          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-accent)' }}>
-            {goal ? 'Edit' : 'Set →'}
-          </span>
-        )}
       </div>
 
       {goal ? (
-        <>
-          {/* Count row */}
-          <div className="flex items-baseline">
-            <span style={{ fontSize: 26, fontWeight: 800, color: 'var(--color-lit)' }}>{completed}</span>
-            <span style={{ fontSize: 13, color: 'var(--color-lit-2)', marginLeft: 4 }}>
-              of {goal} books
-            </span>
-            <span className="flex-1" />
-            <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-accent)' }}>{pct}%</span>
+        <div className="flex items-center gap-4 sm:gap-5">
+          {/* SVG donut */}
+          <div className="flex-shrink-0 relative w-24 h-24 lg:w-36 lg:h-36">
+            <svg viewBox="0 0 100 100" width="100%" height="100%" style={{ transform: 'rotate(-90deg)' }}>
+              <circle cx="50" cy="50" r={RADIUS} fill="none" stroke="var(--color-cave)" strokeWidth={11} />
+              <circle
+                cx="50" cy="50" r={RADIUS}
+                fill="none"
+                stroke="var(--color-accent)"
+                strokeWidth={11}
+                strokeLinecap="round"
+                strokeDasharray={`${dash} ${CIRC}`}
+              />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <span className="font-serif font-bold leading-none text-[26px] lg:text-[38px]" style={{ color: 'var(--color-ink)' }}>
+                {completed}
+              </span>
+              <span className="text-[9px] lg:text-[11px] font-bold uppercase tracking-[0.1em]" style={{ color: 'var(--color-ink-3)' }}>
+                of {goal}
+              </span>
+            </div>
           </div>
 
-          {/* Progress bar */}
-          <div style={{ height: 8, borderRadius: 4, background: 'var(--color-grove)', overflow: 'hidden' }}>
-            <div
-              style={{
-                height: '100%',
-                width: `${pct}%`,
-                background: 'var(--color-accent)',
-                borderRadius: 4,
-              }}
-            />
+          {/* Text */}
+          <div className="min-w-0">
+            <p className="font-serif font-bold leading-tight mb-0.5 text-[20px] lg:text-[26px]" style={{ color: 'var(--color-ink)' }}>
+              {pct}% there.
+            </p>
+            {!isComplete && (
+              <p className="font-serif font-bold mb-3 text-[17px] lg:text-[21px]" style={{ color: 'var(--color-accent)', fontStyle: 'italic' }}>
+                {booksLeft} to go.
+              </p>
+            )}
+            <p className="text-[13px] leading-snug mb-4" style={{ color: 'var(--color-ink-2)' }}>
+              {paceMsg}
+            </p>
+            <button
+              onClick={onEdit}
+              className="text-[11px] font-bold uppercase tracking-[0.15em] transition-opacity hover:opacity-60 flex items-center gap-1"
+              style={{ color: 'var(--color-ink)' }}
+            >
+              Edit Goal →
+            </button>
           </div>
-        </>
+        </div>
       ) : (
-        <p style={{ fontSize: 13, color: 'var(--color-lit-2)' }}>
-          Track how many books you read this year
-        </p>
+        <div>
+          <p className="font-serif font-bold mb-2" style={{ fontSize: 22, color: 'var(--color-ink)' }}>
+            No goal yet.
+          </p>
+          <p className="text-[13px] leading-snug mb-5" style={{ color: 'var(--color-ink-2)' }}>
+            Set a reading goal to track your pace through the year.
+          </p>
+          <button
+            onClick={onEdit}
+            className="zine-btn zine-btn-primary"
+            style={{ padding: '10px 20px', fontSize: 11 }}
+          >
+            Set a Goal →
+          </button>
+        </div>
       )}
-    </button>
+    </div>
   )
 }
