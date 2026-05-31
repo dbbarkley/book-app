@@ -1,7 +1,9 @@
 import type { Metadata } from 'next'
-import { Inter, Playfair_Display } from 'next/font/google'
+import { Inter, Fraunces } from 'next/font/google'
 import './globals.css'
 import Navigation from '@/components/Navigation'
+import OnboardingProgressBar from '@/components/OnboardingProgressBar'
+import SiteFooter from '@/components/SiteFooter'
 import OnboardingGuard from '@/components/OnboardingGuard'
 import AuthInitializer from '@/components/AuthInitializer'
 import { CurtainProvider } from '@/context/CurtainContext'
@@ -13,15 +15,16 @@ const inter = Inter({
   display: 'swap',
 })
 
-const playfair = Playfair_Display({
+const fraunces = Fraunces({
   subsets: ['latin'],
   variable: '--font-playfair',
   display: 'swap',
   weight: ['400', '500', '600', '700', '800', '900'],
+  style: ['normal', 'italic'],
 })
 
 export const metadata: Metadata = {
-  title: 'Libraio',
+  title: 'WellRead',
   description: 'Your personal reading library — track books, follow authors, and share what you read.',
 }
 
@@ -31,11 +34,13 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className={`${inter.variable} ${playfair.variable}`}>
+    <html lang="en" className={`${inter.variable} ${fraunces.variable}`}>
       <body className="min-h-screen" style={{ backgroundColor: 'var(--color-canvas)' }}>
         <CurtainProvider>
           {/* Initialize auth and handle token refresh */}
           <AuthInitializer />
+          {/* Onboarding progress bar sits above the nav (only on /onboarding) */}
+          <OnboardingProgressBar />
           {/* Navigation is always visible, even during onboarding */}
           <Navigation />
           {/*
@@ -45,7 +50,8 @@ export default function RootLayout({
           */}
           <LoginTransitionCurtain />
           <OnboardingGuard>
-            <main className="min-h-screen">{children}</main>
+            <main className="min-h-screen pb-20 md:pb-0">{children}</main>
+            <SiteFooter />
           </OnboardingGuard>
         </CurtainProvider>
       </body>
