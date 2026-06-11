@@ -13,12 +13,17 @@ COPY frontend/package.json frontend/package-lock.json* ./frontend/
 # shared source must exist before npm ci resolves file:../shared
 COPY shared/ ./shared/
 
+# Install shared's own deps (axios, zustand, etc.) so webpack can resolve
+# imports from shared/ source files during the Next.js build
+RUN cd shared && npm install
+
 RUN cd frontend && npm ci
 
 # ── Stage 2: Build ────────────────────────────────────────────────────────────
 FROM node:20-alpine AS builder
 WORKDIR /app
 
+COPY --from=deps /app/shared/node_modules ./shared/node_modules
 COPY --from=deps /app/frontend/node_modules ./frontend/node_modules
 COPY shared/ ./shared/
 COPY frontend/ ./frontend/
