@@ -13,8 +13,7 @@ class CreateEvents < ActiveRecord::Migration[7.0]
       t.timestamps
     end
 
-    add_index :events, :author_id
-    add_index :events, :book_id
+    # author_id and book_id indexes already created by t.references above
     add_index :events, :starts_at
     add_index :events, [:event_type, :starts_at]
     add_index :events, [:starts_at, :ends_at]
