@@ -1,6 +1,5 @@
-FROM ruby:3.1-slim
+FROM ruby:3.1-slim AS base
 
-# Install system dependencies
 RUN apt-get update -qq && \
     apt-get install -y \
     build-essential \
@@ -12,34 +11,45 @@ RUN apt-get update -qq && \
     libreadline-dev \
     libssl-dev \
     zlib1g-dev \
-    nodejs \
     postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
-# Set working directory
 WORKDIR /app
 
-# Install bundler
 RUN gem install bundler
 
-# Copy Gemfile and install dependencies
-COPY Gemfile* ./
-RUN bundle install
+# ── Production ───────────────────────────────────────────────────────────────
+FROM base AS production
 
-# Copy application code
+COPY Gemfile Gemfile.lock ./
+RUN bundle config set --local without 'development test' && \
+    bundle install --jobs 4 --retry 3
+
 COPY . .
-
-# Create tmp and log directories
 RUN mkdir -p tmp/pids log
 
-# Copy entrypoint script
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 ENTRYPOINT ["docker-entrypoint.sh"]
 
-# Expose port
+ENV RAILS_ENV=production \
+    RAILS_LOG_TO_STDOUT=true
+
 EXPOSE 3000
+CMD ["bundle", "exec", "rails", "server", "-b", "0.0.0.0"]
 
-# Default command
+# ── Development (default — dev compose overrides via volume mount + command) ──
+FROM base AS development
+
+COPY Gemfile Gemfile.lock ./
+RUN bundle install
+
+COPY . .
+RUN mkdir -p tmp/pids log
+
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+ENTRYPOINT ["docker-entrypoint.sh"]
+
+EXPOSE 3000
 CMD ["rails", "server", "-b", "0.0.0.0"]
-

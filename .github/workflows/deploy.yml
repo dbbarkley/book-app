@@ -1,0 +1,36 @@
+name: Deploy to DigitalOcean
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to Droplet via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DROPLET_IP }}
+          username: ${{ secrets.DROPLET_USER }}
+          key: ${{ secrets.DROPLET_SSH_KEY }}
+          script: |
+            set -e
+            cd /opt/book-app
+
+            echo "Pulling latest code..."
+            git pull origin main
+
+            echo "Building images..."
+            docker compose -f docker-compose.prod.yml build
+
+            echo "Restarting services..."
+            docker compose -f docker-compose.prod.yml up -d
+
+            echo "Removing old images..."
+            docker image prune -f
+
+            echo "Deploy complete."
