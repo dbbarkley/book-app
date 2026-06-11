@@ -13,6 +13,7 @@ import type {
   Notification,
   PaginationMeta,
   UserBook,
+  BookNote,
   ShelfStatus,
   Visibility,
   RecommendedBook,
@@ -177,9 +178,9 @@ export class ApiClient {
   }
 
   // Auth endpoints
-  async register(email: string, username: string, password: string) {
+  async register(email: string, username: string, password: string, displayName?: string) {
     const response = await this.client.post<{ user: User; token: string }>('/auth/register', {
-      user: { email, username },
+      user: { email, username, display_name: displayName },
       password,
     })
     return response.data
@@ -657,6 +658,34 @@ export class ApiClient {
       notes,
     })
     return response.data.user_book
+  }
+
+  async getBookNotes(userBookId: number) {
+    const response = await this.client.get<{ notes: BookNote[] }>(`/user/books/${userBookId}/notes`)
+    return response.data.notes
+  }
+
+  async createBookNote(userBookId: number, content: string, pageNumber?: number) {
+    const response = await this.client.post<{ note: BookNote }>(`/user/books/${userBookId}/notes`, {
+      note: { content, page_number: pageNumber ?? null },
+    })
+    return response.data.note
+  }
+
+  async updateBookNote(userBookId: number, noteId: number, content: string, pageNumber?: number) {
+    const response = await this.client.patch<{ note: BookNote }>(`/user/books/${userBookId}/notes/${noteId}`, {
+      note: { content, page_number: pageNumber ?? null },
+    })
+    return response.data.note
+  }
+
+  async deleteBookNote(userBookId: number, noteId: number) {
+    await this.client.delete(`/user/books/${userBookId}/notes/${noteId}`)
+  }
+
+  async getAllUserNotes() {
+    const response = await this.client.get<{ notes: BookNote[] }>('/user/notes')
+    return response.data.notes
   }
 
   async deleteUserBook(userBookId: number): Promise<void> {

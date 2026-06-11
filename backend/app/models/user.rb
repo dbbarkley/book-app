@@ -32,6 +32,7 @@ class User < ApplicationRecord
   has_many :feed_items, dependent: :destroy
   has_many :notifications, dependent: :destroy
   has_many :user_books, dependent: :destroy
+  has_many :book_notes, dependent: :destroy
   has_many :imports, dependent: :destroy
   has_many :user_genre_stats, dependent: :destroy
   has_many :user_lists, dependent: :destroy
@@ -165,6 +166,21 @@ class User < ApplicationRecord
   def avatar_file_size
     if avatar.attached? && avatar.blob.byte_size > 5.megabytes
       errors.add(:avatar, 'is too large (max 5MB)')
+    end
+  end
+
+  public
+
+  def update_reading_streak!
+    today = Date.current
+    if last_read_date == today
+      # Already logged today — nothing to do
+    elsif last_read_date == today - 1
+      # Consecutive day — extend streak
+      update_columns(reading_streak: reading_streak.to_i + 1, last_read_date: today)
+    else
+      # Streak broken or first ever entry — reset to 1
+      update_columns(reading_streak: 1, last_read_date: today)
     end
   end
 end

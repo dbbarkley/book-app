@@ -12,7 +12,8 @@ interface BooksState {
   userBooks: Record<number, UserBook>
   bookIdRedirectMap: Record<number, number>
   // Search results cache (includes Google Books results)
-  searchResults: Record<number, Book>
+  // Keyed by DB id (number) when available, google_books_id (string) otherwise.
+  searchResults: Record<string | number, Book>
   searchPagination: PaginationMeta | null
   // Loading states
   loading: boolean
@@ -353,9 +354,13 @@ export const useBooksStore = create<BooksState>((set, get) => ({
   },
 
   cacheSearchResults: (books: Book[]) => {
-    const resultsMap: Record<number, Book> = {}
+    const resultsMap: Record<string | number, Book> = {}
     books.forEach((book) => {
-      resultsMap[book.id] = book
+      // Key priority: ISBN (stable, deduplicates editions) > google_books_id > DB id.
+      // ISBN is not always present (e.g. curated shelf books have none).
+      const key: string | number | null | undefined =
+        book.isbn ?? book.google_books_id ?? (book.id != null && book.id > 0 ? book.id : null)
+      if (key != null) resultsMap[key] = book
     })
     set((state) => ({
       searchResults: {
@@ -370,7 +375,11 @@ export const useBooksStore = create<BooksState>((set, get) => ({
   },
 
   getSearchResultByGoogleId: (googleId: string) => {
-    return Object.values(get().searchResults).find(b => b.google_books_id === googleId) || null
+    const results = get().searchResults
+    // Direct key lookup (fast path — works when cached by google_books_id)
+    if (results[googleId]) return results[googleId]
+    // Scan: book may be keyed by ISBN or DB id but still carry this google_books_id
+    return Object.values(results).find(b => b.google_books_id === googleId) || null
   },
 
   getUserBookByBookId: (bookId: number) => {

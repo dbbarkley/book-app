@@ -11,7 +11,7 @@
    (bg-canvas, text-ink, bg-surface, etc.) — nothing else
    needs to be touched.
 
-   CURRENT THEME: Dark Library
+   CURRENT THEME: Bold Zine
    ============================================================ */
 
 @layer base {
@@ -22,74 +22,70 @@
        canvas  = the room (main app bg)
        surface = paper (cards, panels)
        cave    = shadow (hero, deepest sections)
-       grove   = alcove (subtle dark section dividers)
+       grove   = alcove (subtle section dividers)
     ---------------------------------------------------------- */
-    --color-canvas:  #0D1A0F;   /* The room — deep shadow green (was hero) */
-    --color-surface: #18231A;   /* Card surfaces — same lifted green as hero */
-    --color-cave:    #18231A;   /* Hero card */
-    --color-grove:   #1F2E21;   /* Inner panels — slightly lighter green */
+    --color-canvas:  #FAF6EB;   /* Cream paper */
+    --color-surface: #F2EDE2;   /* Card surfaces — warm off-white */
+    --color-cave:    #f2ede2;   /* Deep inset sections — parchment */
+    --color-grove:   #E8DCC8;   /* Inner panels — slightly darker parchment */
 
     /* Nav needs rgba so backdrop-blur shows through */
-    --color-nav-bg:  rgba(10, 20, 11, 0.90);
+    --color-nav-bg:  rgba(250, 246, 235, 0.92);
 
     /* ----------------------------------------------------------
-       ACCENT — brass lamp glow
+       ACCENT — burnt orange (primary), yellow + purple (secondary)
        accent        = primary action color
        accent-hover  = hover/active state
        accent-subtle = very faint accent tint (badges, tags)
        accent-on     = text colour when sitting ON accent bg
     ---------------------------------------------------------- */
-    --color-accent:        #C9A84C;
-    --color-accent-hover:  #A07830;
-    --color-accent-subtle: rgba(201, 168, 76, 0.12);
-    --color-accent-on:     #1A1205;
+    --color-accent:        #D5582E;
+    --color-accent-orange: #d5582e;
+    --color-accent-hover:  #B8461C;
+    --color-accent-subtle: rgba(213, 88, 46, 0.10);
+    --color-accent-on:     #FFFFFF;
+
+    /* Secondary palette */
+    --color-accent-yellow: #F1C75B;
+    --color-accent-purple: #A78BFA;
+    --color-accent-teal:   #1f3a5f;
 
     /* ----------------------------------------------------------
        TEXT ON LIGHT SURFACES (cards, panels)
     ---------------------------------------------------------- */
-    --color-ink:    #EDE0C4;  /* Primary text on cards — warm cream */
-    --color-ink-2:  #A89070;  /* Secondary text on cards — muted amber */
-    --color-ink-3:  #6B5A45;  /* Muted text on cards */
+    --color-ink:    #1A1A1A;  /* Primary text — near black */
+    --color-ink-2:  #4A4A4A;  /* Secondary text — dark gray */
+    --color-ink-3:  #8B8378;  /* Muted text — warm gray */
 
     /* ----------------------------------------------------------
-       TEXT ON DARK SURFACES (canvas, cave, hero)
+       TEXT ON DARK SURFACES (cave, accent blocks)
+       lit = same semantic role but for dark contexts
     ---------------------------------------------------------- */
-    --color-lit:    #EDE0C4;                    /* Primary */
-    --color-lit-2:  rgba(237, 224, 196, 0.75);  /* Secondary — was 0.55, bumped for WCAG AA */
-    --color-lit-3:  rgba(237, 224, 196, 0.45);  /* Faint / hint — was 0.30 */
+    --color-lit:    #FAF6EB;                    /* Primary */
+    --color-lit-2:  rgba(250, 246, 235, 0.80);  /* Secondary */
+    --color-lit-3:  rgba(250, 246, 235, 0.55);  /* Faint / hint */
 
     /* ----------------------------------------------------------
        BORDERS
     ---------------------------------------------------------- */
-    --color-rim:        rgba(237, 224, 196, 0.12);  /* On walnut card surfaces */
-    --color-rim-dark:   rgba(237, 224, 196, 0.09);  /* On dark bg surfaces */
-    --color-rim-accent: rgba(201, 168, 76, 0.45);   /* Accent-tinted — bumped for ghost buttons */
+    --color-rim:        rgba(26, 26, 26, 0.12);  /* On light card surfaces */
+    --color-rim-dark:   rgba(26, 26, 26, 0.08);  /* On light bg surfaces */
+    --color-rim-accent: rgba(213, 88, 46, 0.35); /* Accent-tinted */
 
     /* ----------------------------------------------------------
        STATUS COLOURS
     ---------------------------------------------------------- */
-    --color-success:       #5A9E7A;
-    --color-success-light: rgba(90, 158, 122, 0.15);
-    --color-error:         #DC2626;
+    --color-success:       #1E6B3A;
+    --color-success-light: rgba(30, 107, 58, 0.12);
+    --color-error:         #d5582e;
 
   }
 
   body {
     background-color: var(--color-canvas);
-    color: var(--color-lit);
+    color: var(--color-ink);
     font-family: var(--font-inter), system-ui, sans-serif;
     @apply antialiased;
-    /* Vignette: bright centre, dark edges */
-    background-image:
-      radial-gradient(ellipse 60% 55% at 50% 38%, rgba(22, 42, 24, 0.55) 0%, transparent 70%),
-      radial-gradient(ellipse 90% 85% at 50% 38%, transparent 0%, rgba(2, 5, 3, 0.75) 100%),
-      repeating-linear-gradient(
-        90deg,
-        transparent,
-        transparent 2px,
-        rgba(255, 255, 255, 0.014) 2px,
-        rgba(255, 255, 255, 0.014) 4px
-      );
   }
 
   html {
@@ -102,6 +98,224 @@
   }
 }
 
+/* ============================================================
+   REUSABLE ZINE COMPONENTS
+   ============================================================
+   These classes encode the Bold Zine design system. Use them
+   instead of repeating inline styles. Mix with Tailwind
+   utility classes for spacing/sizing.
+   ============================================================ */
+
+@layer components {
+
+  /* ── Cards ─────────────────────────────────────────────────
+     Base card: ink border + rounded corners.
+     Combine with a .shadow-* modifier for the offset shadow.
+
+     Usage:
+       <div class="zine-card shadow-zine-ink p-6"> ... </div>
+       <div class="zine-card zine-card-sm shadow-zine-accent p-4"> ... </div>
+  ────────────────────────────────────────────────────────── */
+  .zine-card {
+    border: 2px solid var(--color-ink);
+    border-radius: 16px;
+    background-color: var(--color-canvas);
+  }
+  .zine-card-sm   { border-radius: 10px; }
+  .zine-card-lg   { border-radius: 20px; }
+
+  /* Shadow color modifiers — pair with .zine-card */
+  .shadow-zine-ink    { box-shadow: 8px 8px 0px var(--color-ink); }
+  .shadow-zine-accent { box-shadow: 8px 8px 0px var(--color-accent); }
+  .shadow-zine-yellow { box-shadow: 8px 8px 0px var(--color-accent-yellow); }
+  .shadow-zine-teal   { box-shadow: 8px 8px 0px var(--color-accent-teal); }
+  /* Smaller offset for tighter contexts */
+  .shadow-zine-ink-sm    { box-shadow: 6px 6px 0px var(--color-ink); }
+  .shadow-zine-accent-sm { box-shadow: 6px 6px 0px var(--color-accent); }
+  .shadow-zine-yellow-sm { box-shadow: 6px 6px 0px var(--color-accent-yellow); }
+  .shadow-zine-teal-sm   { box-shadow: 6px 6px 0px var(--color-accent-teal); }
+
+  /* ── Buttons ────────────────────────────────────────────────
+     All buttons share a base class. Add a variant class on top.
+
+     Usage:
+       <button class="zine-btn zine-btn-primary">Log in</button>
+       <button class="zine-btn zine-btn-ink">Get Started</button>
+       <button class="zine-btn zine-btn-social w-full">Continue with Google</button>
+  ────────────────────────────────────────────────────────── */
+  .zine-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    transition: opacity 150ms ease;
+    cursor: pointer;
+  }
+  .zine-btn:hover  { opacity: 0.85; }
+  .zine-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* Primary — accent orange pill, ink hard shadow */
+  .zine-btn-primary {
+    background-color: var(--color-accent);
+    color: #ffffff;
+    border: 2px solid var(--color-ink);
+    border-radius: 999px;
+    box-shadow: 3px 3px 0px var(--color-ink);
+    padding: 14px 28px;
+  }
+
+  /* Ink — dark pill, cream text */
+  .zine-btn-ink {
+    background-color: var(--color-ink);
+    color: var(--color-canvas);
+    border: 2px solid var(--color-ink);
+    border-radius: 999px;
+    box-shadow: 3px 3px 0px var(--color-accent);
+    padding: 14px 28px;
+  }
+
+  /* Social — white bg, ink border + shadow, slightly rounded */
+  .zine-btn-social {
+    background-color: #ffffff;
+    color: var(--color-ink);
+    border: 2px solid var(--color-ink);
+    border-radius: 10px;
+    box-shadow: 3px 3px 0px var(--color-ink);
+    padding: 14px 20px;
+    letter-spacing: 0.12em;
+  }
+
+  /* Ghost — transparent, accent border */
+  .zine-btn-ghost {
+    background-color: transparent;
+    color: var(--color-ink);
+    border: 1.5px solid var(--color-rim-accent);
+    border-radius: 999px;
+    padding: 10px 18px;
+  }
+  .zine-btn-ghost:hover {
+    border-color: var(--color-accent);
+    background-color: var(--color-accent-subtle);
+    opacity: 1;
+  }
+
+  /* ── Inputs ─────────────────────────────────────────────────
+     Usage:
+       <input class="zine-input w-full" />
+       <input class="zine-input zine-input-error w-full" />
+  ────────────────────────────────────────────────────────── */
+  .zine-input {
+    border: 2px solid var(--color-ink);
+    border-radius: 10px;
+    background-color: #ffffff;
+    color: var(--color-ink);
+    font-size: 15px;
+    padding: 14px 16px;
+    width: 100%;
+    outline: none;
+    transition: border-color 150ms ease;
+  }
+  .zine-input::placeholder { color: var(--color-ink-3); }
+  .zine-input:focus { border-color: var(--color-accent); }
+  .zine-input-error { border-color: var(--color-accent) !important; }
+
+  /* ── Eyebrow badge ──────────────────────────────────────────
+     Rectangular badge with accent border. Use for section
+     labels, page-level context indicators.
+
+     Usage:
+       <span class="zine-eyebrow">Welcome back, reader</span>
+  ────────────────────────────────────────────────────────── */
+  .zine-eyebrow {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    color: var(--color-accent);
+    border: 1.5px solid var(--color-accent);
+    border-radius: 5px;
+    background-color: var(--color-canvas);
+    padding: 5px 10px;
+  }
+
+  /* ── Section eyebrow (line + label) ────────────────────────
+     The horizontal-line + small-caps pattern used above every
+     section heading on the landing page.
+
+     Usage:
+       <div class="zine-section-eyebrow">01 — The Shelf</div>
+       <div class="zine-section-eyebrow" style="--eyebrow-color: var(--color-accent-teal)">02 — Buddies</div>
+  ────────────────────────────────────────────────────────── */
+  .zine-section-eyebrow {
+    --eyebrow-color: var(--color-accent);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    color: var(--eyebrow-color);
+    margin-bottom: 16px;
+  }
+  .zine-section-eyebrow::before {
+    content: '';
+    display: block;
+    width: 28px;
+    height: 2px;
+    background-color: var(--eyebrow-color);
+    flex-shrink: 0;
+  }
+
+  /* ── Dividers ───────────────────────────────────────────────
+     Usage:
+       <hr class="zine-divider" />          — dashed (inside forms/cards)
+       <hr class="zine-divider-solid" />    — solid 2px ink (between sections)
+  ────────────────────────────────────────────────────────── */
+  .zine-divider {
+    border: none;
+    border-top: 1.5px dashed var(--color-rim);
+    margin: 0;
+  }
+  .zine-divider-solid {
+    border: none;
+    border-top: 2px solid var(--color-ink);
+    margin: 0;
+  }
+
+  /* ── Error text ─────────────────────────────────────────────
+     Usage:
+       <p class="zine-field-error">Email is required</p>
+  ────────────────────────────────────────────────────────── */
+  .zine-field-error {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-accent);
+    margin-top: 6px;
+  }
+
+  /* ── Error banner ───────────────────────────────────────────
+     Usage:
+       <div class="zine-error-banner">Incorrect email or password.</div>
+  ────────────────────────────────────────────────────────── */
+  .zine-error-banner {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-accent);
+    background-color: var(--color-accent-subtle);
+    border: 1.5px solid var(--color-accent);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 20px;
+  }
+
+}
+
 /* Utility classes */
 @layer utilities {
   .container-mobile {
@@ -110,19 +324,13 @@
 
   @screen sm {
     .container-mobile {
-      @apply px-6;
-    }
-  }
-
-  @screen md {
-    .container-mobile {
-      @apply px-8 max-w-4xl;
+      @apply px-8;
     }
   }
 
   @screen lg {
     .container-mobile {
-      @apply max-w-7xl;
+      @apply px-14 max-w-screen-2xl;
     }
   }
 
@@ -150,4 +358,9 @@
     -ms-overflow-style: none; /* IE and Edge */
     scrollbar-width: none; /* Firefox */
   }
+}
+
+@keyframes slideUpSheet {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0);    }
 }

@@ -43,12 +43,12 @@ function GenreHero({
       backgroundImage: `radial-gradient(ellipse at 82% 12%, rgba(255,255,255,0.13) 0%, transparent 55%)`,
       marginBottom: 56,
     }}>
-      <div style={{ padding: '32px 36px 28px' }}>
+      <div style={{ padding: 'clamp(20px, 5vw, 32px) clamp(18px, 5vw, 36px) 28px' }}>
 
         {/* ── Row 1: section badge + count box ── */}
-        <div className="flex items-start justify-between gap-8" style={{ marginBottom: 24 }}>
-          {/* Left: badge + label */}
-          <div className="flex items-center gap-3">
+        <div className="flex items-start justify-between gap-4" style={{ marginBottom: 24 }}>
+          {/* Left: badge (+ label hidden on mobile) */}
+          <div className="flex items-center gap-3 flex-wrap">
             <div style={{
               border: `1.5px solid ${genre.textColor}`,
               borderRadius: 6, padding: '5px 12px',
@@ -61,7 +61,7 @@ function GenreHero({
                 Section {sectionNumber}
               </span>
             </div>
-            <span style={{
+            <span className="hidden sm:inline" style={{
               fontSize: 11, fontWeight: 800, letterSpacing: '0.2em',
               color: muted, textTransform: 'uppercase',
             }}>
@@ -69,13 +69,12 @@ function GenreHero({
             </span>
           </div>
 
-          {/* Right: "In this section" count box */}
+          {/* Right: "In this section" count box — compact on mobile */}
           <div style={{
             backgroundColor: dimBg,
             borderRadius: 14,
-            padding: '14px 22px',
+            padding: 'clamp(8px, 3vw, 14px) clamp(12px, 4vw, 22px)',
             textAlign: 'center',
-            minWidth: 130,
             flexShrink: 0,
           }}>
             <p style={{
@@ -85,7 +84,7 @@ function GenreHero({
               In this section
             </p>
             <p className="font-serif font-black tabular-nums" style={{
-              fontSize: bookCount !== null ? '3.5rem' : '2rem',
+              fontSize: bookCount !== null ? 'clamp(2rem, 7vw, 3.5rem)' : '2rem',
               lineHeight: 1, color: genre.textColor, marginBottom: 2,
             }}>
               {bookCount !== null ? bookCount.toLocaleString() : '—'}
@@ -242,7 +241,7 @@ function FriendCircleSection({ genre }: { genre: ReturnType<typeof getGenreBySlu
             </em>
           </h2>
         </div>
-        <span style={{
+        <span className="hidden sm:inline" style={{
           fontSize: 11, fontWeight: 800, letterSpacing: '0.18em',
           color: 'var(--color-ink-3)', textTransform: 'uppercase', whiteSpace: 'nowrap',
         }}>
@@ -608,7 +607,7 @@ function BookGrid({ genre, activeSubcat, totalCount }: {
           </h2>
         </div>
         {!activeSubcat && (
-          <span style={{
+          <span className="hidden sm:inline" style={{
             fontSize: 10, fontWeight: 800, letterSpacing: '0.14em',
             color: 'var(--color-ink-3)', textTransform: 'uppercase',
             whiteSpace: 'nowrap', flexShrink: 0,
@@ -624,22 +623,26 @@ function BookGrid({ genre, activeSubcat, totalCount }: {
         style={{
           border: '2px solid var(--color-ink)',
           borderRadius: 999,
-          padding: '6px 8px 6px 18px',
+          padding: '6px 8px 6px 14px',
           marginBottom: 24,
           backgroundColor: 'var(--color-canvas)',
+          overflow: 'hidden',
         }}
       >
         {/* Sort label */}
         <span style={{
           fontSize: 10, fontWeight: 900, letterSpacing: '0.2em',
           color: 'var(--color-ink-3)', textTransform: 'uppercase',
-          marginRight: 10, whiteSpace: 'nowrap', flexShrink: 0,
+          marginRight: 8, whiteSpace: 'nowrap', flexShrink: 0,
         }}>
           Sort
         </span>
 
-        {/* Sort pills */}
-        <div className="flex items-center gap-1.5 flex-1">
+        {/* Sort pills — scrollable on mobile */}
+        <div
+          className="scrollbar-hide flex items-center gap-1.5 flex-1"
+          style={{ overflowX: 'auto' }}
+        >
           {SORT_LABELS.map(s => (
             <button
               key={s.id}
@@ -647,8 +650,8 @@ function BookGrid({ genre, activeSubcat, totalCount }: {
               className="font-bold transition-all"
               style={{
                 fontSize: 12, letterSpacing: '0.02em',
-                padding: '7px 16px', borderRadius: 999,
-                border: 'none', cursor: 'pointer',
+                padding: '7px 14px', borderRadius: 999,
+                border: 'none', cursor: 'pointer', flexShrink: 0,
                 backgroundColor: sort === s.id ? 'var(--color-ink)' : 'transparent',
                 color: sort === s.id ? '#FAF6EB' : 'var(--color-ink)',
                 whiteSpace: 'nowrap',
@@ -664,17 +667,10 @@ function BookGrid({ genre, activeSubcat, totalCount }: {
           className="flex items-center gap-1"
           style={{
             borderLeft: '1.5px solid var(--color-rim)',
-            paddingLeft: 12, marginLeft: 8,
+            paddingLeft: 10, marginLeft: 6,
             flexShrink: 0,
           }}
         >
-          <span style={{
-            fontSize: 10, fontWeight: 900, letterSpacing: '0.2em',
-            color: 'var(--color-ink-3)', textTransform: 'uppercase',
-            marginRight: 6,
-          }}>
-            View
-          </span>
           {([['grid', LayoutGrid], ['list', List]] as const).map(([id, Icon]) => (
             <button
               key={id}
@@ -908,7 +904,7 @@ function CuratedListsSection({ genre }: { genre: ReturnType<typeof getGenreBySlu
         </div>
         <Link
           href="/lists"
-          className="flex items-center gap-1 font-bold uppercase transition-opacity hover:opacity-70"
+          className="hidden sm:flex items-center gap-1 font-bold uppercase transition-opacity hover:opacity-70"
           style={{ fontSize: 11, letterSpacing: '0.18em', color: 'var(--color-ink)', whiteSpace: 'nowrap' }}
         >
           See all lists <ArrowRight style={{ width: 13, height: 13 }} />

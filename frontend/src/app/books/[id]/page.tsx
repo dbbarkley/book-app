@@ -231,6 +231,78 @@ export default function BookPage() {
     display: 'flex', alignItems: 'center', gap: 8,
   })
 
+  const renderActionButtons = () => isAuthenticated ? (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {userBook ? (
+        <button
+          onClick={() => setIsUpdateModalOpen(true)}
+          className="font-bold uppercase transition-opacity hover:opacity-80"
+          style={{ ...pillBtn(true), justifyContent: 'space-between' }}
+        >
+          <span className="flex items-center gap-2">
+            <Check size={13} strokeWidth={2.5} />
+            {shelfLabels[userBook.status] || 'On My Shelf'}
+          </span>
+          <ChevronDown size={13} strokeWidth={2.5} />
+        </button>
+      ) : (
+        <button
+          onClick={() => setIsUpdateModalOpen(true)}
+          className="font-bold uppercase transition-opacity hover:opacity-80"
+          style={{ ...pillBtn(true), justifyContent: 'center' }}
+        >
+          <Plus size={13} strokeWidth={2.5} /> Add to Shelf
+        </button>
+      )}
+      {userBook && (
+        <div
+          className="font-bold uppercase"
+          style={{ ...pillBtn(false), cursor: 'default', flexWrap: 'wrap', gap: 6 }}
+        >
+          <Check size={12} strokeWidth={2.5} />
+          Receiving Updates
+          <span style={{ color: 'var(--color-ink-3)' }}>·</span>
+          {userBook.visibility === 'private'
+            ? <><Lock size={12} /> Private</>
+            : <><Globe size={12} /> Public</>}
+        </div>
+      )}
+      {internalBookId && (
+        <button
+          onClick={handleFollowToggle}
+          disabled={followLoading}
+          className="font-bold uppercase transition-opacity hover:opacity-70 disabled:opacity-40"
+          style={{ ...pillBtn(false) }}
+        >
+          {isFollowingBook
+            ? <><Check size={12} strokeWidth={2.5} /> Following Updates</>
+            : <><Plus size={12} strokeWidth={2.5} /> Follow Updates</>}
+        </button>
+      )}
+      <button
+        onClick={() => setIsSuggestModalOpen(true)}
+        className="font-bold uppercase transition-opacity hover:opacity-70"
+        style={{ ...pillBtn(false), justifyContent: 'center' }}
+      >
+        <Share2 size={12} strokeWidth={2} /> Suggest to Friend
+      </button>
+    </div>
+  ) : (
+    <div style={{ width: '100%' }}>
+      <p className="font-medium mb-3" style={{ fontSize: 13, color: 'var(--color-ink-2)' }}>
+        Sign in to track this book
+      </p>
+      <div className="flex gap-2">
+        <Link href="/login" className="flex-1">
+          <Button variant="primary" fullWidth size="sm">Login</Button>
+        </Link>
+        <Link href="/signup" className="flex-1">
+          <Button variant="outline" fullWidth size="sm">Sign Up</Button>
+        </Link>
+      </div>
+    </div>
+  )
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--color-canvas)', position: 'relative' }}>
 
@@ -268,22 +340,24 @@ export default function BookPage() {
       <div className="relative" style={{ zIndex: 1 }}>
 
           {/* ── Nav bar ── */}
-          <div className="container-mobile max-w-6xl flex items-center justify-between" style={{ paddingTop: 20, paddingBottom: 96 }}>
+          <div className="container-mobile max-w-6xl flex items-center justify-between pb-3 lg:pb-24" style={{ paddingTop: 20 }}>
             <button
               onClick={handleBack}
               className="flex items-center gap-2 font-bold uppercase transition-opacity hover:opacity-70"
               style={{
                 fontSize: 11, letterSpacing: '0.14em',
                 border: '2px solid var(--color-ink)',
-                borderRadius: 999, padding: '8px 16px',
+                borderRadius: 999, padding: '6px 12px',
                 backgroundColor: 'var(--color-canvas)',
                 color: 'var(--color-ink)',
               }}
             >
-              <ChevronLeft size={13} strokeWidth={2.5} /> Back to Discover
+              <ChevronLeft size={13} strokeWidth={2.5} />
+              <span className="hidden sm:inline">Back to Discover</span>
+              <span className="sm:hidden">Back</span>
             </button>
             <div
-              className="font-bold uppercase"
+              className="hidden sm:block font-bold uppercase"
               style={{
                 fontSize: 11, letterSpacing: '0.14em',
                 border: '2px solid var(--color-ink)',
@@ -296,8 +370,8 @@ export default function BookPage() {
             </div>
           </div>
 
-          {/* ── Newspaper meta bar — full page width ── */}
-          <div style={{ borderTop: '2px solid var(--color-ink)', borderBottom: '2px solid var(--color-ink)' }}>
+          {/* ── Newspaper meta bar — full page width, desktop only ── */}
+          <div className="hidden sm:block" style={{ borderTop: '2px solid var(--color-ink)', borderBottom: '2px solid var(--color-ink)' }}>
             <div className="container-mobile max-w-6xl grid lg:grid-cols-[3fr_7fr] gap-10" style={{ paddingTop: 10, paddingBottom: 10 }}>
               {/* Left spacer — book cover overlaps here */}
               <div className="hidden lg:block" />
@@ -317,13 +391,24 @@ export default function BookPage() {
           </div>
 
         <div className="container-mobile max-w-6xl">
-          {/* ── Hero two-column ── */}
-          <div className="grid lg:grid-cols-[3fr_7fr] gap-10">
 
-            {/* LEFT: Cover + action buttons */}
-            <div className="flex flex-col items-center lg:items-start lg:-mt-[42px] lg:relative lg:z-[2]">
+          {/* Mobile dateline strip */}
+          <div className="sm:hidden" style={{ borderTop: '2px solid var(--color-ink)', borderBottom: '2px solid var(--color-ink)', marginBottom: 16 }}>
+            <div className="flex items-center justify-center gap-3 flex-wrap" style={{ paddingTop: 8, paddingBottom: 8 }}>
+              {genre && <span className="font-bold uppercase" style={{ fontSize: 11, letterSpacing: '0.14em', color: 'var(--color-ink)' }}>{genre}</span>}
+              {genre && book.release_date && <span style={{ color: 'var(--color-ink-3)' }}>·</span>}
+              {book.release_date && <span className="font-bold uppercase" style={{ fontSize: 11, letterSpacing: '0.14em', color: 'var(--color-ink)' }}>{formatDate(book.release_date)}</span>}
+              {book.page_count && <><span style={{ color: 'var(--color-ink-3)' }}>·</span><span className="font-bold uppercase" style={{ fontSize: 11, letterSpacing: '0.14em', color: 'var(--color-ink)' }}>{book.page_count}pp</span></>}
+            </div>
+          </div>
+
+          {/* ── Hero two-column ── */}
+          <div className="grid grid-cols-[130px_1fr] lg:grid-cols-[3fr_7fr] gap-x-5 gap-y-4 lg:gap-10 items-start">
+
+            {/* LEFT: Cover (+ desktop action buttons) */}
+            <div className="flex flex-col items-start lg:-mt-[42px] lg:relative lg:z-[2]">
               <div
-                className="w-[180px] sm:w-[220px] lg:w-full"
+                className="w-full"
                 style={{
                   borderRadius: 10,
                   overflow: 'hidden',
@@ -342,90 +427,14 @@ export default function BookPage() {
                 />
               </div>
 
-              {isAuthenticated ? (
-                <div className="w-[180px] sm:w-[220px] lg:w-full" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {/* Shelf / Add button */}
-                  {userBook ? (
-                    <button
-                      onClick={() => setIsUpdateModalOpen(true)}
-                      className="font-bold uppercase transition-opacity hover:opacity-80 justify-between"
-                      style={{ ...pillBtn(true), justifyContent: 'space-between' }}
-                    >
-                      <span className="flex items-center gap-2">
-                        <Check size={13} strokeWidth={2.5} />
-                        {shelfLabels[userBook.status] || 'On My Shelf'}
-                      </span>
-                      <ChevronDown size={13} strokeWidth={2.5} />
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => setIsUpdateModalOpen(true)}
-                      className="font-bold uppercase transition-opacity hover:opacity-80 justify-center"
-                      style={{ ...pillBtn(true), justifyContent: 'center' }}
-                    >
-                      <Plus size={13} strokeWidth={2.5} /> Add to Shelf
-                    </button>
-                  )}
-
-                  {/* Status + visibility */}
-                  {userBook && (
-                    <div
-                      className="font-bold uppercase"
-                      style={{ ...pillBtn(false), cursor: 'default', flexWrap: 'wrap', gap: 6 }}
-                    >
-                      <Check size={12} strokeWidth={2.5} />
-                      Receiving Updates
-                      <span style={{ color: 'var(--color-ink-3)' }}>·</span>
-                      {userBook.visibility === 'private'
-                        ? <><Lock size={12} /> Private</>
-                        : <><Globe size={12} /> Public</>}
-                    </div>
-                  )}
-
-                  {/* Follow book updates */}
-                  {internalBookId && (
-                    <button
-                      onClick={handleFollowToggle}
-                      disabled={followLoading}
-                      className="font-bold uppercase transition-opacity hover:opacity-70 disabled:opacity-40"
-                      style={{ ...pillBtn(false) }}
-                    >
-                      {isFollowingBook
-                        ? <><Check size={12} strokeWidth={2.5} /> Following Updates</>
-                        : <><Plus size={12} strokeWidth={2.5} /> Follow Updates</>}
-                    </button>
-                  )}
-
-                  {/* Suggest to friend */}
-                  {internalBookId && (
-                    <button
-                      onClick={() => setIsSuggestModalOpen(true)}
-                      className="font-bold uppercase transition-opacity hover:opacity-70 justify-center"
-                      style={{ ...pillBtn(false), justifyContent: 'center' }}
-                    >
-                      <Share2 size={12} strokeWidth={2} /> Suggest to Friend
-                    </button>
-                  )}
-                </div>
-              ) : (
-                <div style={{ width: '100%', maxWidth: 280 }}>
-                  <p className="font-medium mb-3" style={{ fontSize: 13, color: '#FAF6EB' }}>
-                    Sign in to track this book
-                  </p>
-                  <div className="flex gap-2">
-                    <Link href="/login" className="flex-1">
-                      <Button variant="primary" fullWidth size="sm">Login</Button>
-                    </Link>
-                    <Link href="/signup" className="flex-1">
-                      <Button variant="outline" fullWidth size="sm">Sign Up</Button>
-                    </Link>
-                  </div>
-                </div>
-              )}
+              {/* Desktop-only action buttons */}
+              <div className="hidden lg:block w-full">
+                {renderActionButtons()}
+              </div>
             </div>
 
             {/* RIGHT: title + stats */}
-            <div className="flex flex-col justify-center">
+            <div className="flex flex-col justify-start">
 
               {/* Friends sticker */}
               {isAuthenticated && internalBookId && !friendsLoading && friendsFinished > 0 && (
@@ -450,9 +459,9 @@ export default function BookPage() {
               <h1
                 className="font-serif font-black leading-none"
                 style={{
-                  fontSize: 'clamp(2.8rem, 5.5vw, 5rem)',
+                  fontSize: 'clamp(1.4rem, 5.5vw, 5rem)',
                   color: 'var(--color-ink)',
-                  marginBottom: 18,
+                  marginBottom: 12,
                   lineHeight: 0.95,
                 }}
               >
@@ -460,26 +469,26 @@ export default function BookPage() {
               </h1>
 
               {/* Author + meta */}
-              <div className="flex items-center flex-wrap" style={{ gap: 10, marginBottom: 28 }}>
+              <div className="flex items-center flex-wrap" style={{ gap: 8, marginBottom: 16 }}>
                 <span
                   className="font-serif font-bold italic"
-                  style={{ fontSize: 18, color: 'var(--color-accent)' }}
+                  style={{ fontSize: 'clamp(14px, 4vw, 18px)', color: 'var(--color-accent)' }}
                 >
                   by {book.author_name}
                 </span>
                 {book.release_date && (
-                  <>
+                  <div className="hidden sm:flex items-center gap-1.5">
                     <span style={{ color: 'var(--color-ink-3)' }}>·</span>
                     <span className="flex items-center gap-1.5" style={{ fontSize: 14, color: 'var(--color-ink-2)' }}>
                       <Calendar size={13} /> {formatDate(book.release_date)}
                     </span>
-                  </>
+                  </div>
                 )}
                 {book.page_count && (
-                  <>
+                  <div className="hidden sm:flex items-center gap-1">
                     <span style={{ color: 'var(--color-ink-3)' }}>·</span>
                     <span style={{ fontSize: 14, color: 'var(--color-ink-2)' }}>{book.page_count} pages</span>
-                  </>
+                  </div>
                 )}
               </div>
 
@@ -597,10 +606,15 @@ export default function BookPage() {
               </div>
             </div>
           </div>
+
+          {/* Mobile action buttons (full-width below the cover+title row) */}
+          <div className="lg:hidden mt-5">
+            {renderActionButtons()}
+          </div>
         </div>
 
         {/* ── Lower content ── */}
-        <div className="container-mobile max-w-6xl" style={{ paddingTop: 60, paddingBottom: 80 }}>
+        <div className="container-mobile max-w-6xl pt-8 lg:pt-[60px]" style={{ paddingBottom: 80 }}>
 
           {/* ── Friends circle ── */}
           {isAuthenticated && internalBookId && (
@@ -711,7 +725,7 @@ export default function BookPage() {
                 border: '2px solid var(--color-ink)',
                 borderRadius: 16,
                 boxShadow: '4px 4px 0px var(--color-ink)',
-                padding: '28px 32px',
+                padding: 'clamp(18px, 5vw, 28px) clamp(16px, 5vw, 32px)',
               }}
             >
               {(() => {
@@ -1065,14 +1079,13 @@ export default function BookPage() {
         onClose={() => setIsUpdateModalOpen(false)}
         onUpdate={refetch}
       />
-      {internalBookId && (
-        <SuggestToFriendModal
-          isOpen={isSuggestModalOpen}
-          onClose={() => setIsSuggestModalOpen(false)}
-          bookId={internalBookId}
-          bookTitle={book.title}
-        />
-      )}
+      <SuggestToFriendModal
+        isOpen={isSuggestModalOpen}
+        onClose={() => setIsSuggestModalOpen(false)}
+        bookId={internalBookId}
+        bookTitle={book.title}
+        bookData={book}
+      />
     </div>
   )
 }

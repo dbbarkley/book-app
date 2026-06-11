@@ -48,9 +48,8 @@ export function useAuth() {
    * Signup wrapper that maps name to username
    * This provides a consistent API across web and React Native
    */
-  const signup = async (name: string, email: string, password: string) => {
-    // Map name to username (backend expects username)
-    return store.register(email, name, password)
+  const signup = async (name: string, email: string, password: string, displayName?: string) => {
+    return store.register(email, name, password, displayName)
   }
 
   return {

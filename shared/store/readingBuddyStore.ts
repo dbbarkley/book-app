@@ -6,10 +6,12 @@ import type {
   ReadingBuddySession,
   ReadingBuddyMessage,
   ReadingBuddyHighlight,
+  ReadingBuddyMessageReaction,
   CreateHighlightPayload,
   ReadingBuddyCableEvent,
 } from '../types'
 import { apiClient } from '../api/client'
+import { useAuthStore } from './authStore'
 
 interface ReadingBuddyState {
   // Session list
@@ -30,8 +32,10 @@ interface ReadingBuddyState {
   createSession: (bookId: number, invitedId: number) => Promise<ReadingBuddySession>
   acceptSession: (sessionId: number) => Promise<void>
   declineSession: (sessionId: number) => Promise<void>
+  cancelSession: (sessionId: number) => Promise<void>
   dnfSession: (sessionId: number) => Promise<void>
   sendMessage: (sessionId: number, content: string) => Promise<void>
+  toggleReaction: (sessionId: number, messageId: number, emoji: string) => Promise<void>
   createHighlight: (sessionId: number, payload: CreateHighlightPayload) => Promise<ReadingBuddyHighlight>
   deleteHighlight: (sessionId: number, highlightId: number) => Promise<void>
 
@@ -106,6 +110,14 @@ export const useReadingBuddyStore = create<ReadingBuddyState>((set, get) => ({
     }))
   },
 
+  cancelSession: async (sessionId: number) => {
+    const updated = await apiClient.updateReadingBuddySession(sessionId, 'cancel')
+    set(state => ({
+      sessions: state.sessions.map(s => s.id === sessionId ? updated : s),
+      activeSession: state.activeSession?.id === sessionId ? updated : state.activeSession,
+    }))
+  },
+
   dnfSession: async (sessionId: number) => {
     const updated = await apiClient.updateReadingBuddySession(sessionId, 'dnf')
     set(state => ({
@@ -119,14 +131,65 @@ export const useReadingBuddyStore = create<ReadingBuddyState>((set, get) => ({
     await apiClient.sendReadingBuddyMessage(sessionId, content)
   },
 
+  toggleReaction: async (sessionId: number, messageId: number, emoji: string) => {
+    const userId = useAuthStore.getState().user?.id
+    if (!userId) return
+
+    // Optimistic update
+    set(state => ({
+      messages: state.messages.map(m => {
+        if (m.id !== messageId) return m
+        const existing = m.reactions.find(r => r.emoji === emoji)
+        let reactions: ReadingBuddyMessageReaction[]
+        if (existing) {
+          const newUserIds = existing.user_ids.filter(id => id !== userId)
+          reactions = newUserIds.length === 0
+            ? m.reactions.filter(r => r.emoji !== emoji)
+            : m.reactions.map(r => r.emoji === emoji ? { ...r, user_ids: newUserIds } : r)
+        } else {
+          reactions = [...m.reactions, { emoji, user_ids: [userId] }]
+        }
+        return { ...m, reactions }
+      })
+    }))
+
+    try {
+      const reactions = await apiClient.toggleMessageReaction(sessionId, messageId, emoji)
+      set(state => ({
+        messages: state.messages.map(m => m.id === messageId ? { ...m, reactions } : m)
+      }))
+    } catch {
+      // On error, re-fetch would be ideal, but the cable will sync the other participant;
+      // revert by toggling back optimistically
+      set(state => ({
+        messages: state.messages.map(m => {
+          if (m.id !== messageId) return m
+          const existing = m.reactions.find(r => r.emoji === emoji)
+          let reactions: ReadingBuddyMessageReaction[]
+          if (existing) {
+            const newUserIds = existing.user_ids.includes(userId)
+              ? existing.user_ids.filter(id => id !== userId)
+              : [...existing.user_ids, userId]
+            reactions = newUserIds.length === 0
+              ? m.reactions.filter(r => r.emoji !== emoji)
+              : m.reactions.map(r => r.emoji === emoji ? { ...r, user_ids: newUserIds } : r)
+          } else {
+            reactions = m.reactions.filter(r => r.emoji !== emoji)
+          }
+          return { ...m, reactions }
+        })
+      }))
+    }
+  },
+
   createHighlight: async (sessionId: number, payload: CreateHighlightPayload) => {
-    // The highlight will arrive via ActionCable broadcast too, but return immediately for UX
     const highlight = await apiClient.createReadingBuddyHighlight(sessionId, payload)
-    // Optimistically add so the creator sees it instantly (cable will dedup)
+    // Always apply the API response, even if the cable broadcast already added the highlight.
+    // The broadcast sends locked:true to all subscribers (including the creator); the API
+    // response correctly returns locked:false for the creator. Overwrite wins here.
     set(state => {
-      const exists = state.highlights.some(h => h.id === highlight.id)
-      if (exists) return state
-      const updated = [...state.highlights, highlight].sort((a, b) =>
+      const without = state.highlights.filter(h => h.id !== highlight.id)
+      const updated = [...without, highlight].sort((a, b) =>
         a.page_number !== b.page_number
           ? a.page_number - b.page_number
           : new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
@@ -161,6 +224,12 @@ export const useReadingBuddyStore = create<ReadingBuddyState>((set, get) => ({
         )
         return { highlights: updated }
       })
+    } else if (event.type === 'reaction_update') {
+      set(state => ({
+        messages: state.messages.map(m =>
+          m.id === event.message_id ? { ...m, reactions: event.reactions } : m
+        )
+      }))
     }
   },
 

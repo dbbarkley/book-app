@@ -124,8 +124,12 @@ Rails.application.routes.draw do
       resources :user_books, only: [:index, :create, :show, :update], path: 'user/books' do
         get 'by_book/:book_id', on: :collection, action: :show_by_book
         post 'review', on: :member
-        patch 'notes', on: :member
+        patch 'notes', on: :member  # legacy single-note endpoint — kept for compatibility
+        resources :notes, only: [:index, :create, :update, :destroy], controller: 'book_notes'
       end
+
+      # All notes for the current user (for library strip)
+      get 'user/notes', to: 'book_notes#all_for_user'
       
       # Events & Venues (disabled: events hidden)
       # resources :events, only: [:index, :show]

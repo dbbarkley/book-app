@@ -36,6 +36,7 @@ module Api
           content:    message.content,
           user_id:    message.user_id,
           created_at: message.created_at,
+          reactions:  [],
           user: {
             id:           message.user.id,
             username:     message.user.username,

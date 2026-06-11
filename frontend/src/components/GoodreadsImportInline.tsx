@@ -484,16 +484,18 @@ export function GoodreadsImportInline({ onSuccess, defaultOpen = false }: Goodre
   // ── Collapsed row ──
   if (!open) {
     return (
-      <div style={{ border: '2px solid var(--color-ink)', borderRadius: 12, padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 20, boxShadow: '5px 5px 0px var(--color-ink)', backgroundColor: 'var(--color-canvas)' }}>
-        <div style={{ width: 44, height: 44, borderRadius: 8, backgroundColor: 'var(--color-accent)', border: '2px solid var(--color-ink)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '2px 2px 0px var(--color-ink)' }}>
-          <span className="font-serif font-black" style={{ fontSize: 18, color: 'var(--color-canvas)' }}>G</span>
-        </div>
-        <div style={{ flex: 1 }}>
-          <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-ink)', marginBottom: 4 }}>Goodreads</p>
-          <p style={{ fontSize: 13, color: 'var(--color-ink-2)' }}>Import your entire library, ratings and shelves in about a minute.</p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center" style={{ border: '2px solid var(--color-ink)', borderRadius: 12, padding: '16px 20px', boxShadow: '5px 5px 0px var(--color-ink)', backgroundColor: 'var(--color-canvas)' }}>
+        <div className="flex items-center gap-4 flex-1 min-w-0">
+          <div style={{ width: 44, height: 44, borderRadius: 8, backgroundColor: 'var(--color-accent)', border: '2px solid var(--color-ink)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '2px 2px 0px var(--color-ink)' }}>
+            <span className="font-serif font-black" style={{ fontSize: 18, color: 'var(--color-canvas)' }}>G</span>
+          </div>
+          <div className="min-w-0">
+            <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-ink)', marginBottom: 4 }}>Goodreads</p>
+            <p style={{ fontSize: 13, color: 'var(--color-ink-2)' }}>Import your entire library, ratings and shelves in about a minute.</p>
+          </div>
         </div>
         <button onClick={handleOpen}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 20px', borderRadius: 9999, backgroundColor: 'var(--color-ink)', color: 'var(--color-canvas)', border: '2px solid var(--color-ink)', boxShadow: '3px 3px 0px var(--color-accent)', fontSize: 11, fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', cursor: 'pointer', flexShrink: 0 }}>
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 20px', borderRadius: 9999, backgroundColor: 'var(--color-ink)', color: 'var(--color-canvas)', border: '2px solid var(--color-ink)', boxShadow: '3px 3px 0px var(--color-accent)', fontSize: 11, fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', cursor: 'pointer', flexShrink: 0, alignSelf: 'flex-start' }}>
           <Download size={12} /> Import
         </button>
       </div>

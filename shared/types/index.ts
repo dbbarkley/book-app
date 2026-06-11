@@ -49,6 +49,7 @@ export interface User {
   zipcode?: string
   created_at?: string
   onboarding_completed?: boolean
+  reading_streak?: number
   favourite_authors?: { id: number; name: string }[]
   preferences?: {
     milestones_viewed?: string[]
@@ -281,6 +282,22 @@ export interface OnboardingResponse {
   preferences: UserPreference
 }
 
+export interface BookNote {
+  id: number
+  content: string
+  page_number?: number
+  created_at: string
+  updated_at: string
+  user_book_id?: number
+  book?: {
+    id: number | null
+    title: string
+    author_name?: string
+    cover_image_url?: string
+    google_books_id?: string
+  }
+}
+
 // User Book Types - For tracking reading progress and shelves
 export type ShelfStatus = 'to_read' | 'reading' | 'read' | 'dnf'
 export type BookShelf = ShelfStatus // Backward compat alias for existing imports
@@ -416,6 +433,7 @@ export interface ReadingBuddyProgress {
   pages_read: number | null
   total_pages: number | null
   completion_percentage: number | null
+  rating?: number | null
 }
 
 export interface ReadingBuddyParticipant {
@@ -423,6 +441,7 @@ export interface ReadingBuddyParticipant {
   username: string
   display_name: string | null
   avatar_url: string | null
+  user_book_id: number | null
   progress: ReadingBuddyProgress | null
 }
 
@@ -433,6 +452,7 @@ export interface ReadingBuddySession {
   created_at: string
   updated_at: string
   is_initiator: boolean
+  invite_message?: string | null
   book: {
     id: number
     title: string
@@ -444,11 +464,17 @@ export interface ReadingBuddySession {
   invited: ReadingBuddyParticipant
 }
 
+export interface ReadingBuddyMessageReaction {
+  emoji: string
+  user_ids: number[]
+}
+
 export interface ReadingBuddyMessage {
   id: number
   content: string
   user_id: number
   created_at: string
+  reactions: ReadingBuddyMessageReaction[]
   user: {
     id: number
     username: string
@@ -460,12 +486,17 @@ export interface ReadingBuddyMessage {
 export interface ReadingBuddyHighlight {
   id: number
   page_number: number
-  extracted_text: string   // full OCR'd page text
-  highlighted_text: string // the selected passage
-  char_start: number       // selection offset within extracted_text
-  char_end: number         // selection offset within extracted_text
+  char_start: number
+  char_end: number
+  spoiler_lock: boolean
+  locked: boolean
+  // Content fields are absent when locked: true
+  extracted_text?: string
+  highlighted_text?: string
+  note?: string | null
+  moods?: string[]
+  page_image_url?: string | null
   created_at: string
-  page_image_url: string | null
   user: {
     id: number
     username: string
@@ -480,6 +511,9 @@ export interface CreateHighlightPayload {
   highlighted_text: string
   char_start: number
   char_end: number
+  note?: string
+  moods?: string[]
+  spoiler_lock?: boolean
   page_image?: Blob | null  // optional photo of the physical page
 }
 
@@ -516,9 +550,58 @@ export interface UpcomingReleasesResponse {
   meta:        UpcomingReleasesMeta
 }
 
+// ── Circle trending ──────────────────────────────────────────────────────────
+
+export interface CircleTrendingBook {
+  book: {
+    id:              number
+    title:           string
+    author_name:     string | null
+    cover_image_url: string | null
+    google_books_id: string | null
+  }
+  total_count:    number
+  to_read_count:  number
+  reading_count:  number
+  finished_count: number
+  avg_rating:     number | null
+  score:          number
+  activity_label: string
+}
+
+export interface CircleTrendingResponse {
+  books:        CircleTrendingBook[]
+  days:         number
+  friend_count: number
+}
+
+export interface CircleGenreRead {
+  status:     'to_read' | 'reading' | 'read'
+  updated_at: string
+  user: {
+    id:           number
+    username:     string
+    display_name: string | null
+    avatar_url:   string | null
+  }
+  book: {
+    id:              number | null
+    title:           string
+    author_name:     string | null
+    cover_image_url: string | null
+    google_books_id: string | null
+  }
+}
+
+export interface CircleGenreReadsResponse {
+  reads: CircleGenreRead[]
+  days:  number
+}
+
 // ActionCable message payloads
 export type ReadingBuddyCableEvent =
-  | { type: 'new_message';    message: ReadingBuddyMessage }
+  | { type: 'new_message';     message: ReadingBuddyMessage }
   | { type: 'progress_update'; user_id: number; progress: ReadingBuddyProgress }
-  | { type: 'new_highlight';  highlight: ReadingBuddyHighlight }
+  | { type: 'new_highlight';   highlight: ReadingBuddyHighlight }
+  | { type: 'reaction_update'; message_id: number; reactions: ReadingBuddyMessageReaction[] }
 

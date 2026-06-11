@@ -1,69 +1,144 @@
-// ProgressIndicator Component - Shows current step in multi-step wizard
-// Mobile-first design with TailwindCSS
-// Reusable in Next.js and React Native (with minor adjustments)
-
-import React from 'react'
+'use client'
 
 export interface ProgressIndicatorProps {
   currentStep: number
   totalSteps: number
+  stepLabels?: string[]
+  estimatedTime?: string
   className?: string
 }
 
-/**
- * ProgressIndicator component for multi-step workflows
- * 
- * Usage:
- * ```tsx
- * <ProgressIndicator currentStep={2} totalSteps={4} />
- * ```
- * 
- * For React Native:
- * - Replace div with View
- * - Adjust className to StyleSheet
- * - Keep the same prop interface for consistency
- */
+const DEFAULT_LABELS = ['Welcome', 'Import', 'Genres', 'Authors']
+const CIRCLE_SIZE = 52
+
 export default function ProgressIndicator({
   currentStep,
   totalSteps,
+  stepLabels = DEFAULT_LABELS,
+  estimatedTime = 'About Two Minutes',
   className = '',
 }: ProgressIndicatorProps) {
-  const progressPercentage = ((currentStep + 1) / totalSteps) * 100
-
   return (
-    <div className={`w-full ${className}`}>
-      {/* Step dots */}
-      <div className="flex justify-between mb-3">
-        {Array.from({ length: totalSteps }, (_, index) => (
-          <div
-            key={index}
-            className="flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold transition-all"
-            style={
-              index < currentStep
-                ? { backgroundColor: 'var(--color-accent)', color: 'var(--color-accent-on)' }
-                : index === currentStep
-                ? { backgroundColor: 'var(--color-accent)', color: 'var(--color-accent-on)', boxShadow: '0 0 0 3px rgba(201,168,76,0.25)' }
-                : { backgroundColor: 'var(--color-grove)', color: 'var(--color-lit-3)', border: '1px solid var(--color-rim)' }
-            }
-          >
-            {index + 1}
-          </div>
-        ))}
-      </div>
+    <div className={className}>
 
-      {/* Progress bar */}
-      <div className="w-full rounded-full h-1.5 overflow-hidden" style={{ backgroundColor: 'var(--color-grove)' }}>
+      {/* ── Step track ─────────────────────────────────────────────────────── */}
+      <div style={{ position: 'relative' }}>
+
+        {/* Dashed connector — runs between circle centres */}
         <div
-          className="h-full rounded-full transition-all duration-300 ease-out"
-          style={{ width: `${progressPercentage}%`, backgroundColor: 'var(--color-accent)' }}
+          aria-hidden
+          style={{
+            position: 'absolute',
+            top: CIRCLE_SIZE / 2,
+            left: CIRCLE_SIZE / 2,
+            right: CIRCLE_SIZE / 2,
+            borderTop: '1.5px dashed var(--color-ink-3)',
+            opacity: 0.35,
+            pointerEvents: 'none',
+          }}
         />
+
+        {/* Circles + labels */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative' }}>
+          {Array.from({ length: totalSteps }, (_, i) => {
+            const active    = i === currentStep
+            const completed = i < currentStep
+            const label     = stepLabels[i] ?? `Step ${i + 1}`
+
+            return (
+              <div
+                key={i}
+                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}
+              >
+                {/* Circle */}
+                <div
+                  style={{
+                    width: CIRCLE_SIZE,
+                    height: CIRCLE_SIZE,
+                    borderRadius: '50%',
+                    backgroundColor: active
+                      ? 'var(--color-accent)'
+                      : completed
+                      ? 'var(--color-canvas)'
+                      : 'var(--color-canvas)',
+                    border: active
+                      ? 'none'
+                      : `2px solid ${completed ? 'var(--color-accent)' : 'var(--color-ink)'}`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    position: 'relative',
+                    zIndex: 1,
+                    // Canvas bg so the dashed line doesn't show through the circle body
+                    boxShadow: `0 0 0 4px var(--color-canvas)`,
+                  }}
+                >
+                  <span
+                    className="font-serif font-bold"
+                    style={{
+                      fontSize: 20,
+                      lineHeight: 1,
+                      color: active
+                        ? '#fff'
+                        : completed
+                        ? 'var(--color-accent)'
+                        : 'var(--color-ink-2)',
+                    }}
+                  >
+                    {i + 1}
+                  </span>
+                </div>
+
+                {/* Label */}
+                <span
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: '0.2em',
+                    textTransform: 'uppercase',
+                    color: active ? 'var(--color-ink)' : 'var(--color-ink-3)',
+                  }}
+                >
+                  {label}
+                </span>
+              </div>
+            )
+          })}
+        </div>
       </div>
 
-      {/* Step indicator text */}
-      <p className="text-xs mt-2 text-center" style={{ color: 'var(--color-lit-3)' }}>
-        Step {currentStep + 1} of {totalSteps}
-      </p>
+      {/* ── Bottom meta row ─────────────────────────────────────────────────── */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginTop: 18,
+        }}
+      >
+        <span
+          style={{
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: '0.2em',
+            textTransform: 'uppercase',
+            color: 'var(--color-ink-3)',
+          }}
+        >
+          Chapter {currentStep + 1} of {totalSteps}
+        </span>
+        <span
+          style={{
+            fontSize: 10,
+            fontWeight: 600,
+            letterSpacing: '0.16em',
+            textTransform: 'uppercase',
+            color: 'var(--color-ink-3)',
+          }}
+        >
+          · {estimatedTime} ·
+        </span>
+      </div>
     </div>
   )
 }
-

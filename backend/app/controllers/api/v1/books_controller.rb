@@ -124,6 +124,19 @@ module Api
           return
         end
 
+        # 2.5. CuratedShelfBook — hc_ IDs come from BisacPopulatorJob and are written
+        #      to both curated_shelf_books and book_catalog. If the catalog dual-write
+        #      failed, the shelf record is the authoritative fallback.
+        if google_books_id.start_with?('hc_')
+          shelf_book = CuratedShelfBook.find_by(google_books_id: google_books_id)
+          if shelf_book
+            render json: { book: shelf_book.as_book_json }, status: :ok
+            return
+          end
+          # hc_ IDs are never valid Google Books volume IDs — skip the live fetch
+          return render json: { error: 'Book not found' }, status: :not_found
+        end
+
         # 3. Live fallback — fetch directly from Google Books API and cache
         book_data = fetch_google_book(google_books_id)
         if book_data
@@ -309,17 +322,28 @@ module Api
           end
         end
 
-        gb_items = gb_search(q, limit, type)
-        external_items = gb_items.any? ? gb_items : ol_search(q, limit, type)
+        # OL is primary for title searches (sorts by readinglog popularity → modern books first).
+        # GB is primary for author catalog searches (inauthor: query is GB's strength).
+        external_items =
+          if type == 'authors'
+            items = gb_search(q, limit, type)
+            items.any? ? items : ol_search(q, limit, type)
+          else
+            items = ol_search(q, limit, type)
+            items.any? ? items : gb_search(q, limit, type)
+          end
 
-        write_to_catalog(gb_items) if gb_items.any? && type == 'books'
+        if external_items.any? && type == 'books'
+          write_to_catalog(external_items)
+          ol_ids = external_items.filter_map { |item| item['id'] if item['id'].to_s.start_with?('ol_') }
+          OlDescriptionEnrichmentJob.perform_later(ol_ids) if ol_ids.any?
+        end
 
         if catalog_items.any?
           combined = dedup_volume_items([*catalog_items, *external_items]).first(limit)
           render json: { items: combined, _source: 'merged' }
         else
-          items = dedup_volume_items(external_items).first(limit)
-          render json: { items: items, _source: 'google_books' }
+          render json: { items: dedup_volume_items(external_items).first(limit), _source: 'external' }
         end
       rescue => e
         Rails.logger.error("[books/search] #{e.class}: #{e.message}")
@@ -468,7 +492,8 @@ module Api
 
       # ── External search helpers (Google Books + Open Library) ─────────────────
 
-      GB_SEARCH_TIMEOUT = 10
+      GB_SEARCH_TIMEOUT  = 10
+      MIN_PUBLISH_YEAR   = 1930
 
       def gb_http_client(host = 'www.googleapis.com')
         http = Net::HTTP.new(host, 443)
@@ -481,7 +506,14 @@ module Api
       def gb_item_clean(item)
         vi = item['volumeInfo']
         return item unless vi
-        item.merge('volumeInfo' => vi.merge('description' => strip_html(vi['description'])))
+        # Upscale GB thumbnail: zoom=1 (~128px) → zoom=0 (~512px), strip the page-curl artifact
+        links = vi['imageLinks']
+        if links
+          links = links.transform_values do |url|
+            url.to_s.gsub('zoom=1', 'zoom=0').gsub('&edge=curl', '')
+          end
+        end
+        item.merge('volumeInfo' => vi.merge('description' => strip_html(vi['description']), 'imageLinks' => links))
       end
 
       def catalog_book_to_volume_item(book)
@@ -511,6 +543,7 @@ module Api
           # Only cache books with cover images — same quality bar as the search results.
           next unless item['id'].present? && vi&.dig('title').present? &&
                       vi.dig('imageLinks', 'thumbnail').present?
+          next if volume_item_too_old?(item)
           isbn = Array(vi['industryIdentifiers'])
                    .find { |x| x['type'] == 'ISBN_13' }&.dig('identifier') ||
                  Array(vi['industryIdentifiers'])
@@ -532,6 +565,13 @@ module Api
         BookCatalog.upsert_many(books, source: 'google_books') if books.any?
       rescue => e
         Rails.logger.warn("[books/search] catalog write failed: #{e.message}")
+      end
+
+      def volume_item_too_old?(item)
+        date = item.dig('volumeInfo', 'publishedDate').to_s
+        return false if date.empty?
+        year = date[0, 4].to_i
+        year > 0 && year < MIN_PUBLISH_YEAR
       end
 
       def normalize_dedup(s)
@@ -578,19 +618,28 @@ module Api
         uri.query = URI.encode_www_form(params)
 
         response = gb_http_client.get(uri.request_uri)
-        return [] unless response.is_a?(Net::HTTPSuccess)
+        unless response.is_a?(Net::HTTPSuccess)
+          Rails.logger.warn("[gb_search] Google Books returned #{response.code} for '#{q}'")
+          return []
+        end
 
-        (JSON.parse(response.body)['items'] || []).map { |item| gb_item_clean(item) }
+        raw   = JSON.parse(response.body)['items'] || []
+        items = raw.map { |item| gb_item_clean(item) }
+                   .reject { |item| volume_item_too_old?(item) }
+        Rails.logger.info("[gb_search] '#{q}' → #{raw.size} raw, #{items.size} after year filter")
+        items
       rescue Net::ReadTimeout, Net::OpenTimeout
-        Rails.logger.warn('[external_search] Google Books timed out')
+        Rails.logger.warn("[gb_search] Google Books timed out for '#{q}'")
         []
       rescue => e
-        Rails.logger.warn("[external_search] Google Books failed: #{e.message}")
+        Rails.logger.warn("[gb_search] Google Books failed for '#{q}': #{e.message}")
         []
       end
 
       def ol_search(q, limit, type)
-        param  = type == 'authors' ? 'author' : 'q'
+        # Use 'title' for precise book title searches, 'author' for author searches,
+        # and 'q' only as a generic fallback — 'title' surfaces the right book first.
+        param  = type == 'authors' ? 'author' : 'title'
         fields = 'key,title,author_name,cover_i,isbn,first_publish_year,number_of_pages_median'
 
         uri = URI('https://openlibrary.org/search.json')
@@ -605,7 +654,10 @@ module Api
         response = http.get(uri.request_uri)
         raise "Open Library responded with #{response.code}" unless response.is_a?(Net::HTTPSuccess)
 
-        (JSON.parse(response.body)['docs'] || [])
+        docs = JSON.parse(response.body)['docs'] || []
+        filtered = docs.reject { |doc| (y = doc['first_publish_year'].to_i) > 0 && y < MIN_PUBLISH_YEAR }
+        Rails.logger.info("[ol_search] '#{q}' → #{docs.size} raw, #{filtered.size} after year filter")
+        filtered
           .select { |doc| doc['cover_i'].present? }
           .first(limit)
           .each_with_index
@@ -626,8 +678,8 @@ module Api
             'publishedDate'       => doc['first_publish_year']&.to_s,
             'pageCount'           => doc['number_of_pages_median'],
             'imageLinks'          => cover_i ? {
-              'thumbnail'      => "https://covers.openlibrary.org/b/id/#{cover_i}-M.jpg",
-              'smallThumbnail' => "https://covers.openlibrary.org/b/id/#{cover_i}-S.jpg",
+              'thumbnail'      => "https://covers.openlibrary.org/b/id/#{cover_i}-L.jpg",
+              'smallThumbnail' => "https://covers.openlibrary.org/b/id/#{cover_i}-M.jpg",
             } : nil,
             'industryIdentifiers' => isbn ? [{ 'type' => 'ISBN_13', 'identifier' => isbn.to_s }] : [],
             'infoLink'            => "https://openlibrary.org#{doc['key']}",
@@ -697,8 +749,8 @@ module Api
             'publishedDate'       => ol['publish_date'],
             'pageCount'           => ol['number_of_pages'],
             'imageLinks'          => cover_id ? {
-              'thumbnail'      => "https://covers.openlibrary.org/b/id/#{cover_id}-M.jpg",
-              'smallThumbnail' => "https://covers.openlibrary.org/b/id/#{cover_id}-S.jpg",
+              'thumbnail'      => "https://covers.openlibrary.org/b/id/#{cover_id}-L.jpg",
+              'smallThumbnail' => "https://covers.openlibrary.org/b/id/#{cover_id}-M.jpg",
             } : nil,
             'industryIdentifiers' => [{ 'type' => 'ISBN_13', 'identifier' => isbn }],
           }.compact,
@@ -843,7 +895,7 @@ module Api
               id: nil,
               title: w['title'],
               author_name: w.dig('authors', 0, 'name') || 'Unknown Author',
-              cover_image_url: "https://covers.openlibrary.org/b/id/#{w['cover_id']}-M.jpg",
+              cover_image_url: "https://covers.openlibrary.org/b/id/#{w['cover_id']}-L.jpg",
               google_books_id: "ol_#{ol_key}",
               isbn: nil,
               release_date: w['first_publish_year'].to_s,

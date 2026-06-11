@@ -51,7 +51,7 @@ export default function RootLayout({
           <LoginTransitionCurtain />
           <OnboardingGuard>
             <main className="min-h-screen pb-20 md:pb-0">{children}</main>
-            <SiteFooter />
+            <div className="hidden lg:block"><SiteFooter /></div>
           </OnboardingGuard>
         </CurtainProvider>
       </body>

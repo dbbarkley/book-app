@@ -1,16 +1,17 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { X, Send, Users, Check, MessageSquare } from 'lucide-react'
 import { useFriends, apiClient } from '@book-app/shared'
-import Avatar from './Avatar'
-import type { User } from '@book-app/shared'
+import type { User, Book } from '@book-app/shared'
 
 interface SuggestToFriendModalProps {
   isOpen: boolean
   onClose: () => void
-  bookId: number
+  bookId: number | null
   bookTitle: string
+  bookData?: Book
 }
 
 export default function SuggestToFriendModal({
@@ -18,6 +19,7 @@ export default function SuggestToFriendModal({
   onClose,
   bookId,
   bookTitle,
+  bookData,
 }: SuggestToFriendModalProps) {
   const { friends, loading: friendsLoading } = useFriends()
   const [selected, setSelected]   = useState<Set<number>>(new Set())
@@ -27,7 +29,6 @@ export default function SuggestToFriendModal({
   const [sentMessage, setSentMessage] = useState('')
   const [error, setError]         = useState<string | null>(null)
 
-  // Reset state each time the modal opens
   useEffect(() => {
     if (isOpen) {
       setSelected(new Set())
@@ -36,8 +37,6 @@ export default function SuggestToFriendModal({
       setError(null)
     }
   }, [isOpen])
-
-  if (!isOpen) return null
 
   const toggleFriend = (id: number) => {
     setSelected(prev => {
@@ -53,7 +52,23 @@ export default function SuggestToFriendModal({
     setSending(true)
     setError(null)
     try {
-      const result = await apiClient.suggestBook(bookId, Array.from(selected), message.trim() || undefined)
+      let resolvedBookId = bookId
+      if (!resolvedBookId && bookData) {
+        const ensured = await apiClient.ensureBook({
+          title:           bookData.title,
+          author_name:     bookData.author_name ?? undefined,
+          google_books_id: bookData.google_books_id ?? undefined,
+          isbn:            bookData.isbn ?? undefined,
+          description:     bookData.description ?? undefined,
+          cover_image_url: bookData.cover_image_url ?? undefined,
+          release_date:    bookData.release_date ?? undefined,
+          page_count:      bookData.page_count ?? undefined,
+          categories:      bookData.categories ?? undefined,
+        })
+        resolvedBookId = ensured.id
+      }
+      if (!resolvedBookId) throw new Error('Could not resolve book')
+      const result = await apiClient.suggestBook(resolvedBookId, Array.from(selected), message.trim() || undefined)
       setSentMessage(result.message)
       setSent(true)
       setTimeout(onClose, 1800)
@@ -64,189 +79,261 @@ export default function SuggestToFriendModal({
     }
   }
 
+  const AVATAR_COLORS = ['#C4521F', '#234A5A', '#2D6A4F', '#1A1F58', '#8B5E3C']
+
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
-        style={{ backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
-        onClick={onClose}
-      >
-        {/* Modal panel */}
-        <div
-          className="relative w-full sm:max-w-md rounded-t-[28px] sm:rounded-[28px] overflow-hidden"
-          style={{
-            backgroundColor: 'var(--color-surface)',
-            border: '1px solid var(--color-rim-accent)',
-            boxShadow: '0 24px 64px rgba(0,0,0,0.6)',
-            maxHeight: '85vh',
-            display: 'flex',
-            flexDirection: 'column',
-          }}
-          onClick={e => e.stopPropagation()}
-        >
-          {/* Header */}
-          <div
-            className="flex items-center justify-between px-6 py-4 flex-shrink-0"
-            style={{ borderBottom: '1px solid var(--color-rim)' }}
-          >
-            <div>
-              <h2 className="font-serif text-lg font-bold" style={{ color: 'var(--color-lit)' }}>
-                Suggest to a Friend
-              </h2>
-              <p className="text-xs mt-0.5 truncate max-w-[240px]" style={{ color: 'var(--color-lit-3)' }}>
-                {bookTitle}
-              </p>
-            </div>
-            <button
-              onClick={onClose}
-              className="p-2 rounded-xl transition-colors"
-              style={{ color: 'var(--color-lit-3)' }}
-              onMouseEnter={e => (e.currentTarget.style.color = 'var(--color-lit)')}
-              onMouseLeave={e => (e.currentTarget.style.color = 'var(--color-lit-3)')}
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            className="fixed inset-0 z-50"
+            style={{ backgroundColor: 'rgba(0,0,0,0.55)' }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={onClose}
+          />
+
+          {/* Sheet */}
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center sm:p-4 pointer-events-none">
+            <motion.div
+              className="pointer-events-auto w-full sm:max-w-md flex flex-col rounded-t-[20px] sm:rounded-[20px]"
+              style={{
+                backgroundColor: 'var(--color-canvas)',
+                border: '2px solid var(--color-ink)',
+                boxShadow: '6px 6px 0px var(--color-ink)',
+                maxHeight: '88dvh',
+                overflow: 'hidden',
+              }}
+              initial={{ opacity: 0, y: 48 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 48 }}
+              transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
             >
-              <X size={18} />
-            </button>
-          </div>
-
-          {/* Content */}
-          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-
-            {/* Success state */}
-            {sent ? (
-              <div className="py-10 text-center">
-                <div
-                  className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-3"
-                  style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-accent-on)' }}
-                >
-                  <Check size={24} />
-                </div>
-                <p className="font-bold" style={{ color: 'var(--color-lit)' }}>{sentMessage}</p>
+              {/* Mobile drag handle */}
+              <div className="sm:hidden flex justify-center pt-3 pb-1 flex-shrink-0">
+                <div style={{ width: 36, height: 4, borderRadius: 999, backgroundColor: 'var(--color-ink-3)' }} />
               </div>
-            ) : (
-              <>
-                {/* Friend list */}
-                {friendsLoading ? (
-                  <div className="space-y-2">
-                    {[1, 2, 3].map(i => (
-                      <div key={i} className="h-14 rounded-2xl animate-pulse" style={{ backgroundColor: 'var(--color-grove)' }} />
-                    ))}
+
+              {/* Header */}
+              <div className="px-6 pt-5 pb-4 flex-shrink-0" style={{ borderBottom: '2px solid var(--color-ink)' }}>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="font-bold uppercase" style={{ fontSize: 10, letterSpacing: '0.2em', color: 'var(--color-accent)', marginBottom: 4 }}>
+                      Pass the Word · {selected.size > 0 ? `${selected.size} Selected` : 'Choose Friends'}
+                    </p>
+                    <h2 className="font-serif font-bold leading-none" style={{ fontSize: 'clamp(1.6rem, 5vw, 2.2rem)', color: 'var(--color-ink)' }}>
+                      Suggest a{' '}
+                      <em style={{ color: 'var(--color-accent)', fontStyle: 'italic' }}>Book</em>
+                    </h2>
+                    <p className="font-serif italic mt-1 truncate" style={{ fontSize: 13, color: 'var(--color-ink-2)' }}>
+                      {bookTitle}
+                    </p>
                   </div>
-                ) : friends.length === 0 ? (
-                  <div className="py-8 text-center">
-                    <Users size={28} className="mx-auto mb-2" style={{ color: 'var(--color-lit-3)' }} />
-                    <p className="text-sm font-medium" style={{ color: 'var(--color-lit-2)' }}>No friends yet</p>
-                    <p className="text-xs mt-1" style={{ color: 'var(--color-lit-3)' }}>Add friends to suggest books to them</p>
+                  <button
+                    onClick={onClose}
+                    className="flex items-center justify-center flex-shrink-0 mt-1 transition-opacity hover:opacity-70"
+                    style={{
+                      width: 36, height: 36,
+                      border: '2px solid var(--color-ink)',
+                      borderRadius: 10,
+                      backgroundColor: 'var(--color-canvas)',
+                      color: 'var(--color-ink)',
+                    }}
+                  >
+                    <X size={16} strokeWidth={2.5} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="flex-1 overflow-y-auto px-6 py-5">
+
+                {/* Success */}
+                {sent ? (
+                  <div className="py-10 text-center">
+                    <div
+                      className="w-14 h-14 flex items-center justify-center mx-auto mb-4"
+                      style={{
+                        backgroundColor: 'var(--color-accent)',
+                        border: '2px solid var(--color-ink)',
+                        borderRadius: 12,
+                        boxShadow: '4px 4px 0px var(--color-ink)',
+                        color: '#FAF6EB',
+                      }}
+                    >
+                      <Check size={24} strokeWidth={2.5} />
+                    </div>
+                    <p className="font-serif font-bold" style={{ fontSize: 18, color: 'var(--color-ink)' }}>
+                      {sentMessage}
+                    </p>
                   </div>
                 ) : (
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: 'var(--color-lit-3)' }}>
-                      Select friends
-                    </p>
-                    <div className="space-y-2">
-                      {friends.map((friend: User) => {
-                        const isSelected = selected.has(friend.id)
-                        return (
-                          <button
-                            key={friend.id}
-                            onClick={() => toggleFriend(friend.id)}
-                            className="w-full flex items-center gap-3 p-3 rounded-2xl transition-all text-left"
-                            style={{
-                              backgroundColor: isSelected ? 'var(--color-accent-subtle)' : 'var(--color-grove)',
-                              border: `1px solid ${isSelected ? 'var(--color-accent)' : 'var(--color-rim)'}`,
-                            }}
-                          >
-                            <Avatar
-                              src={friend.avatar_url}
-                              name={friend.display_name || friend.username}
-                              size="sm"
-                            />
-                            <div className="flex-1 min-w-0">
-                              <p className="font-bold text-sm truncate" style={{ color: 'var(--color-lit)' }}>
-                                {friend.display_name || friend.username}
-                              </p>
-                              {friend.display_name && (
-                                <p className="text-xs" style={{ color: 'var(--color-lit-3)' }}>@{friend.username}</p>
-                              )}
-                            </div>
-                            <div
-                              className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 transition-all"
-                              style={{
-                                backgroundColor: isSelected ? 'var(--color-accent)' : 'transparent',
-                                border: `2px solid ${isSelected ? 'var(--color-accent)' : 'var(--color-rim-accent)'}`,
-                              }}
-                            >
-                              {isSelected && <Check size={11} style={{ color: 'var(--color-accent-on)' }} />}
-                            </div>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )}
+                  <div className="flex flex-col gap-5">
 
-                {/* Message */}
-                {friends.length > 0 && (
-                  <div>
-                    <div className="flex items-center gap-1.5 mb-2">
-                      <MessageSquare size={13} style={{ color: 'var(--color-lit-3)' }} />
-                      <p className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--color-lit-3)' }}>
-                        Add a note <span className="normal-case font-normal">(optional)</span>
-                      </p>
-                    </div>
-                    <textarea
-                      value={message}
-                      onChange={e => setMessage(e.target.value)}
-                      placeholder="You have to read this one…"
-                      rows={3}
-                      maxLength={280}
-                      className="w-full px-4 py-3 rounded-2xl text-sm resize-none outline-none transition-all"
-                      style={{
-                        backgroundColor: 'var(--color-grove)',
-                        border: '1px solid var(--color-rim)',
-                        color: 'var(--color-lit)',
-                      }}
-                      onFocus={e => (e.currentTarget.style.borderColor = 'var(--color-rim-accent)')}
-                      onBlur={e => (e.currentTarget.style.borderColor = 'var(--color-rim)')}
-                    />
-                    {message.length > 0 && (
-                      <p className="text-xs mt-1 text-right" style={{ color: 'var(--color-lit-3)' }}>
-                        {message.length}/280
+                    {/* Friend list */}
+                    {friendsLoading ? (
+                      <div className="flex flex-col gap-2">
+                        {[1, 2, 3].map(i => (
+                          <div key={i} className="animate-pulse" style={{ height: 58, borderRadius: 10, backgroundColor: 'var(--color-surface)' }} />
+                        ))}
+                      </div>
+                    ) : friends.length === 0 ? (
+                      <div className="py-8 text-center">
+                        <div
+                          className="w-12 h-12 flex items-center justify-center mx-auto mb-3"
+                          style={{ border: '2px solid var(--color-ink-3)', borderRadius: 10, color: 'var(--color-ink-3)' }}
+                        >
+                          <Users size={22} />
+                        </div>
+                        <p className="font-bold uppercase" style={{ fontSize: 11, letterSpacing: '0.14em', color: 'var(--color-ink)', marginBottom: 4 }}>
+                          No Friends Yet
+                        </p>
+                        <p style={{ fontSize: 13, color: 'var(--color-ink-3)' }}>
+                          Add friends to suggest books to them
+                        </p>
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="font-bold uppercase" style={{ fontSize: 10, letterSpacing: '0.2em', color: 'var(--color-ink-3)', marginBottom: 10 }}>
+                          Select Friends
+                        </p>
+                        <div className="flex flex-col gap-2">
+                          {friends.map((friend: User) => {
+                            const isSelected = selected.has(friend.id)
+                            const name = friend.display_name || friend.username
+                            const initial = name.charAt(0).toUpperCase()
+                            const colorIdx = [...friend.username].reduce((acc, c) => acc + c.charCodeAt(0), 0)
+                            const avatarBg = AVATAR_COLORS[colorIdx % AVATAR_COLORS.length]
+                            return (
+                              <button
+                                key={friend.id}
+                                onClick={() => toggleFriend(friend.id)}
+                                className="flex items-center gap-3 text-left transition-all hover:opacity-80"
+                                style={{
+                                  border: `2px solid ${isSelected ? 'var(--color-accent)' : 'var(--color-ink)'}`,
+                                  borderRadius: 10,
+                                  padding: '10px 14px',
+                                  backgroundColor: isSelected ? 'var(--color-accent-subtle)' : 'var(--color-canvas)',
+                                  boxShadow: `3px 3px 0px ${isSelected ? 'var(--color-accent)' : 'var(--color-ink)'}`,
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    width: 34, height: 34, borderRadius: '50%',
+                                    backgroundColor: avatarBg,
+                                    border: '2px solid var(--color-ink)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    flexShrink: 0,
+                                  }}
+                                >
+                                  <span className="font-bold" style={{ fontSize: 13, color: '#FAF6EB' }}>{initial}</span>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-bold truncate" style={{ fontSize: 14, color: 'var(--color-ink)', lineHeight: 1.25 }}>
+                                    {name}
+                                  </p>
+                                  {friend.display_name && (
+                                    <p style={{ fontSize: 11, color: 'var(--color-ink-3)' }}>@{friend.username}</p>
+                                  )}
+                                </div>
+                                {isSelected && (
+                                  <div
+                                    style={{
+                                      width: 22, height: 22, borderRadius: '50%',
+                                      backgroundColor: 'var(--color-accent)',
+                                      border: '2px solid var(--color-ink)',
+                                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                      flexShrink: 0,
+                                    }}
+                                  >
+                                    <Check size={11} strokeWidth={3} style={{ color: '#FAF6EB' }} />
+                                  </div>
+                                )}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Note */}
+                    {friends.length > 0 && (
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <MessageSquare size={11} style={{ color: 'var(--color-ink-3)' }} />
+                          <p className="font-bold uppercase" style={{ fontSize: 10, letterSpacing: '0.2em', color: 'var(--color-ink-3)' }}>
+                            Add a Note <span className="normal-case font-normal" style={{ letterSpacing: 0 }}>(optional)</span>
+                          </p>
+                        </div>
+                        <textarea
+                          value={message}
+                          onChange={e => setMessage(e.target.value)}
+                          placeholder="You have to read this one…"
+                          rows={3}
+                          maxLength={280}
+                          className="w-full resize-none outline-none font-serif italic"
+                          style={{
+                            backgroundColor: 'var(--color-canvas)',
+                            border: '2px solid var(--color-ink)',
+                            borderRadius: 10,
+                            padding: '12px 14px',
+                            fontSize: 15,
+                            color: 'var(--color-ink)',
+                            lineHeight: 1.6,
+                          }}
+                          onFocus={e => (e.currentTarget.style.borderColor = 'var(--color-accent)')}
+                          onBlur={e => (e.currentTarget.style.borderColor = 'var(--color-ink)')}
+                        />
+                        {message.length > 0 && (
+                          <p className="text-right mt-1" style={{ fontSize: 11, color: 'var(--color-ink-3)' }}>
+                            {message.length}/280
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {error && (
+                      <p className="font-bold uppercase" style={{ fontSize: 11, letterSpacing: '0.1em', color: 'var(--color-accent)' }}>
+                        {error}
                       </p>
                     )}
                   </div>
                 )}
+              </div>
 
-                {error && (
-                  <p className="text-sm" style={{ color: 'var(--color-error)' }}>{error}</p>
-                )}
-              </>
-            )}
+              {/* Footer */}
+              {!sent && friends.length > 0 && (
+                <div className="px-6 py-4 flex-shrink-0" style={{ borderTop: '2px solid var(--color-ink)' }}>
+                  <button
+                    onClick={handleSend}
+                    disabled={selected.size === 0 || sending}
+                    className="w-full flex items-center justify-center gap-2 font-bold uppercase transition-opacity hover:opacity-80 disabled:opacity-40"
+                    style={{
+                      fontSize: 11, letterSpacing: '0.16em',
+                      border: '2px solid var(--color-ink)',
+                      borderRadius: 999,
+                      padding: '14px 20px',
+                      backgroundColor: 'var(--color-ink)',
+                      color: 'var(--color-canvas)',
+                      boxShadow: selected.size > 0 ? '4px 4px 0px var(--color-accent)' : 'none',
+                    }}
+                  >
+                    <Send size={13} strokeWidth={2.5} />
+                    {sending
+                      ? 'Sending…'
+                      : selected.size === 0
+                        ? 'Select at least one friend'
+                        : `Send to ${selected.size} friend${selected.size > 1 ? 's' : ''}`}
+                  </button>
+                </div>
+              )}
+            </motion.div>
           </div>
-
-          {/* Footer */}
-          {!sent && friends.length > 0 && (
-            <div
-              className="px-6 py-4 flex-shrink-0"
-              style={{ borderTop: '1px solid var(--color-rim)' }}
-            >
-              <button
-                onClick={handleSend}
-                disabled={selected.size === 0 || sending}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl font-bold text-sm transition-all disabled:opacity-40"
-                style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-accent-on)' }}
-              >
-                <Send size={15} />
-                {sending
-                  ? 'Sending…'
-                  : selected.size === 0
-                    ? 'Select at least one friend'
-                    : `Send to ${selected.size} friend${selected.size > 1 ? 's' : ''}`}
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    </>
+        </>
+      )}
+    </AnimatePresence>
   )
 }

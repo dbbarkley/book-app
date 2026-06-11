@@ -92,6 +92,7 @@ module Api
         feed_items.filter_map do |item|
           feedable = item.feedable
           next if feedable.is_a?(UserBook) && feedable.visibility == 'private'
+          next if item.metadata&.dig('actor', 'id') == current_user.id
 
           metadata = item.metadata&.dup || {}
           if (actor_id = metadata.dig('actor', 'id')) && (actor = actors[actor_id])

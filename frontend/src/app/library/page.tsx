@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
-import { Book as BookIcon, CheckCircle, XCircle, Lock, Search, X, Sparkles, Share2, ChevronRight, ArrowUpDown, Check } from 'lucide-react'
+import { Book as BookIcon, CheckCircle, XCircle, Search, X, Share2, Check, Layers } from 'lucide-react'
 import type { UserBook } from '@book-app/shared'
 import {
   useAuth,
@@ -20,8 +20,9 @@ import GoalSettingModal from '@/components/library/GoalSettingModal'
 import ReadingGoalCard from '@/components/ReadingGoalCard'
 import SuggestToFriendModal from '@/components/SuggestToFriendModal'
 import { BookCoverImage } from '@/components/BookCoverImage'
-import Avatar from '@/components/Avatar'
-import type { BookSuggestion } from '@book-app/shared'
+import SuggestionsSection from '@/components/SuggestionsSection'
+import PrivateShelf from '@/components/PrivateShelf'
+import LibraryNotesStrip from '@/components/library/LibraryNotesStrip'
 
 const SHELF_LABELS: Record<string, string> = {
   reading:  'Reading',
@@ -73,6 +74,7 @@ export default function BooksLibraryPage() {
     markMilestoneViewed,
     readingGoal,
     setGoal,
+    removeGoal,
     isLoading: isGoalLoading
   } = useMilestones()
 
@@ -112,6 +114,10 @@ export default function BooksLibraryPage() {
     if (!ub.finished_at) return false
     return new Date(ub.finished_at).getFullYear() === currentYear
   }).length
+  const lastYearCount = readBooks.filter(ub => {
+    if (!ub.finished_at) return false
+    return new Date(ub.finished_at).getFullYear() === currentYear - 1
+  }).length
 
   const totalPublicBooks =
     (readingBooks?.length || 0) +
@@ -127,6 +133,20 @@ export default function BooksLibraryPage() {
     dnf:         dnfBooks.length,
     private:     privateBooks.length,
   }
+
+  const totalAllBooks  = totalPublicBooks + privateBooks.length
+  const shelvesWithBooks = [
+    readingBooks.length > 0,
+    toReadBooks.length  > 0,
+    readBooks.length    > 0,
+    dnfBooks.length     > 0,
+    privateBooks.length > 0,
+  ].filter(Boolean).length
+  const joinYear       = user?.created_at ? new Date(user.created_at).getFullYear() : null
+  const joinMonthYear  = user?.created_at
+    ? new Date(user.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+    : null
+  const currentSortLabel = LIBRARY_SORT_OPTIONS.find(o => o.key === sortKey)?.label ?? 'Date Added'
 
   // ── Search ────────────────────────────────────────────────────────────────
   const isSearching = searchQuery.trim().length > 0
@@ -181,55 +201,86 @@ export default function BooksLibraryPage() {
       <div className="container-mobile py-8 sm:py-12 max-w-6xl">
 
         {/* Header */}
-        <div className="flex items-center justify-between gap-4 mb-6">
+        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-8">
+
+          {/* Left: eyebrow + headline + stats */}
           <div>
-            <h1 className="font-serif text-3xl font-bold text-lit">
-              {user?.display_name || user?.username}'s Books
+            <div className="zine-section-eyebrow mb-4">Your Library</div>
+
+            <h1
+              className="font-serif font-bold text-4xl sm:text-5xl lg:text-7xl leading-[1.03] tracking-tight mb-3"
+              style={{ color: 'var(--color-ink)' }}
+            >
+              {user?.display_name?.split(' ')[0] || user?.username}&apos;s{' '}
+              <em style={{ color: 'var(--color-accent)', fontStyle: 'italic' }}>shelf.</em>
             </h1>
-            {totalPublicBooks > 0 && (
-              <p className="text-sm mt-0.5" style={{ color: 'var(--color-lit-3)' }}>
-                {totalPublicBooks} book{totalPublicBooks !== 1 ? 's' : ''} in your collection
+
+            <div className="flex flex-wrap items-center gap-3">
+              <p className="text-[15px]" style={{ color: 'var(--color-ink-2)' }}>
+                <span className="font-bold" style={{ color: 'var(--color-ink)' }}>{totalAllBooks}</span>
+                {' '}book{totalAllBooks !== 1 ? 's' : ''}
+                {shelvesWithBooks > 0 && (
+                  <> · <span className="font-bold" style={{ color: 'var(--color-ink)' }}>{shelvesWithBooks}</span> shelf{shelvesWithBooks !== 1 ? 'ves' : ''}</>
+                )}
               </p>
-            )}
+
+              {joinYear && (
+                <span
+                  className="text-[10px] font-bold uppercase tracking-[0.18em] px-2.5 py-1 flex-shrink-0"
+                  style={{
+                    color: 'var(--color-ink)',
+                    border: '2px solid var(--color-ink)',
+                    fontWeight: '900',
+                    borderRadius: 6,
+                    backgroundColor: 'var(--color-canvas)',
+                    rotate: '-3deg',
+                  }}
+                >
+                  Reader · Est. {joinYear}
+                </span>
+              )}
+            </div>
           </div>
-          <div className="flex items-center gap-2 flex-none">
-            {/* Sort button */}
+
+          {/* Right: sort + add book */}
+          <div className="flex items-center gap-3 flex-none">
             <div className="relative">
               <button
                 onClick={() => setSortOpen((o) => !o)}
-                aria-label="Sort library"
-                className="flex items-center justify-center"
+                className="zine-btn flex items-center gap-2"
                 style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 12,
-                  background: 'var(--color-surface)',
-                  border: '1px solid var(--color-rim)',
+                  border: '2px solid var(--color-ink)',
+                  borderRadius: 999,
+                  padding: '10px 18px',
+                  backgroundColor: 'var(--color-canvas)',
+                  color: 'var(--color-ink)',
+                  // boxShadow: '3px 3px 0px var(--color-ink)',
+                  fontSize: 11,
+                  letterSpacing: '0.15em',
                 }}
               >
-                <ArrowUpDown size={14} style={{ color: 'var(--color-lit-2)' }} />
+                <Layers size={13} />
+                Sort: {currentSortLabel}
               </button>
 
               {sortOpen && (
                 <>
-                  {/* click-away backdrop */}
                   <div className="fixed inset-0 z-10" onClick={() => setSortOpen(false)} />
                   <div
-                    className="absolute right-0 top-full mt-1 z-20 rounded-xl py-1 min-w-[160px]"
+                    className="absolute right-0 top-full mt-2 z-20 py-1 min-w-[170px]"
                     style={{
-                      backgroundColor: 'var(--color-surface)',
-                      border: '1px solid var(--color-rim)',
-                      boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+                      backgroundColor: 'var(--color-canvas)',
+                      border: '2px solid var(--color-ink)',
+                      borderRadius: 12,
+                      boxShadow: '4px 4px 0px var(--color-ink)',
                     }}
                   >
                     {LIBRARY_SORT_OPTIONS.map((opt) => (
                       <button
                         key={opt.key}
                         onClick={() => { setSortKey(opt.key); setSortOpen(false) }}
-                        className="w-full flex items-center justify-between px-4 py-2 text-xs font-medium transition-colors"
-                        style={{
-                          color: sortKey === opt.key ? 'var(--color-accent)' : 'var(--color-lit-2)',
-                        }}
+                        className="w-full flex items-center justify-between px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.1em] transition-opacity hover:opacity-60"
+                        style={{ color: sortKey === opt.key ? 'var(--color-accent)' : 'var(--color-ink)' }}
                       >
                         {opt.label}
                         {sortKey === opt.key && <Check size={13} style={{ color: 'var(--color-accent)' }} />}
@@ -241,9 +292,9 @@ export default function BooksLibraryPage() {
             </div>
 
             <Link href="/search?type=books">
-              <Button variant="primary" size="sm" className="shadow-md rounded-xl px-4 py-2 text-sm font-bold">
-                + Add Books
-              </Button>
+              <button className="zine-btn zine-btn-primary" style={{ padding: '10px 20px', fontSize: 11, letterSpacing: '0.15em' }}>
+                + Add a Book
+              </button>
             </Link>
           </div>
         </div>
@@ -251,42 +302,39 @@ export default function BooksLibraryPage() {
         {/* Search bar */}
         {totalPublicBooks > 0 && (
           <div className="mb-8">
-            <div className="relative max-w-md">
+            <div className="relative max-w-lg">
               <Search
                 size={16}
-                className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"
-                style={{ color: 'var(--color-lit-3)' }}
+                className="absolute left-5 top-1/2 -translate-y-1/2 pointer-events-none"
+                style={{ color: 'var(--color-ink-3)' }}
               />
               <input
                 type="text"
                 placeholder="Search your library by title or author…"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-10 py-2.5 rounded-xl text-sm font-medium outline-none transition-all"
+                className="w-full pl-12 pr-12 py-3.5 text-[14px] font-medium outline-none"
                 style={{
-                  backgroundColor: 'var(--color-grove)',
-                  border: '1px solid var(--color-rim)',
-                  color: 'var(--color-lit)',
+                  backgroundColor: 'var(--color-canvas)',
+                  border: '2px solid var(--color-ink)',
+                  borderRadius: 999,
+                  color: 'var(--color-ink)',
+                  boxShadow: '3px 3px 0px var(--color-accent-yellow)',
                 }}
-                onFocus={e => (e.currentTarget.style.borderColor = 'var(--color-rim-accent)')}
-                onBlur={e => (e.currentTarget.style.borderColor = 'var(--color-rim)')}
               />
               {isSearching && (
                 <button
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded transition-colors"
-                  style={{ color: 'var(--color-lit-3)' }}
-                  onMouseEnter={e => (e.currentTarget.style.color = 'var(--color-lit)')}
-                  onMouseLeave={e => (e.currentTarget.style.color = 'var(--color-lit-3)')}
+                  className="absolute right-5 top-1/2 -translate-y-1/2 p-1 transition-opacity hover:opacity-60"
+                  style={{ color: 'var(--color-ink-3)' }}
                 >
                   <X size={14} />
                 </button>
               )}
             </div>
 
-            {/* Result count — only shown while searching */}
             {isSearching && (
-              <p className="mt-2 text-xs font-medium" style={{ color: 'var(--color-lit-3)' }}>
+              <p className="mt-2 text-[12px] font-medium" style={{ color: 'var(--color-ink-3)' }}>
                 {searchResults.length === 0
                   ? `No books match "${searchQuery}"`
                   : `${searchResults.length} book${searchResults.length === 1 ? '' : 's'} found`}
@@ -295,23 +343,25 @@ export default function BooksLibraryPage() {
           </div>
         )}
 
-        {/* Reading Goal card */}
-        <div className="mb-6">
+        {/* Goal + Shelf stats — 40/60 grid */}
+        <div className="grid lg:grid-cols-[40%_1fr] gap-5 items-stretch mb-8">
           <ReadingGoalCard
             goal={readingGoal}
             completed={readThisYear}
             onEdit={() => setIsGoalModalOpen(true)}
           />
+          <LibraryStats stats={stats} readingStreak={user?.reading_streak ?? 0} />
         </div>
-
-        {/* Stats */}
-        <LibraryStats stats={stats} goal={readingGoal} onGoalClick={() => setIsGoalModalOpen(true)} />
 
         <GoalSettingModal
           isOpen={isGoalModalOpen}
           onClose={() => setIsGoalModalOpen(false)}
           onSave={setGoal}
+          onRemove={removeGoal}
           isLoading={isGoalLoading}
+          currentGoal={readingGoal}
+          completedThisYear={readThisYear}
+          lastYearCount={lastYearCount > 0 ? lastYearCount : undefined}
         />
 
         {/* Error */}
@@ -398,111 +448,21 @@ export default function BooksLibraryPage() {
         {/* ── NORMAL SHELF VIEW (hidden while searching) ───────────────── */}
         {!isSearching && (
           <>
-            {/* Suggested for You */}
-            {!suggestionsLoading && suggestions.length > 0 && (
-              <section className="mb-10">
-                <div className="flex items-center gap-2 mb-4">
-                  <Sparkles size={18} style={{ color: 'var(--color-accent)' }} />
-                  <h2 className="font-serif text-xl font-bold" style={{ color: 'var(--color-lit)' }}>
-                    Suggested for You
-                  </h2>
-                  <span
-                    className="ml-1 text-xs font-bold px-2 py-0.5 rounded-full"
-                    style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-accent-on)' }}
-                  >
-                    {suggestions.length}
-                  </span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {suggestions.map((s: BookSuggestion) => (
-                    <div
-                      key={s.id}
-                      className="flex gap-4 p-4 rounded-2xl"
-                      style={{
-                        backgroundColor: 'var(--color-surface)',
-                        border: '1px solid var(--color-rim-accent)',
-                        boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
-                      }}
-                    >
-                      {/* Cover */}
-                      <Link href={`/books/${s.book.google_books_id ?? s.book.id}`} className="flex-shrink-0">
-                        <div className="w-14 rounded-xl overflow-hidden shadow-md" style={{ aspectRatio: '2/3' }}>
-                          <BookCoverImage
-                            src={s.book.cover_image_url}
-                            title={s.book.title}
-                            author={s.book.author_name}
-                            size="small"
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                      </Link>
-
-                      {/* Info */}
-                      <div className="flex-1 min-w-0">
-                        <Link href={`/books/${s.book.google_books_id ?? s.book.id}`}>
-                          <p className="font-bold text-sm truncate hover:underline" style={{ color: 'var(--color-lit)' }}>
-                            {s.book.title}
-                          </p>
-                        </Link>
-                        {s.book.author_name && (
-                          <p className="text-xs truncate mb-2" style={{ color: 'var(--color-lit-3)' }}>
-                            {s.book.author_name}
-                          </p>
-                        )}
-
-                        {/* Suggester */}
-                        <div className="flex items-center gap-1.5 mb-2">
-                          <Avatar
-                            src={s.suggester.avatar_url}
-                            name={s.suggester.display_name || s.suggester.username}
-                            size="xs"
-                          />
-                          <span className="text-xs" style={{ color: 'var(--color-lit-2)' }}>
-                            from <span className="font-semibold">{s.suggester.display_name || s.suggester.username}</span>
-                          </span>
-                        </div>
-
-                        {/* Message */}
-                        {s.message && (
-                          <p className="text-xs italic mb-2 line-clamp-2" style={{ color: 'var(--color-lit-2)' }}>
-                            &ldquo;{s.message}&rdquo;
-                          </p>
-                        )}
-
-                        {/* Actions */}
-                        <div className="flex items-center gap-2">
-                          <Link
-                            href={`/books/${s.book.google_books_id ?? s.book.id}`}
-                            className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all hover:opacity-80"
-                            style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-accent-on)' }}
-                          >
-                            View Book
-                            <ChevronRight size={11} />
-                          </Link>
-                          <button
-                            onClick={() => dismissSuggestion(s.id)}
-                            className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all hover:opacity-80"
-                            style={{
-                              backgroundColor: 'var(--color-grove)',
-                              border: '1px solid var(--color-rim)',
-                              color: 'var(--color-lit-3)',
-                            }}
-                          >
-                            Dismiss
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-
             <ReadingHero books={readingBooks} onUpdate={handleUpdate} />
+
+            <LibraryNotesStrip />
+
+            <SuggestionsSection
+              suggestions={suggestions}
+              loading={suggestionsLoading}
+              dismissSuggestion={dismissSuggestion}
+              onUpdate={handleUpdate}
+            />
 
             <Shelf
               shelfId="to-read"
               title="To Read"
+              color="var(--color-accent)"
               icon={<BookIcon className="w-5 h-5" style={{ color: 'var(--color-accent)' }} />}
               books={toReadBooks}
               subtitle="Your future adventures"
@@ -513,9 +473,10 @@ export default function BooksLibraryPage() {
             <Shelf
               shelfId="read"
               title="Completed"
+              color="var(--color-accent-teal)"
               icon={<CheckCircle className="w-5 h-5" style={{ color: 'var(--color-accent)' }} />}
               books={readBooks}
-              subtitle="Books you've finished"
+              subtitle="Books you've finished and what you thought of them"
               onUpdate={handleUpdate}
               onSuggest={(bookId, bookTitle) => setSuggestModal({ bookId, bookTitle })}
             />
@@ -523,39 +484,19 @@ export default function BooksLibraryPage() {
             <Shelf
               shelfId="dnf"
               title="Did Not Finish"
+              color="#8b8278"
               icon={<XCircle className="w-5 h-5" style={{ color: 'var(--color-accent)' }} />}
               books={dnfBooks}
-              subtitle="On hold or stopped"
+              subtitle="No guilt, just a record of where you stopped"
               onUpdate={handleUpdate}
               onSuggest={(bookId, bookTitle) => setSuggestModal({ bookId, bookTitle })}
             />
 
-            <section id="private" className="mt-12 pt-12 scroll-mt-40" style={{ borderTop: '1px solid var(--color-rim)' }}>
-              <Shelf
-                shelfId="private-books"
-                title="Private Collection"
-                icon={<Lock className="w-5 h-5" style={{ color: 'var(--color-lit-2)' }} />}
-                books={privateBooks}
-                subtitle="Only visible to you"
-                onUpdate={handleUpdate}
-              />
-
-              {privateBooks.length === 0 && !privateLoading && (
-                <div className="rounded-3xl p-10 text-center" style={{ border: '1px dashed var(--color-rim)', backgroundColor: 'var(--color-grove)' }}>
-                  <div className="flex justify-center mb-3">
-                    <Lock className="w-8 h-8 text-ink-3" />
-                  </div>
-                  <p className="font-medium text-ink-2">No private books yet</p>
-                  <p className="text-sm text-ink-3 mt-1">Books you mark as private will appear here.</p>
-                </div>
-              )}
-
-              {privateError && (
-                <div className="rounded-2xl p-4 mt-4 text-sm" style={{ backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-rim-accent)', color: 'var(--color-accent)' }}>
-                  {privateError}
-                </div>
-              )}
-            </section>
+            <PrivateShelf
+              books={privateBooks}
+              loading={privateLoading}
+              onUpdate={handleUpdate}
+            />
           </>
         )}
 

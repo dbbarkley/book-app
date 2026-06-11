@@ -1,9 +1,8 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
-import { UserCheck, UserX, Users } from 'lucide-react'
-import Avatar from './Avatar'
+import { useState } from 'react'
 import type { FriendRequest } from '@book-app/shared'
+import { Bell } from 'lucide-react'
 
 interface FriendRequestsPanelProps {
   requests: FriendRequest[]
@@ -11,89 +10,185 @@ interface FriendRequestsPanelProps {
   onDecline: (friendshipId: number) => Promise<void>
 }
 
+// ── Helpers ────────────────────────────────────────────────────────────────────
+
+const AVATAR_COLORS = ['#234A5A', '#D5582E', '#2D6A4F', '#1A1A1A', '#8B6914']
+
+function avatarColor(name: string): string {
+  let hash = 0
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash)
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length]
+}
+
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const mins  = Math.floor(diff / 60_000)
+  const hours = Math.floor(diff / 3_600_000)
+  const days  = Math.floor(diff / 86_400_000)
+  const weeks = Math.floor(days / 7)
+  if (mins  < 1)  return 'just now'
+  if (hours < 1)  return `${mins}m ago`
+  if (days  < 1)  return `${hours}h ago`
+  if (weeks < 1)  return `${days}d ago`
+  return `${weeks}w ago`
+}
+
+// ── Row ────────────────────────────────────────────────────────────────────────
+
+function RequestRow({
+  request,
+  onAccept,
+  onDecline,
+}: {
+  request: FriendRequest
+  onAccept: () => Promise<void>
+  onDecline: () => Promise<void>
+}) {
+  const [accepting, setAccepting] = useState(false)
+  const [declining, setDeclining] = useState(false)
+
+  const name = request.requester.display_name || request.requester.username
+  const initial = name.charAt(0).toUpperCase()
+  const color = avatarColor(name)
+
+  async function handleAccept() {
+    setAccepting(true)
+    try { await onAccept() } finally { setAccepting(false) }
+  }
+
+  async function handleDecline() {
+    setDeclining(true)
+    try { await onDecline() } finally { setDeclining(false) }
+  }
+
+  const meta = [
+    `@${request.requester.username}`,
+    timeAgo(request.created_at),
+  ].join(' · ')
+
+  return (
+    <div
+      className="flex items-center gap-4 px-5 py-4"
+      style={{
+        backgroundColor: 'var(--color-canvas)',
+        border: '2px solid var(--color-ink)',
+        borderRadius: 12,
+        boxShadow: '3px 3px 0px var(--color-ink)',
+      }}
+    >
+      {/* Letter avatar */}
+      <div
+        className="flex-shrink-0 flex items-center justify-center font-serif font-black"
+        style={{
+          width: 44, height: 44,
+          borderRadius: '50%',
+          backgroundColor: color,
+          border: '2px solid var(--color-ink)',
+          color: '#FAF6EB',
+          fontSize: 18,
+        }}
+      >
+        {initial}
+      </div>
+
+      {/* Info */}
+      <div className="flex-1 min-w-0">
+        <p className="font-serif font-bold leading-tight" style={{ fontSize: 16, color: 'var(--color-ink)' }}>
+          {name}
+        </p>
+        <p className="text-[12px] font-medium mt-0.5" style={{ color: 'var(--color-ink-3)' }}>
+          {meta}
+        </p>
+      </div>
+
+      {/* Actions */}
+      <div className="flex items-center gap-2 flex-shrink-0">
+        <button
+          onClick={handleAccept}
+          disabled={accepting || declining}
+          className="text-[11px] font-bold uppercase tracking-[0.15em] transition-opacity hover:opacity-80 disabled:opacity-40"
+          style={{
+            backgroundColor: 'var(--color-ink)',
+            color: 'var(--color-canvas)',
+            border: '2px solid var(--color-ink)',
+            borderRadius: 999,
+            padding: '9px 18px',
+          }}
+        >
+          {accepting ? '…' : 'Accept'}
+        </button>
+        <button
+          onClick={handleDecline}
+          disabled={accepting || declining}
+          className="text-[11px] font-bold uppercase tracking-[0.15em] transition-opacity hover:opacity-70 disabled:opacity-40"
+          style={{
+            backgroundColor: 'transparent',
+            color: 'var(--color-ink)',
+            border: '2px solid var(--color-ink)',
+            borderRadius: 999,
+            padding: '9px 18px',
+          }}
+        >
+          {declining ? '…' : 'Decline'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ── Panel ──────────────────────────────────────────────────────────────────────
+
 export default function FriendRequestsPanel({
   requests,
   onAccept,
   onDecline,
 }: FriendRequestsPanelProps) {
-  const router = useRouter()
-
   if (requests.length === 0) return null
 
   return (
     <div
-      className="rounded-[28px] p-6"
+      className="relative"
       style={{
-        backgroundColor: 'var(--color-surface)',
-        border: '1px solid var(--color-rim-accent)',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+        backgroundColor: 'var(--color-accent-yellow)',
+        border: '2px solid var(--color-ink)',
+        borderRadius: 16,
+        boxShadow: '5px 5px 0px var(--color-ink)',
+        padding: '20px 20px 20px',
       }}
     >
-      <div className="flex items-center gap-2 mb-4">
-        <Users size={18} style={{ color: 'var(--color-accent)' }} />
-        <h3 className="font-serif text-lg font-bold" style={{ color: 'var(--color-lit)' }}>
-          Friend Requests
-        </h3>
-        <span
-          className="ml-auto text-xs font-bold px-2 py-0.5 rounded-full"
-          style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-accent-on)' }}
-        >
-          {requests.length}
-        </span>
+      {/* PENDING sticker */}
+      <div
+        className="absolute top-4 right-4 text-[10px] font-bold uppercase tracking-[0.2em] px-3 py-1.5"
+        style={{
+          border: '2px solid var(--color-ink)',
+          borderRadius: 6,
+          backgroundColor: 'var(--color-canvas)',
+          color: 'var(--color-ink)',
+          transform: 'rotate(2.5deg)',
+        }}
+      >
+        Pending
       </div>
 
-      <div className="space-y-3">
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-4">
+        <Bell size={18} strokeWidth={2.5} style={{ color: 'var(--color-ink)', flexShrink: 0 }} />
+        <p className="font-serif font-bold" style={{ fontSize: 18, color: 'var(--color-ink)' }}>
+          You have{' '}
+          <span style={{ color: 'var(--color-ink)' }}>{requests.length}</span>{' '}
+          new friend request{requests.length !== 1 ? 's' : ''}
+        </p>
+      </div>
+
+      {/* Request rows */}
+      <div className="flex flex-col gap-3">
         {requests.map(req => (
-          <div
+          <RequestRow
             key={req.id}
-            className="flex items-center gap-3 p-3 rounded-2xl"
-            style={{ backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-rim)' }}
-          >
-            <button
-              onClick={() => router.push(`/users/${req.requester.id}`)}
-              className="flex-shrink-0"
-            >
-              <Avatar
-                src={req.requester.avatar_url}
-                name={req.requester.display_name || req.requester.username}
-                size="sm"
-              />
-            </button>
-
-            <button
-              onClick={() => router.push(`/users/${req.requester.id}`)}
-              className="flex-1 min-w-0 text-left"
-            >
-              <p className="font-bold text-sm truncate" style={{ color: 'var(--color-lit)' }}>
-                {req.requester.display_name || req.requester.username}
-              </p>
-              {req.requester.display_name && (
-                <p className="text-xs" style={{ color: 'var(--color-lit-3)' }}>
-                  @{req.requester.username}
-                </p>
-              )}
-            </button>
-
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <button
-                onClick={() => onAccept(req.id)}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all hover:opacity-80"
-                style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-accent-on)' }}
-                title="Accept"
-              >
-                <UserCheck size={13} />
-                Accept
-              </button>
-              <button
-                onClick={() => onDecline(req.id)}
-                className="flex items-center gap-1 px-2 py-1.5 rounded-xl text-xs font-bold transition-all hover:opacity-80"
-                style={{ backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-rim)', color: 'var(--color-lit-3)' }}
-                title="Decline"
-              >
-                <UserX size={13} />
-              </button>
-            </div>
-          </div>
+            request={req}
+            onAccept={() => onAccept(req.id)}
+            onDecline={() => onDecline(req.id)}
+          />
         ))}
       </div>
     </div>

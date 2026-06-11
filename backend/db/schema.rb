@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_05_23_000002) do
+ActiveRecord::Schema[7.2].define(version: 2026_05_27_152137) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -96,6 +96,18 @@ ActiveRecord::Schema[7.2].define(version: 2026_05_23_000002) do
     t.index ["google_books_id"], name: "index_book_catalog_on_google_books_id", unique: true
     t.index ["isbn"], name: "index_book_catalog_on_isbn", unique: true, where: "(isbn IS NOT NULL)"
     t.index ["search_vector"], name: "index_book_catalog_on_search_vector", using: :gin
+  end
+
+  create_table "book_notes", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "user_book_id", null: false
+    t.text "content", null: false
+    t.integer "page_number"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_book_id"], name: "index_book_notes_on_user_book_id"
+    t.index ["user_id", "created_at"], name: "index_book_notes_on_user_id_and_created_at"
+    t.index ["user_id"], name: "index_book_notes_on_user_id"
   end
 
   create_table "book_suggestions", force: :cascade do |t|
@@ -584,6 +596,8 @@ ActiveRecord::Schema[7.2].define(version: 2026_05_23_000002) do
     t.datetime "last_feed_viewed_at"
     t.string "password_reset_token"
     t.datetime "password_reset_sent_at"
+    t.integer "reading_streak", default: 0, null: false
+    t.date "last_read_date"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["onboarding_completed"], name: "index_users_on_onboarding_completed"
     t.index ["password_reset_token"], name: "index_users_on_password_reset_token", unique: true
@@ -636,6 +650,8 @@ ActiveRecord::Schema[7.2].define(version: 2026_05_23_000002) do
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "book_notes", "user_books", on_delete: :cascade
+  add_foreign_key "book_notes", "users", on_delete: :cascade
   add_foreign_key "book_suggestions", "books"
   add_foreign_key "book_suggestions", "users", column: "recipient_id"
   add_foreign_key "book_suggestions", "users", column: "suggester_id"

@@ -13,7 +13,6 @@ class UserActivityFeedService < BaseService
     recipient_ids = Set.new
     recipient_ids.merge(@actor.followers.pluck(:id))
     recipient_ids.merge(@actor.friends.pluck(:id))
-    recipient_ids << @actor.id
     recipient_ids << @feedable.id if @feedable.is_a?(User)
 
     payload = @metadata.deep_dup

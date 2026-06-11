@@ -1,6 +1,7 @@
 class ReadingBuddyMessage < ApplicationRecord
   belongs_to :reading_buddy_session
   belongs_to :user
+  has_many   :reactions, class_name: 'ReadingBuddyMessageReaction', dependent: :destroy
 
   validates :content, presence: true, length: { maximum: 2000 }
 
@@ -18,6 +19,7 @@ class ReadingBuddyMessage < ApplicationRecord
           content:    content,
           user_id:    user_id,
           created_at: created_at,
+          reactions:  [],
           user: {
             id:           user.id,
             username:     user.username,

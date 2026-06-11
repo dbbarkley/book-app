@@ -31,7 +31,7 @@ const INITIAL_BOOKS: DemoBook[] = [
 
 const SHELVES = [
   { id: 'reading', label: 'Currently Reading', icon: BookOpen, color: 'var(--color-accent)' },
-  { id: 'toread', label: 'To Read', icon: BookOpen, color: 'var(--color-lit-3)' },
+  { id: 'toread', label: 'To Read', icon: BookOpen, color: 'var(--color-ink-3)' },
   { id: 'completed', label: 'Completed', icon: Check, color: 'var(--color-success)' },
   { id: 'dnf', label: 'Did Not Finish', icon: XCircle, color: 'var(--color-error)' },
   { id: 'private', label: 'Private', icon: Lock, color: 'var(--color-accent)' },
@@ -66,7 +66,7 @@ export default function InteractiveShelf() {
         className="px-5 py-3 flex items-center justify-between"
         style={{ borderBottom: '1px solid var(--color-rim)', backgroundColor: 'var(--color-grove)' }}
       >
-        <span className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--color-lit-3)' }}>
+        <span className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--color-ink-3)' }}>
           Try it — drag a book to a shelf
         </span>
         <motion.span
@@ -120,7 +120,7 @@ export default function InteractiveShelf() {
                 </span>
                 <span
                   className="text-[10px] ml-auto tabular-nums font-bold"
-                  style={{ color: 'var(--color-lit-3)' }}
+                  style={{ color: 'var(--color-ink-3)' }}
                 >
                   {shelfBooks.length}
                 </span>
@@ -153,17 +153,17 @@ export default function InteractiveShelf() {
                     <GripVertical
                       size={10}
                       className="opacity-0 group-hover:opacity-100 transition-opacity"
-                      style={{ color: 'var(--color-lit-3)', flexShrink: 0 }}
+                      style={{ color: 'var(--color-ink-3)', flexShrink: 0 }}
                     />
                     <div
                       className="w-5 h-7 rounded-sm flex-shrink-0"
                       style={{ backgroundColor: book.cover, border: '1px solid var(--color-rim)' }}
                     />
                     <div className="min-w-0 flex-1">
-                      <p className="text-[10px] font-bold truncate" style={{ color: 'var(--color-lit)' }}>
+                      <p className="text-[10px] font-bold truncate" style={{ color: 'var(--color-ink)' }}>
                         {book.title}
                       </p>
-                      <p className="text-[8px] truncate" style={{ color: 'var(--color-lit-3)' }}>
+                      <p className="text-[8px] truncate" style={{ color: 'var(--color-ink-3)' }}>
                         {book.author}
                       </p>
                     </div>
@@ -176,7 +176,7 @@ export default function InteractiveShelf() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   className="text-[9px] italic py-1.5 px-2"
-                  style={{ color: 'var(--color-lit-3)' }}
+                  style={{ color: 'var(--color-ink-3)' }}
                 >
                   Drop a book here...
                 </motion.p>

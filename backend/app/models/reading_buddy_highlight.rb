@@ -30,25 +30,23 @@ class ReadingBuddyHighlight < ApplicationRecord
   end
 
   def broadcast_to_session
+    # Always broadcast as locked when spoiler_lock is set — the creator already
+    # has the full highlight from their POST response (store deduplicates by id).
     ActionCable.server.broadcast(
       "reading_buddy_session_#{reading_buddy_session_id}",
-      {
-        type:      'new_highlight',
-        highlight: serialize
-      }
+      { type: 'new_highlight', highlight: serialize(locked: spoiler_lock?) }
     )
   end
 
-  def serialize
-    {
-      id:               id,
-      page_number:      page_number,
-      extracted_text:   extracted_text,
-      highlighted_text: highlighted_text,
-      char_start:       char_start,
-      char_end:         char_end,
-      created_at:       created_at,
-      page_image_url:   page_image.attached? ? Rails.application.routes.url_helpers.rails_blob_url(page_image, only_path: true) : nil,
+  def serialize(locked: false)
+    base = {
+      id:           id,
+      page_number:  page_number,
+      char_start:   char_start,
+      char_end:     char_end,
+      spoiler_lock: spoiler_lock,
+      locked:       locked,
+      created_at:   created_at,
       user: {
         id:           user.id,
         username:     user.username,
@@ -56,5 +54,14 @@ class ReadingBuddyHighlight < ApplicationRecord
         avatar_url:   user.avatar_url_with_attachment,
       }
     }
+    return base if locked
+
+    base.merge(
+      extracted_text:   extracted_text,
+      highlighted_text: highlighted_text,
+      note:             note,
+      moods:            moods || [],
+      page_image_url:   page_image.attached? ? Rails.application.routes.url_helpers.rails_blob_url(page_image, only_path: true) : nil,
+    )
   end
 end

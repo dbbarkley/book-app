@@ -54,6 +54,21 @@ export function useMilestones() {
     }
   }, [viewedMilestones, refreshUser])
 
+  const removeGoal = useCallback(async () => {
+    setIsLoading(true)
+    try {
+      await apiClient.savePreferences({ reading_goal: null })
+      setReadingGoal(null)
+      await refreshUser()
+      return { success: true }
+    } catch (error) {
+      console.error('Failed to remove reading goal:', error)
+      return { success: false, error }
+    } finally {
+      setIsLoading(false)
+    }
+  }, [refreshUser])
+
   const hasViewedMilestone = useCallback((milestone: Milestone) => {
     return viewedMilestones.includes(milestone)
   }, [viewedMilestones])
@@ -64,6 +79,7 @@ export function useMilestones() {
     isLoading,
     markMilestoneViewed,
     setGoal,
+    removeGoal,
     hasViewedMilestone,
   }
 }

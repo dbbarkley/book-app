@@ -1158,8 +1158,8 @@ export default function DiscoverPage() {
             Week of {weekDate}
           </span>
 
-          {/* Right */}
-          <span style={{
+          {/* Right — hidden on mobile */}
+          <span className="hidden sm:block" style={{
             fontSize: 11, fontWeight: 800, letterSpacing: '0.14em',
             color: 'var(--color-ink)', textTransform: 'uppercase',
             textAlign: 'right',

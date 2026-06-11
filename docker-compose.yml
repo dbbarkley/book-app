@@ -96,6 +96,7 @@ services:
     environment:
       - NODE_ENV=development
       - NEXT_PUBLIC_API_URL=http://localhost:3000/api/v1
+      - WATCHPACK_POLLING=true
     depends_on:
       - backend
     stdin_open: true

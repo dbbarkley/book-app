@@ -23,11 +23,16 @@ class BookCatalog < ApplicationRecord
     where("title ILIKE ? OR author_name ILIKE ?", pattern, pattern)
   }
 
+  MIN_PUBLISH_YEAR = 1930
+
   def self.search(q, limit: 20)
     return none if q.blank?
     # For very short queries, tsvector lexing gives no tokens — fall back to ILIKE.
     results = q.length < 3 ? prefix_search(q) : full_text_search(q)
-    results.limit(limit)
+    # Exclude pre-1930 books — blank/null published_date passes through (benefit of the doubt).
+    results
+      .where("published_date IS NULL OR published_date = '' OR LEFT(published_date, 4) >= '1930'")
+      .limit(limit)
   end
 
   def self.upsert_book(book_hash)
@@ -95,10 +100,8 @@ class BookCatalog < ApplicationRecord
       average_rating:  average_rating,
       ratings_count:   ratings_count,
       categories:      categories || [],
-      # Fields present in serialize_book_detail but not in catalog — send nil/zero
-      # so the frontend can safely access them without undefined-access errors.
       author_id:       nil,
-      author:          nil,
+      author:          author_name.present? ? { id: nil, name: author_name, avatar_url: nil } : nil,
       followers_count: 0,
     }
   end

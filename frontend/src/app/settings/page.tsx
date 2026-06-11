@@ -24,13 +24,35 @@ const SECTIONS = [
 
 function PageHero() {
   return (
-    <div style={{ position: 'relative', overflow: 'hidden', backgroundColor: 'var(--color-canvas)', borderBottom: '2px solid var(--color-ink)', paddingTop: 48, paddingBottom: 52 }}>
-      <div className="container-mobile">
+    <div style={{ position: 'relative', overflow: 'hidden', backgroundColor: 'var(--color-canvas)', borderBottom: '2px solid var(--color-ink)' }}>
+
+      {/* Mobile + tablet decorative circle — small, tucked in corner */}
+      <div aria-hidden className="lg:hidden" style={{ position: 'absolute', top: -60, right: -60, width: 180, height: 180, borderRadius: '50%', backgroundColor: 'var(--color-accent)', opacity: 0.9, border: '2px solid var(--color-ink)', pointerEvents: 'none' }} />
+
+      {/* Desktop decorative circles — lg+ only */}
+      <div aria-hidden className="hidden lg:block" style={{ position: 'absolute', top: -220, right: -180, width: 680, height: 680, borderRadius: '50%', backgroundColor: 'var(--color-accent)', border: '3px solid var(--color-ink)', pointerEvents: 'none' }} />
+      <div aria-hidden className="hidden lg:block" style={{ position: 'absolute', top: 52, right: 148, width: 88, height: 88, borderRadius: '50%', backgroundColor: 'var(--color-accent-yellow)', border: '3px solid var(--color-ink)', pointerEvents: 'none' }} />
+
+      {/* Mobile + tablet header — compact */}
+      <div className="lg:hidden container-mobile" style={{ padding: '20px 20px 16px', position: 'relative' }}>
+        <div style={{ display: 'inline-flex', border: '1.5px solid var(--color-ink)', padding: '4px 10px', borderRadius: 4, transform: 'rotate(-3deg)', marginBottom: 14, fontSize: 9, fontWeight: 700, letterSpacing: '0.2em', color: 'var(--color-ink)', textTransform: 'uppercase' }}>
+          Settings · Maintenance
+        </div>
+        <h1 className="font-serif" style={{ fontSize: 48, fontWeight: 600, lineHeight: 0.9, letterSpacing: '-0.04em', color: 'var(--color-ink)', margin: '0 0 10px' }}>
+          Your <em style={{ color: 'var(--color-accent)', fontStyle: 'italic' }}>shelf</em>,<br />your stamp.
+        </h1>
+        <p style={{ fontSize: 13, color: 'var(--color-ink-2)', lineHeight: 1.5, fontWeight: 500 }}>
+          Who you are on the page, what you read, the ten books on your mantel, and the door to the ledger.
+        </p>
+      </div>
+
+      {/* Desktop header — full size, lg+ only */}
+      <div className="hidden lg:block container-mobile" style={{ paddingTop: 48, paddingBottom: 52 }}>
         <div style={{ maxWidth: '42rem' }}>
           <div style={{ display: 'inline-flex', border: '1.5px solid var(--color-ink)', padding: '5px 11px', borderRadius: 4, transform: 'rotate(-2deg)', marginBottom: 20, fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', color: 'var(--color-ink)', textTransform: 'uppercase' }}>
             Settings · Maintenance
           </div>
-          <h1 className="font-serif font-black" style={{ fontSize: 'clamp(3.2rem, 8.5vw, 7rem)', lineHeight: 1.02, color: 'var(--color-ink)', letterSpacing: '-0.02em', marginBottom: 18 }}>
+          <h1 className="font-serif font-black" style={{ fontSize: 'clamp(2.4rem, 8.5vw, 7rem)', lineHeight: 1.02, color: 'var(--color-ink)', letterSpacing: '-0.02em', marginBottom: 18 }}>
             Your <em style={{ color: 'var(--color-accent)', fontStyle: 'italic' }}>shelf</em>,<br />your stamp.
           </h1>
           <p style={{ fontSize: 15, color: 'var(--color-ink-2)', lineHeight: 1.65 }}>
@@ -39,8 +61,7 @@ function PageHero() {
           </p>
         </div>
       </div>
-      <div aria-hidden style={{ position: 'absolute', top: -220, right: -180, width: 680, height: 680, borderRadius: '50%', backgroundColor: 'var(--color-accent)', border: '3px solid var(--color-ink)', pointerEvents: 'none' }} />
-      <div aria-hidden style={{ position: 'absolute', top: 52, right: 148, width: 88, height: 88, borderRadius: '50%', backgroundColor: 'var(--color-accent-yellow)', border: '3px solid var(--color-ink)', pointerEvents: 'none' }} />
+
     </div>
   )
 }
@@ -49,13 +70,15 @@ function PageHero() {
 
 function FieldLabel({ label, hint, hintAccent, icon }: { label: string; hint?: string; hintAccent?: boolean; icon?: React.ReactNode }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <div style={{ width: 22, height: 1.5, backgroundColor: 'var(--color-accent)', flexShrink: 0 }} />
-        {icon && <span style={{ color: 'var(--color-accent)', display: 'flex' }}>{icon}</span>}
-        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--color-ink)' }}>{label}</span>
+    <div style={{ marginBottom: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          <div style={{ width: 22, height: 1.5, backgroundColor: 'var(--color-accent)', flexShrink: 0 }} />
+          {icon && <span style={{ color: 'var(--color-accent)', display: 'flex' }}>{icon}</span>}
+          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--color-ink)' }}>{label}</span>
+        </div>
+        {hint && <span style={{ fontSize: 12, fontWeight: 600, color: hintAccent ? 'var(--color-accent)' : 'var(--color-ink-3)' }}>{hint}</span>}
       </div>
-      {hint && <span style={{ fontSize: 13, fontWeight: 600, color: hintAccent ? 'var(--color-accent)' : 'var(--color-ink-3)' }}>{hint}</span>}
     </div>
   )
 }
@@ -106,21 +129,22 @@ interface SectionCardProps {
 }
 
 function SectionCard({ id, num, title, subtitle, children, footer, innerRef, shadowColor = 'var(--color-accent)' }: SectionCardProps) {
+  const px = 'clamp(16px, 4.5vw, 32px)'
   return (
     <div id={id} ref={innerRef} style={{ border: '2px solid var(--color-ink)', borderRadius: 16, boxShadow: `6px 6px 0px ${shadowColor}`, backgroundColor: 'var(--color-canvas)', overflow: 'hidden', scrollMarginTop: 120 }}>
-      <div style={{ padding: '28px 32px 24px' }}>
+      <div style={{ padding: `clamp(18px, 4vw, 28px) ${px} clamp(14px, 3vw, 24px)` }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
-          <span className="font-serif font-black" style={{ fontSize: '3rem', lineHeight: 1, color: 'var(--color-accent)', flexShrink: 0 }}>{num}</span>
+          <span className="font-serif font-black" style={{ fontSize: 'clamp(2rem, 6vw, 3rem)', lineHeight: 1, color: 'var(--color-accent)', flexShrink: 0 }}>{num}</span>
           <div>
-            <h2 className="font-serif font-black" style={{ fontSize: '1.75rem', color: 'var(--color-ink)', lineHeight: 1.1 }}>{title}</h2>
+            <h2 className="font-serif font-black" style={{ fontSize: 'clamp(1.4rem, 4vw, 1.75rem)', color: 'var(--color-ink)', lineHeight: 1.1 }}>{title}</h2>
             <p style={{ fontSize: 14, color: 'var(--color-ink-3)', marginTop: 4 }}>{subtitle}</p>
           </div>
         </div>
       </div>
-      <div style={{ borderTop: '1.5px dashed var(--color-rim)', margin: '0 32px' }} />
-      <div style={{ padding: '28px 32px' }}>{children}</div>
+      <div style={{ borderTop: '1.5px dashed var(--color-rim)', margin: `0 ${px}` }} />
+      <div style={{ padding: `clamp(18px, 4vw, 28px) ${px}` }}>{children}</div>
       {footer && (
-        <div style={{ padding: '0 32px 28px', display: 'flex', justifyContent: 'flex-end' }}>{footer}</div>
+        <div style={{ padding: `0 ${px} clamp(18px, 4vw, 28px)`, display: 'flex', justifyContent: 'flex-end' }}>{footer}</div>
       )}
     </div>
   )
@@ -357,11 +381,11 @@ function SettingsContent() {
   return (
     <>
       <PageHero />
-      <div className="container-mobile py-8">
-        <div className="grid gap-8 md:gap-12 md:grid-cols-[280px_1fr] items-start">
+      <div className="container-mobile py-6 lg:py-8">
+        <div className="grid grid-cols-1 gap-8 lg:gap-12 lg:grid-cols-[280px_1fr] items-start">
 
-          {/* ── Left nav — hidden on mobile, sticky on md+ ───────────── */}
-          <div ref={leftNavRef} className="hidden md:block" style={{ willChange: 'transform' }}>
+          {/* ── Left nav — hidden below lg, sticky on lg+ ─────────────── */}
+          <div ref={leftNavRef} className="hidden lg:block" style={{ willChange: 'transform' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
               <div style={{ width: 22, height: 1.5, backgroundColor: 'var(--color-ink)' }} />
               <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--color-ink)' }}>Sections</span>
@@ -414,36 +438,66 @@ function SettingsContent() {
               footer={<SaveButton onClick={handleSaveProfile} isLoading={savingProfile} />}
             >
               {profileToast && <Toast type={profileToast.type} message={profileToast.message} />}
-              <div className="grid gap-6 sm:grid-cols-[180px_1fr] items-start">
+              {/* Mobile: avatar row (compact horizontal) + fields below */}
+              {/* sm+: side-by-side [avatar column | fields column] */}
+              <div className="flex flex-col gap-6 md:grid md:grid-cols-[180px_1fr] md:items-start">
 
                 {/* Avatar */}
-                <div>
-                  <div style={{ width: 180, height: 200, borderRadius: 14, border: '2px solid var(--color-ink)', overflow: 'hidden', position: 'relative', backgroundColor: 'var(--color-accent-yellow)', boxShadow: '4px 4px 0px var(--color-ink)' }}>
-                    {avatarSrc
-                      ? <img src={avatarSrc} alt="Your avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <span className="font-serif font-black" style={{ fontSize: '6rem', color: 'var(--color-ink)', lineHeight: 1, opacity: 0.85 }}>{avatarInitial}</span>
+                <div className="flex flex-col items-center md:items-start">
+                  {/* Mobile/tablet shows a compact horizontal row; md+ shows the tall card */}
+                  <div className="flex items-center gap-4 w-full md:block">
+                    <div style={{ width: 90, height: 90, flexShrink: 0, borderRadius: 12, border: '2px solid var(--color-ink)', overflow: 'hidden', position: 'relative', backgroundColor: 'var(--color-accent-yellow)', boxShadow: '3px 3px 0px var(--color-ink)' }} className="md:hidden">
+                      {avatarSrc
+                        ? <img src={avatarSrc} alt="Your avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <span className="font-serif font-black" style={{ fontSize: '2.8rem', color: 'var(--color-ink)', lineHeight: 1, opacity: 0.85 }}>{avatarInitial}</span>
+                          </div>
+                      }
+                    </div>
+                    <div className="md:hidden flex flex-col gap-2 flex-1">
+                      <label style={{ display: 'block', cursor: 'pointer' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 8, backgroundColor: 'var(--color-ink)', color: 'var(--color-canvas)', border: '2px solid var(--color-ink)', boxShadow: '2px 2px 0px var(--color-accent)', fontSize: 11, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+                          <Upload size={11} /> Change photo
                         </div>
-                    }
-                    <div style={{ position: 'absolute', bottom: 10, right: 10, backgroundColor: 'var(--color-canvas)', border: '1.5px solid var(--color-ink)', borderRadius: 4, padding: '2px 7px', fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', color: 'var(--color-ink)', textTransform: 'uppercase' }}>
-                      You
+                        <input type="file" className="hidden" accept="image/jpeg,image/png,image/webp" onChange={handleFileChange} />
+                      </label>
+                      {avatarPreview && (
+                        <button type="button" onClick={() => { setAvatarPreview(null); setProfileForm(prev => ({ ...prev, avatar_file: null })) }}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--color-ink-3)', cursor: 'pointer', background: 'none', border: 'none', padding: 0 }}>
+                          <X size={11} /> Remove
+                        </button>
+                      )}
+                      <p style={{ fontSize: 11, color: 'var(--color-ink-3)', lineHeight: 1.5 }}>JPG, PNG or WebP · max 5 MB</p>
                     </div>
                   </div>
 
-                  <label style={{ display: 'block', marginTop: 10, cursor: 'pointer' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 0', borderRadius: 8, backgroundColor: 'var(--color-ink)', color: 'var(--color-canvas)', border: '2px solid var(--color-ink)', boxShadow: '3px 3px 0px var(--color-accent)', fontSize: 11, fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase' }}>
-                      <Upload size={12} /> Change
+                  {/* md+: tall avatar card */}
+                  <div className="hidden md:block">
+                    <div style={{ width: 180, height: 200, borderRadius: 14, border: '2px solid var(--color-ink)', overflow: 'hidden', position: 'relative', backgroundColor: 'var(--color-accent-yellow)', boxShadow: '4px 4px 0px var(--color-ink)' }}>
+                      {avatarSrc
+                        ? <img src={avatarSrc} alt="Your avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <span className="font-serif font-black" style={{ fontSize: '6rem', color: 'var(--color-ink)', lineHeight: 1, opacity: 0.85 }}>{avatarInitial}</span>
+                          </div>
+                      }
+                      <div style={{ position: 'absolute', bottom: 10, right: 10, backgroundColor: 'var(--color-canvas)', border: '1.5px solid var(--color-ink)', borderRadius: 4, padding: '2px 7px', fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', color: 'var(--color-ink)', textTransform: 'uppercase' }}>
+                        You
+                      </div>
                     </div>
-                    <input type="file" className="hidden" accept="image/jpeg,image/png,image/webp" onChange={handleFileChange} />
-                  </label>
-
-                  {avatarPreview && (
-                    <button type="button" onClick={() => { setAvatarPreview(null); setProfileForm(prev => ({ ...prev, avatar_file: null })) }}
-                      style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 8, fontSize: 12, color: 'var(--color-ink-3)', cursor: 'pointer', background: 'none', border: 'none', padding: 0 }}>
-                      <X size={11} /> Remove
-                    </button>
-                  )}
-                  <p style={{ fontSize: 11, color: 'var(--color-ink-3)', marginTop: 8, lineHeight: 1.6 }}>JPG, PNG or WebP<br />max 5 MB</p>
+                    <label style={{ display: 'block', marginTop: 10, cursor: 'pointer', width: 180 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 0', borderRadius: 8, backgroundColor: 'var(--color-ink)', color: 'var(--color-canvas)', border: '2px solid var(--color-ink)', boxShadow: '3px 3px 0px var(--color-accent)', fontSize: 11, fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase' }}>
+                        <Upload size={12} /> Change
+                      </div>
+                      <input type="file" className="hidden" accept="image/jpeg,image/png,image/webp" onChange={handleFileChange} />
+                    </label>
+                    {avatarPreview && (
+                      <button type="button" onClick={() => { setAvatarPreview(null); setProfileForm(prev => ({ ...prev, avatar_file: null })) }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 8, fontSize: 12, color: 'var(--color-ink-3)', cursor: 'pointer', background: 'none', border: 'none', padding: 0 }}>
+                        <X size={11} /> Remove
+                      </button>
+                    )}
+                    <p style={{ fontSize: 11, color: 'var(--color-ink-3)', marginTop: 8, lineHeight: 1.6 }}>JPG, PNG or WebP<br />max 5 MB</p>
+                  </div>
                 </div>
 
                 {/* Fields */}
@@ -554,10 +608,10 @@ function SettingsContent() {
 
                   {/* Author grid */}
                   {authorsLoading
-                    ? <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                    ? <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 8 }}>
                         {[1,2,3,4,5,6].map(i => <div key={i} style={{ height: 60, borderRadius: 10, backgroundColor: 'var(--color-surface)' }} />)}
                       </div>
-                    : <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, maxHeight: 340, overflowY: 'auto' }}>
+                    : <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 8, maxHeight: 340, overflowY: 'auto' }}>
                         {authors.map(author => {
                           const selected = prefsForm.author_ids.includes(author.id)
                           const initial = (author.name || '?').charAt(0).toUpperCase()
@@ -640,58 +694,58 @@ function SettingsContent() {
                             <div
                               key={item.id}
                               style={{
-                                display: 'flex', alignItems: 'center', gap: 14,
-                                padding: '14px 16px',
+                                display: 'flex', alignItems: 'center', gap: 10,
+                                padding: '12px 14px',
                                 border: '2px solid var(--color-ink)', borderRadius: 12,
                                 backgroundColor: isFirst ? 'var(--color-accent-yellow)' : 'var(--color-canvas)',
                               }}
                             >
                               {/* Rank badge */}
                               <div style={{
-                                width: 40, height: 40, borderRadius: 8, flexShrink: 0,
+                                width: 34, height: 34, borderRadius: 7, flexShrink: 0,
                                 border: '2px solid var(--color-ink)',
                                 backgroundColor: isFirst ? 'var(--color-ink)' : 'transparent',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                               }}>
-                                <span className="font-serif font-black" style={{ fontSize: 17, color: isFirst ? 'var(--color-canvas)' : 'var(--color-ink)' }}>
+                                <span className="font-serif font-black" style={{ fontSize: 15, color: isFirst ? 'var(--color-canvas)' : 'var(--color-ink)' }}>
                                   {item.position}
                                 </span>
                               </div>
 
-                              {/* Cover */}
+                              {/* Cover — hidden on smallest screens to give text room */}
                               {item.book.cover_image_url
-                                ? <img src={item.book.cover_image_url} alt={item.book.title} style={{ width: 44, height: 58, borderRadius: 5, objectFit: 'cover', flexShrink: 0, border: '1.5px solid rgba(0,0,0,0.18)' }} />
-                                : <div style={{ width: 44, height: 58, borderRadius: 5, flexShrink: 0, backgroundColor: 'var(--color-surface)', border: '1.5px solid rgba(0,0,0,0.1)' }} />
+                                ? <img src={item.book.cover_image_url} alt={item.book.title} className="hidden sm:block" style={{ width: 40, height: 52, borderRadius: 4, objectFit: 'cover', flexShrink: 0, border: '1.5px solid rgba(0,0,0,0.18)' }} />
+                                : <div className="hidden sm:block" style={{ width: 40, height: 52, borderRadius: 4, flexShrink: 0, backgroundColor: 'var(--color-surface)', border: '1.5px solid rgba(0,0,0,0.1)' }} />
                               }
 
                               {/* Info */}
                               <div style={{ flex: 1, minWidth: 0 }}>
-                                <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 2 }}>
+                                <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 2 }}>
                                   {item.book.title}
                                 </p>
-                                <p style={{ fontSize: 13, fontStyle: 'italic', color: 'var(--color-accent)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: rating ? 3 : 0 }}>
-                                  by {item.book.author_name}
+                                <p style={{ fontSize: 12, fontStyle: 'italic', color: 'var(--color-accent)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: rating ? 2 : 0 }}>
+                                  {item.book.author_name}
                                 </p>
                                 {rating && (
-                                  <span style={{ fontSize: 12, color: 'var(--color-accent)', letterSpacing: 1 }}>
+                                  <span style={{ fontSize: 11, color: 'var(--color-accent)', letterSpacing: 1 }}>
                                     {'★'.repeat(Math.round(rating))}{'☆'.repeat(5 - Math.round(rating))}
                                   </span>
                                 )}
                               </div>
 
                               {/* Controls */}
-                              <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                              <div style={{ display: 'flex', gap: 3, flexShrink: 0 }}>
                                 <button onClick={() => handleTop10MoveUp(index)} disabled={isFirst || top10Saving}
-                                  style={{ width: 32, height: 32, borderRadius: 6, border: '2px solid var(--color-ink)', backgroundColor: 'var(--color-canvas)', cursor: isFirst ? 'default' : 'pointer', opacity: isFirst ? 0.25 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: isFirst ? 'none' : '2px 2px 0px var(--color-ink)' }}>
-                                  <ChevronUp size={14} />
+                                  style={{ width: 26, height: 26, borderRadius: 5, border: '2px solid var(--color-ink)', backgroundColor: 'var(--color-canvas)', cursor: isFirst ? 'default' : 'pointer', opacity: isFirst ? 0.25 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: isFirst ? 'none' : '2px 2px 0px var(--color-ink)' }}>
+                                  <ChevronUp size={11} />
                                 </button>
                                 <button onClick={() => handleTop10MoveDown(index)} disabled={isLast || top10Saving}
-                                  style={{ width: 32, height: 32, borderRadius: 6, border: '2px solid var(--color-ink)', backgroundColor: 'var(--color-canvas)', cursor: isLast ? 'default' : 'pointer', opacity: isLast ? 0.25 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: isLast ? 'none' : '2px 2px 0px var(--color-ink)' }}>
-                                  <ChevronDown size={14} />
+                                  style={{ width: 26, height: 26, borderRadius: 5, border: '2px solid var(--color-ink)', backgroundColor: 'var(--color-canvas)', cursor: isLast ? 'default' : 'pointer', opacity: isLast ? 0.25 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: isLast ? 'none' : '2px 2px 0px var(--color-ink)' }}>
+                                  <ChevronDown size={11} />
                                 </button>
                                 <button onClick={() => handleTop10Remove(item.id)} disabled={top10Saving}
-                                  style={{ width: 32, height: 32, borderRadius: 6, border: '2px solid var(--color-accent)', backgroundColor: 'var(--color-canvas)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '2px 2px 0px var(--color-accent)' }}>
-                                  <X size={14} style={{ color: 'var(--color-accent)' }} />
+                                  style={{ width: 26, height: 26, borderRadius: 5, border: '2px solid var(--color-accent)', backgroundColor: 'var(--color-canvas)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '2px 2px 0px var(--color-accent)' }}>
+                                  <X size={11} style={{ color: 'var(--color-accent)' }} />
                                 </button>
                               </div>
                             </div>
@@ -787,15 +841,17 @@ function SettingsContent() {
                 <GoodreadsImportInline />
 
                 {/* StoryGraph — coming soon */}
-                <div style={{ border: '1.5px dashed var(--color-rim)', borderRadius: 12, padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 20, backgroundColor: 'var(--color-surface)' }}>
-                  <div style={{ width: 44, height: 44, borderRadius: 8, backgroundColor: 'var(--color-grove)', border: '2px solid var(--color-rim)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--color-ink-3)' }}>SG</span>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center" style={{ border: '1.5px dashed var(--color-rim)', borderRadius: 12, padding: '16px 20px', backgroundColor: 'var(--color-surface)' }}>
+                  <div className="flex items-center gap-4 flex-1 min-w-0">
+                    <div style={{ width: 44, height: 44, borderRadius: 8, backgroundColor: 'var(--color-grove)', border: '2px solid var(--color-rim)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--color-ink-3)' }}>SG</span>
+                    </div>
+                    <div className="min-w-0">
+                      <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-ink-2)', marginBottom: 4 }}>StoryGraph</p>
+                      <p style={{ fontSize: 13, color: 'var(--color-ink-3)' }}>Import your reading data from StoryGraph.</p>
+                    </div>
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-ink-2)', marginBottom: 4 }}>StoryGraph</p>
-                    <p style={{ fontSize: 13, color: 'var(--color-ink-3)' }}>Import your reading data from StoryGraph.</p>
-                  </div>
-                  <div style={{ flexShrink: 0, border: '1.5px solid var(--color-rim)', borderRadius: 5, padding: '4px 10px', fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--color-ink-3)' }}>
+                  <div style={{ flexShrink: 0, alignSelf: 'flex-start', border: '1.5px solid var(--color-rim)', borderRadius: 5, padding: '4px 10px', fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--color-ink-3)' }}>
                     Coming Soon
                   </div>
                 </div>
@@ -813,9 +869,9 @@ function SettingsContent() {
                   { label: 'Email', value: user.email || '—' },
                   { label: 'Member since', value: user.created_at ? new Date(user.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long' }) : '—' },
                 ].map(({ label, value }) => (
-                  <div key={label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 0', borderBottom: '1.5px dashed var(--color-rim)' }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-ink-3)', textTransform: 'uppercase', letterSpacing: '0.12em' }}>{label}</span>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-ink)' }}>{value}</span>
+                  <div key={label} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, padding: '14px 0', borderBottom: '1.5px dashed var(--color-rim)' }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-ink-3)', textTransform: 'uppercase', letterSpacing: '0.12em', flexShrink: 0 }}>{label}</span>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-ink)', textAlign: 'right', minWidth: 0, overflowWrap: 'break-word', wordBreak: 'break-all' }}>{value}</span>
                   </div>
                 ))}
                 <div style={{ marginTop: 28 }}>

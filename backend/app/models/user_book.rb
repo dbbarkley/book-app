@@ -14,6 +14,7 @@ class UserBook < ApplicationRecord
   belongs_to :user
   belongs_to :book
   belongs_to :work, optional: true
+  has_many :book_notes, dependent: :destroy
 
   # Scopes
   scope :to_read, -> { where(status: 'to_read') }
@@ -63,6 +64,7 @@ class UserBook < ApplicationRecord
   end
 
   def fan_out_added_to_shelf
+    return if Thread.current[:skip_feed_fanout]
     return if visibility == 'private'
     return unless %w[to_read reading].include?(status)
 
@@ -73,6 +75,7 @@ class UserBook < ApplicationRecord
   end
 
   def fan_out_status_or_review_change
+    return if Thread.current[:skip_feed_fanout]
     return if visibility == 'private'
 
     if saved_change_to_status?
@@ -95,6 +98,7 @@ class UserBook < ApplicationRecord
           'completion_percentage' => completion_percentage,
         }
       )
+      user.update_reading_streak! unless Thread.current[:skip_feed_fanout]
     end
 
     if saved_change_to_review? && review.present? && saved_changes['review'].first.blank?

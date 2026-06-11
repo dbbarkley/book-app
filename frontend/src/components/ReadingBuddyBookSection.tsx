@@ -1,11 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { BookOpen, Users, UserPlus, Loader2, Check, Clock, X, AlertTriangle } from 'lucide-react'
+import { Users, UserPlus, Loader2, Check, X, AlertTriangle } from 'lucide-react'
 import { useReadingBuddy, useFriends, useAuth } from '@book-app/shared'
-import type { User, ReadingBuddySession } from '@book-app/shared'
+import type { User } from '@book-app/shared'
 import Avatar from './Avatar'
 
 interface Props {
@@ -13,31 +12,11 @@ interface Props {
   bookTitle: string
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  pending:  'Invite Pending',
-  active:   'Reading Together',
-  declined: 'Declined',
-  dnf:      'Did Not Finish',
-}
-
-const STATUS_COLOR: Record<string, string> = {
-  pending:  'var(--color-lit-3)',
-  active:   '#4ade80',
-  declined: 'var(--color-lit-3)',
-  dnf:      'var(--color-lit-3)',
-}
-
 export default function ReadingBuddyBookSection({ bookId, bookTitle }: Props) {
   const { user } = useAuth()
   const router = useRouter()
 
-  const {
-    sessions,
-    sessionsLoading,
-    fetchSessions,
-    createSession,
-  } = useReadingBuddy()
-
+  const { sessions, sessionsLoading, fetchSessions, createSession } = useReadingBuddy()
   const { friends, loading: friendsLoading } = useFriends()
 
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -45,19 +24,12 @@ export default function ReadingBuddyBookSection({ bookId, bookTitle }: Props) {
   const [inviteError, setInviteError] = useState<string | null>(null)
   const [inviteSuccess, setInviteSuccess] = useState(false)
 
-  useEffect(() => {
-    fetchSessions()
-  }, [fetchSessions])
+  useEffect(() => { fetchSessions() }, [fetchSessions])
 
-  // Sessions for this specific book
-  const bookSessions = sessions.filter(s => s.book.id === bookId)
-  const openSessions = bookSessions.filter(s => s.status === 'pending' || s.status === 'active')
-
-  // Friends who don't already have an open session for this book
+  const bookSessions    = sessions.filter(s => s.book.id === bookId)
+  const openSessions    = bookSessions.filter(s => s.status === 'pending' || s.status === 'active')
   const invitableFriends = friends.filter(f =>
-    !openSessions.some(s =>
-      s.initiator.id === f.id || s.invited.id === f.id
-    )
+    !openSessions.some(s => s.initiator.id === f.id || s.invited.id === f.id)
   )
 
   const handleInvite = async (friend: User) => {
@@ -72,108 +44,117 @@ export default function ReadingBuddyBookSection({ bookId, bookTitle }: Props) {
         router.push(`/reading-buddy/${session.id}`)
       }, 800)
     } catch (err: any) {
-      setInviteError(
-        err?.response?.data?.error ||
-        err?.message ||
-        'Failed to send invite'
-      )
+      setInviteError(err?.response?.data?.error || err?.message || 'Failed to send invite')
     } finally {
       setInviting(null)
     }
   }
 
-  const cardStyle = {
-    backgroundColor: 'var(--color-surface)',
-    border: '1px solid var(--color-rim)',
+  const handleJoin = () => {
+    if (openSessions.length > 0) {
+      router.push(`/reading-buddy/${openSessions[0].id}`)
+    } else {
+      router.push('/reading-buddy')
+    }
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-bold text-lit flex items-center gap-2">
-          <BookOpen className="w-5 h-5 text-accent" />
-          Reading Buddy
-        </h3>
-        {openSessions.length === 0 && (
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full transition-all hover:opacity-80"
-            style={{
-              backgroundColor: 'var(--color-grove)',
-              border: '1px solid var(--color-rim)',
-              color: 'var(--color-lit-2)',
-            }}
-          >
-            <UserPlus className="w-3.5 h-3.5" />
-            Invite a Friend
-          </button>
-        )}
+    <>
+      {/* ── Reading Buddy card ── */}
+      <div
+        style={{
+          position: 'relative',
+          overflow: 'hidden',
+          backgroundColor: 'var(--color-accent)',
+          border: '2px solid var(--color-ink)',
+          borderRadius: 16,
+          boxShadow: '5px 5px 0px var(--color-ink)',
+          padding: '28px 32px',
+        }}
+      >
+        {/* Yellow shimmer — top right */}
+        <div
+          aria-hidden
+          style={{
+            position: 'absolute', top: 0, right: 0,
+            width: '50%', height: '100%',
+            background: 'radial-gradient(ellipse at top right, rgba(241,199,91,0.42) 0%, transparent 62%)',
+            pointerEvents: 'none',
+          }}
+        />
+
+        <div className="flex items-center justify-between gap-8" style={{ position: 'relative' }}>
+          {/* Left: icon + text */}
+          <div className="flex items-start gap-5">
+            <div style={{ flexShrink: 0, paddingTop: 6 }}>
+              <Users size={36} strokeWidth={1.5} style={{ color: 'rgba(250,246,235,0.6)' }} />
+            </div>
+
+            <div>
+              <div style={{ marginBottom: 12 }}>
+                <span
+                  className="font-bold uppercase"
+                  style={{
+                    fontSize: 10, letterSpacing: '0.22em',
+                    color: 'var(--color-accent-yellow)',
+                    border: '1.5px solid var(--color-accent-yellow)',
+                    borderRadius: 4, padding: '2px 8px',
+                    display: 'inline-block',
+                  }}
+                >
+                  Reading Buddy
+                </span>
+              </div>
+
+              <h3 className="font-serif font-black" style={{ fontSize: 24, color: '#FAF6EB', lineHeight: 1.1, marginBottom: 10 }}>
+                Read this{' '}
+                <span style={{ color: 'var(--color-accent-yellow)', fontStyle: 'italic' }}>with a friend.</span>
+              </h3>
+
+              <p style={{ fontSize: 13, color: 'rgba(250,246,235,0.72)', lineHeight: 1.65, maxWidth: 440 }}>
+                Spoiler-safe reactions, shared highlights, synced pace. Reading is already better with a friend.
+              </p>
+            </div>
+          </div>
+
+          {/* Right: buttons */}
+          <div className="flex flex-col gap-3" style={{ flexShrink: 0 }}>
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="font-bold uppercase transition-opacity hover:opacity-80"
+              style={{
+                fontSize: 11, letterSpacing: '0.14em',
+                border: '2px solid var(--color-ink)',
+                borderRadius: 999,
+                padding: '12px 22px',
+                backgroundColor: 'var(--color-accent-yellow)',
+                color: 'var(--color-ink)',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              + Start a Session
+            </button>
+
+            <button
+              onClick={handleJoin}
+              className="font-bold uppercase transition-opacity hover:opacity-80"
+              style={{
+                fontSize: 11, letterSpacing: '0.14em',
+                border: '2px solid rgba(250,246,235,0.5)',
+                borderRadius: 999,
+                padding: '12px 22px',
+                backgroundColor: 'transparent',
+                color: '#FAF6EB',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Join Existing
+            </button>
+          </div>
+        </div>
       </div>
 
-      {sessionsLoading ? (
-        <div className="flex gap-2">
-          {[1, 2].map(i => (
-            <div key={i} className="h-16 flex-1 rounded-xl animate-pulse" style={{ backgroundColor: 'var(--color-grove)' }} />
-          ))}
-        </div>
-      ) : openSessions.length > 0 ? (
-        <div className="space-y-2">
-          {openSessions.map(session => {
-            const partner = session.initiator.id === user?.id ? session.invited : session.initiator
-            return (
-              <Link
-                key={session.id}
-                href={`/reading-buddy/${session.id}`}
-                className="flex items-center gap-3 p-3 rounded-xl transition-all hover:opacity-80"
-                style={cardStyle}
-              >
-                <Avatar src={partner.avatar_url ?? undefined} name={partner.display_name || partner.username} size="sm" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-lit truncate">
-                    {partner.display_name || partner.username}
-                  </p>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    {session.status === 'pending' && <Clock className="w-3 h-3" style={{ color: STATUS_COLOR[session.status] }} />}
-                    {session.status === 'active'  && <Check className="w-3 h-3" style={{ color: STATUS_COLOR[session.status] }} />}
-                    <span className="text-xs font-medium" style={{ color: STATUS_COLOR[session.status] }}>
-                      {STATUS_LABEL[session.status]}
-                    </span>
-                  </div>
-                </div>
-                {partner.progress && (
-                  <div className="text-right flex-none">
-                    <p className="text-xs font-bold text-lit">
-                      {partner.progress.completion_percentage ?? 0}%
-                    </p>
-                    <p className="text-[10px]" style={{ color: 'var(--color-lit-3)' }}>
-                      {partner.progress.pages_read ?? 0}p
-                    </p>
-                  </div>
-                )}
-              </Link>
-            )
-          })}
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-all hover:opacity-80"
-            style={{ color: 'var(--color-lit-3)', border: '1px dashed var(--color-rim)' }}
-          >
-            <UserPlus className="w-3 h-3" />
-            Invite another friend
-          </button>
-        </div>
-      ) : (
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="w-full flex items-center justify-center gap-2 py-4 rounded-xl text-sm font-medium transition-all hover:opacity-80"
-          style={{ color: 'var(--color-lit-3)', border: '1px dashed var(--color-rim)', backgroundColor: 'var(--color-grove)' }}
-        >
-          <Users className="w-4 h-4" />
-          Read this together with a friend
-        </button>
-      )}
-
-      {/* Invite Modal */}
+      {/* ── Invite Modal ── */}
       {isModalOpen && (
         <div
           className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
@@ -182,19 +163,25 @@ export default function ReadingBuddyBookSection({ bookId, bookTitle }: Props) {
         >
           <div
             className="w-full max-w-md rounded-3xl p-6 space-y-5"
-            style={{ backgroundColor: 'var(--color-canvas)', border: '1px solid var(--color-rim)', boxShadow: '0 24px 64px rgba(0,0,0,0.6)' }}
+            style={{
+              backgroundColor: 'var(--color-canvas)',
+              border: '2px solid var(--color-ink)',
+              boxShadow: '5px 5px 0px var(--color-ink)',
+            }}
           >
             <div className="flex items-start justify-between">
               <div>
-                <h3 className="font-serif text-xl font-bold text-lit">Invite to Read Together</h3>
-                <p className="text-sm mt-1" style={{ color: 'var(--color-lit-3)' }}>
+                <h3 className="font-serif text-xl font-bold" style={{ color: 'var(--color-ink)' }}>
+                  Invite to Read Together
+                </h3>
+                <p className="text-sm mt-1" style={{ color: 'var(--color-ink-3)' }}>
                   Pick a friend to read <span className="italic">{bookTitle}</span> with
                 </p>
               </div>
               <button
                 onClick={() => { setIsModalOpen(false); setInviteError(null) }}
                 className="p-1.5 rounded-full transition-all hover:opacity-70"
-                style={{ color: 'var(--color-lit-3)' }}
+                style={{ color: 'var(--color-ink-3)' }}
               >
                 <X className="w-5 h-5" />
               </button>
@@ -203,7 +190,11 @@ export default function ReadingBuddyBookSection({ bookId, bookTitle }: Props) {
             {inviteError && (
               <div
                 className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm"
-                style={{ backgroundColor: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5' }}
+                style={{
+                  backgroundColor: 'rgba(213,88,46,0.1)',
+                  border: '1px solid rgba(213,88,46,0.3)',
+                  color: 'var(--color-accent)',
+                }}
               >
                 <AlertTriangle className="w-4 h-4 flex-none" />
                 {inviteError}
@@ -212,12 +203,12 @@ export default function ReadingBuddyBookSection({ bookId, bookTitle }: Props) {
 
             {friendsLoading ? (
               <div className="flex justify-center py-8">
-                <Loader2 className="w-6 h-6 animate-spin" style={{ color: 'var(--color-lit-3)' }} />
+                <Loader2 className="w-6 h-6 animate-spin" style={{ color: 'var(--color-accent)' }} />
               </div>
             ) : invitableFriends.length === 0 ? (
-              <p className="text-center py-8 text-sm" style={{ color: 'var(--color-lit-3)' }}>
+              <p className="text-center py-8 text-sm" style={{ color: 'var(--color-ink-3)' }}>
                 {friends.length === 0
-                  ? 'You haven\'t added any friends yet.'
+                  ? "You haven't added any friends yet."
                   : 'All your friends already have an open session for this book.'}
               </p>
             ) : (
@@ -228,19 +219,21 @@ export default function ReadingBuddyBookSection({ bookId, bookTitle }: Props) {
                     onClick={() => handleInvite(friend)}
                     disabled={inviting !== null}
                     className="w-full flex items-center gap-3 p-3 rounded-xl transition-all hover:opacity-80 disabled:opacity-50 text-left"
-                    style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-rim)' }}
+                    style={{ backgroundColor: 'var(--color-surface)', border: '2px solid var(--color-rim)' }}
                   >
                     <Avatar src={friend.avatar_url ?? undefined} name={friend.display_name || friend.username} size="sm" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-lit">{friend.display_name || friend.username}</p>
-                      <p className="text-xs" style={{ color: 'var(--color-lit-3)' }}>@{friend.username}</p>
+                      <p className="text-sm font-bold" style={{ color: 'var(--color-ink)' }}>
+                        {friend.display_name || friend.username}
+                      </p>
+                      <p className="text-xs" style={{ color: 'var(--color-ink-3)' }}>@{friend.username}</p>
                     </div>
                     {inviting === friend.id ? (
                       inviteSuccess
-                        ? <Check className="w-4 h-4 flex-none" style={{ color: '#4ade80' }} />
+                        ? <Check className="w-4 h-4 flex-none" style={{ color: '#2D6A4F' }} />
                         : <Loader2 className="w-4 h-4 animate-spin flex-none" style={{ color: 'var(--color-accent)' }} />
                     ) : (
-                      <UserPlus className="w-4 h-4 flex-none" style={{ color: 'var(--color-lit-3)' }} />
+                      <UserPlus className="w-4 h-4 flex-none" style={{ color: 'var(--color-ink-3)' }} />
                     )}
                   </button>
                 ))}
@@ -249,6 +242,6 @@ export default function ReadingBuddyBookSection({ bookId, bookTitle }: Props) {
           </div>
         </div>
       )}
-    </div>
+    </>
   )
 }

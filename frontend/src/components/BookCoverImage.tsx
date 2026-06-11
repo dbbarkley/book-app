@@ -35,6 +35,7 @@ interface BookCoverImageProps {
   onLoad?: () => void
   onError?: () => void
   layoutId?: string // For shared layout transitions
+  objectFit?: 'cover' | 'contain'
 }
 
 const SIZE_MAP = {
@@ -54,6 +55,7 @@ export function BookCoverImage({
   onLoad,
   onError,
   layoutId,
+  objectFit,
 }: BookCoverImageProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [hasError, setHasError] = useState(false)
@@ -100,6 +102,7 @@ export function BookCoverImage({
   }
 
   const isFull = className.includes('w-full') || className.includes('h-full')
+  const fitClass = objectFit ? `object-${objectFit}` : isFull ? 'object-cover' : 'object-contain'
 
   return (
     <motion.div 
@@ -125,7 +128,7 @@ export function BookCoverImage({
         alt={`Cover of ${title || 'Unknown'}`}
         {...(isFull ? { fill: true } : { width: dimensions.width, height: dimensions.height })}
         className={`
-          rounded-lg shadow-lg object-contain
+          rounded-lg shadow-lg ${fitClass}
           transition-opacity duration-300
           ${isLoading ? 'opacity-0' : 'opacity-100'}
         `}

@@ -74,16 +74,20 @@ const nextConfig = {
       },
     ],
   },
-  webpack: (config) => {
-    // Resolve the shared package
+  webpack: (config, { dev }) => {
     config.resolve.alias = {
       ...config.resolve.alias,
       '@book-app/shared': path.resolve(__dirname, '../shared'),
     }
-    
-    // Allow importing TypeScript files from shared
     config.resolve.extensions.push('.ts', '.tsx')
-    
+
+    if (dev) {
+      config.watchOptions = {
+        poll: 1000,
+        aggregateTimeout: 300,
+      }
+    }
+
     return config
   },
 }

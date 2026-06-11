@@ -14,7 +14,7 @@ interface AuthState {
   isAuthenticated: boolean
   _hasHydrated: boolean
   login: (email: string, password: string) => Promise<void>
-  register: (email: string, username: string, password: string) => Promise<void>
+  register: (email: string, username: string, password: string, displayName?: string) => Promise<void>
   logout: () => Promise<void>
   refreshUser: () => Promise<void>
   doTokenRefresh: () => Promise<void>
@@ -95,10 +95,10 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      register: async (email: string, username: string, password: string) => {
+      register: async (email: string, username: string, password: string, displayName?: string) => {
         set({ loading: true })
         try {
-          const response = await apiClient.register(email, username, password)
+          const response = await apiClient.register(email, username, password, displayName)
           const access  = (response as any).access_token ?? response.token
           const refresh = (response as any).refresh_token ?? null
           set({

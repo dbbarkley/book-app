@@ -12,17 +12,13 @@ interface SocialTabBarProps<T extends string = string> {
   onSelect: (key: T) => void
 }
 
-/**
- * SocialTabBar — pill-style tab row for Friends / Following / Followers.
- * Active tab uses surface bg + accent border + accent text. Mirrors mobile.
- */
 export default function SocialTabBar<T extends string = string>({
   tabs,
   activeTab,
   onSelect,
 }: SocialTabBarProps<T>) {
   return (
-    <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+    <div className="flex gap-2 flex-wrap">
       {tabs.map(({ key, label, count }) => {
         const active = activeTab === key
         return (
@@ -31,24 +27,31 @@ export default function SocialTabBar<T extends string = string>({
             onClick={() => onSelect(key)}
             role="tab"
             aria-selected={active}
+            className="flex items-center gap-2 font-bold uppercase transition-opacity hover:opacity-80"
             style={{
-              flex: 1,
-              padding: 8,
-              borderRadius: 10,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 4,
-              background: active ? 'var(--color-surface)' : 'var(--color-grove)',
-              border: `1px solid ${active ? 'var(--color-accent)' : 'var(--color-rim)'}`,
-              color: active ? 'var(--color-accent)' : 'var(--color-lit-2)',
-              fontSize: 12,
-              fontWeight: 600,
+              fontSize: 11,
+              letterSpacing: '0.12em',
+              border: '2px solid var(--color-ink)',
+              borderRadius: 999,
+              padding: '7px 14px',
+              backgroundColor: active ? 'var(--color-ink)' : 'transparent',
+              color: active ? 'var(--color-canvas)' : 'var(--color-ink)',
             }}
           >
-            <span>{label}</span>
+            {label}
             {count !== undefined && (
-              <span style={{ fontSize: 11, fontWeight: 700 }}>{count}</span>
+              <span
+                style={{
+                  fontSize: 10,
+                  fontWeight: 800,
+                  borderRadius: 999,
+                  padding: '1px 6px',
+                  backgroundColor: active ? 'var(--color-accent)' : 'var(--color-surface)',
+                  color: active ? '#FAF6EB' : 'var(--color-ink-3)',
+                }}
+              >
+                {count}
+              </span>
             )}
           </button>
         )

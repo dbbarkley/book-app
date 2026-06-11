@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { motion, Variants } from 'framer-motion'
 import { useAuth, useFollows, useFriends, useUserLists, useUserList } from '@book-app/shared'
-import { Settings, RefreshCw, BarChart2, Heart, Users } from 'lucide-react'
+import { RefreshCw, BarChart2, Heart } from 'lucide-react'
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -17,12 +17,8 @@ const itemVariants: Variants = {
 
 import { apiClient } from '@book-app/shared'
 import ProtectedRoute from '@/components/ProtectedRoute'
-import { formatNumber } from '@/utils/format'
 import type { User, Follow, FriendshipStatus } from '@book-app/shared'
-import BookCard from '@/components/BookCard'
 import Button from '@/components/Button'
-import Avatar from '@/components/Avatar'
-import SocialStatPill from '@/components/SocialStatPill'
 import SocialTabBar from '@/components/SocialTabBar'
 import UserListsCard from '@/components/UserListsCard'
 import UserLibrary from '@/components/UserLibrary'
@@ -30,6 +26,7 @@ import GenreChart from '@/components/charts/GenreChart'
 import TopAuthorsChart from '@/components/charts/TopAuthorsChart'
 import FriendButton from '@/components/FriendButton'
 import FriendRequestsPanel from '@/components/FriendRequestsPanel'
+import ProfileHeroCard from '@/components/ProfileHeroCard'
 
 interface UserProfileData {
   user: User | null
@@ -49,6 +46,30 @@ const cardStyle = {
   backgroundColor: 'var(--color-surface)',
   border: '1px solid var(--color-rim)',
   boxShadow: '0 8px 32px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3)',
+}
+
+const SOCIAL_AVATAR_COLORS = ['#D5582E', '#234A5A', '#2D6A4F', '#8B6914', '#8B3A2A', '#5B7FA6']
+function socialAvatarColor(name: string): string {
+  let h = 0
+  for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h)
+  return SOCIAL_AVATAR_COLORS[Math.abs(h) % SOCIAL_AVATAR_COLORS.length]
+}
+function SocialAvatar({ name, initial }: { name: string; initial: string }) {
+  return (
+    <div
+      className="flex items-center justify-center font-serif font-black flex-shrink-0"
+      style={{
+        width: 44, height: 44,
+        borderRadius: '50%',
+        backgroundColor: socialAvatarColor(name),
+        border: '2px solid var(--color-ink)',
+        color: '#FAF6EB',
+        fontSize: 18,
+      }}
+    >
+      {initial}
+    </div>
+  )
 }
 
 function UserProfileContent() {
@@ -180,7 +201,7 @@ function UserProfileContent() {
 
   if (loading) {
     return (
-      <div className="container-mobile py-12 max-w-4xl mx-auto">
+      <div className="container-mobile py-12">
         <div className="animate-pulse space-y-4">
           <div className="h-48 rounded-[28px]" style={{ backgroundColor: 'var(--color-surface)' }} />
           <div className="h-64 rounded-[28px]" style={{ backgroundColor: 'var(--color-surface)' }} />
@@ -213,7 +234,7 @@ function UserProfileContent() {
   return (
     <div className="container-mobile py-6 sm:py-8">
       <motion.div
-        className="max-w-4xl mx-auto space-y-5"
+        className="space-y-5"
         variants={containerVariants}
         initial="hidden"
         animate="visible"
@@ -244,104 +265,22 @@ function UserProfileContent() {
         )}
 
         {/* ── Header Card ── */}
-        <motion.div
-          variants={itemVariants}
-          style={{
-            backgroundColor: 'var(--color-surface)',
-            border: '1px solid var(--color-rim)',
-            borderRadius: 20,
-            padding: 16,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 14,
-          }}
-        >
-          {/* Top row: avatar + info */}
-          <div className="flex gap-4">
-            <div className="flex-shrink-0">
-              <div className="w-[72px] h-[72px]">
-                <Avatar src={user.avatar_url} name={user.display_name || user.username} size="lg" className="w-full h-full" />
-              </div>
-            </div>
-            <div className="flex-1 min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--color-lit)', letterSpacing: '-0.5px' }}>
-                {user.display_name || user.username}
-              </h1>
-              <p style={{ fontSize: 13, color: 'var(--color-lit-2)' }}>@{user.username}</p>
-              {user.bio && (
-                <p
-                  className="line-clamp-3"
-                  style={{ fontSize: 13, color: 'var(--color-lit-2)', lineHeight: '18px' }}
-                >
-                  {user.bio}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Stats row */}
-          {stats && (
-            <div className="flex gap-2">
-              <SocialStatPill value={formatNumber(friendsCount)} label="Friends" />
-              <SocialStatPill value={formatNumber(stats.followers_count)} label="Followers" />
-              <SocialStatPill value={formatNumber(stats.following_count)} label="Following" />
-            </div>
-          )}
-
-          {/* Action buttons row */}
-          <div className="flex flex-wrap gap-3">
-            {!isOwnProfile && (
-              <>
-                <FriendButton
-                  userId={userId}
-                  initialStatus={profileData.friendship?.status ?? 'none'}
-                  initialFriendshipId={profileData.friendship?.friendship_id ?? null}
-                />
-                {profileData.currentUserFollow && (
-                  <Button
-                    variant={alreadyFollowing ? 'secondary' : 'primary'}
-                    onClick={handleFollowToggle}
-                    isLoading={followLoading}
-                    disabled={followLoading}
-                  >
-                    {alreadyFollowing ? '✓ Following' : '+ Follow'}
-                  </Button>
-                )}
-              </>
-            )}
-            {isOwnProfile && (
-              <>
-                <button
-                  onClick={() => router.push('/settings')}
-                  style={{
-                    flex: 1,
-                    backgroundColor: 'var(--color-accent)',
-                    color: 'var(--color-accent-on)',
-                    borderRadius: 12,
-                    padding: '9px 0',
-                    fontWeight: 700,
-                    fontSize: 14,
-                  }}
-                >
-                  Edit Profile
-                </button>
-                <button
-                  onClick={() => router.push('/settings')}
-                  aria-label="Settings"
-                  className="flex items-center justify-center flex-shrink-0"
-                  style={{
-                    width: 38,
-                    height: 38,
-                    borderRadius: 12,
-                    background: 'var(--color-grove)',
-                    border: '1px solid var(--color-rim)',
-                  }}
-                >
-                  <Settings size={16} style={{ color: 'var(--color-lit-2)' }} />
-                </button>
-              </>
-            )}
-          </div>
+        <motion.div variants={itemVariants}>
+          <ProfileHeroCard
+            user={user}
+            stats={stats ? {
+              friends_count:   friendsCount,
+              followers_count: stats.followers_count,
+              following_count: stats.following_count,
+            } : null}
+            isOwnProfile={isOwnProfile}
+            onEditProfile={() => router.push('/settings')}
+            friendshipStatus={profileData.friendship?.status ?? 'none'}
+            friendshipId={profileData.friendship?.friendship_id ?? null}
+            isFollowing={alreadyFollowing}
+            onFollowToggle={isOwnProfile ? undefined : handleFollowToggle}
+            followLoading={followLoading}
+          />
         </motion.div>
 
         {/* ── Charts ── */}
@@ -380,14 +319,10 @@ function UserProfileContent() {
           ) : (hasGenres || hasAuthors) ? (
             <div className="grid sm:grid-cols-2 gap-5">
               {hasGenres && (
-                <div style={{ ...cardStyle, borderRadius: 16, padding: 18 }}>
-                  <GenreChart data={readingStats!.genres} />
-                </div>
+                <GenreChart data={readingStats!.genres} />
               )}
               {hasAuthors && (
-                <div style={{ ...cardStyle, borderRadius: 16, padding: 18 }}>
-                  <TopAuthorsChart data={readingStats!.top_authors} />
-                </div>
+                <TopAuthorsChart data={readingStats!.top_authors} />
               )}
             </div>
           ) : null}
@@ -395,27 +330,52 @@ function UserProfileContent() {
 
         {/* ── Favourite Authors ── */}
         {user.favourite_authors && user.favourite_authors.length > 0 && (
-          <motion.div variants={itemVariants} className="rounded-[28px] p-6 sm:p-8" style={cardStyle}>
-            <div className="flex items-center gap-2 mb-5">
-              <Heart size={18} style={{ color: 'var(--color-accent)' }} />
-              <h3 className="font-serif text-lg font-bold" style={{ color: 'var(--color-lit)' }}>
-                Favourite Authors
-              </h3>
-            </div>
+          <motion.div
+            variants={itemVariants}
+            style={{
+              backgroundColor: 'var(--color-canvas)',
+              border: '2px solid var(--color-ink)',
+              borderRadius: 16,
+              boxShadow: '5px 5px 0px var(--color-accent-yellow)',
+              padding: '22px 24px 24px',
+            }}
+          >
+            <p
+              className="font-bold uppercase"
+              style={{ fontSize: 10, letterSpacing: '0.2em', color: 'var(--color-accent)', marginBottom: 4 }}
+            >
+              Favourites
+            </p>
+            <h3
+              className="font-serif font-bold leading-tight mb-5"
+              style={{ fontSize: 22, color: 'var(--color-ink)' }}
+            >
+              Writers I&apos;d <em style={{ color: 'var(--color-accent)', fontStyle: 'italic' }}>defend</em> in a bar fight
+            </h3>
             <div className="flex flex-wrap gap-2">
-              {user.favourite_authors.map(author => (
-                <span
-                  key={author.id}
-                  className="px-3 py-1.5 rounded-full text-sm font-medium"
-                  style={{
-                    backgroundColor: 'var(--color-grove)',
-                    border: '1px solid var(--color-rim)',
-                    color: 'var(--color-lit)',
-                  }}
-                >
-                  {author.name}
-                </span>
-              ))}
+              {user.favourite_authors.map((author, i) => {
+                const dot = i % 2 === 0 ? 'var(--color-accent)' : 'var(--color-accent-teal)'
+                const rotation = (i % 3 === 0 ? -1.5 : i % 3 === 1 ? 1.2 : -0.8)
+                return (
+                  <span
+                    key={author.id}
+                    className="inline-flex items-center gap-2 font-bold"
+                    style={{
+                      fontSize: 13,
+                      color: 'var(--color-ink)',
+                      border: '2px solid var(--color-ink)',
+                      borderRadius: 999,
+                      padding: '8px 16px',
+                      backgroundColor: 'var(--color-canvas)',
+                      transform: `rotate(${rotation}deg)`,
+                      display: 'inline-flex',
+                    }}
+                  >
+                    <span style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: dot, flexShrink: 0 }} />
+                    {author.name}
+                  </span>
+                )
+              })}
             </div>
           </motion.div>
         )}
@@ -433,65 +393,109 @@ function UserProfileContent() {
         )}
 
         {/* ── Library ── */}
-        <motion.div variants={itemVariants} className="rounded-[28px] p-6 sm:p-8" style={cardStyle}>
-          <UserLibrary userId={userId} username={user.display_name || user.username} />
+        <motion.div variants={itemVariants}>
+          <UserLibrary userId={userId} username={user.display_name || user.username} isOwnProfile={isOwnProfile} />
         </motion.div>
 
         {/* ── Friends / Following / Followers ── */}
-        <motion.div variants={itemVariants} className="rounded-[28px]" style={{ ...cardStyle, padding: 16 }}>
-          {/* Tab bar */}
-          <SocialTabBar
-            activeTab={activeTab}
-            onSelect={(t) => setActiveTab(t)}
-            tabs={[
-              { key: 'friends',   label: 'Friends',   count: friendsCount },
-              { key: 'following', label: 'Following', count: following.length },
-              { key: 'followers', label: 'Followers', count: followers.length },
-            ]}
-          />
+        <motion.div variants={itemVariants}>
+          <div
+            style={{
+              backgroundColor: 'var(--color-canvas)',
+              border: '2px solid var(--color-ink)',
+              borderRadius: 16,
+              boxShadow: '5px 5px 0px var(--color-accent-teal)',
+              padding: '22px 22px 24px',
+            }}
+          >
+            {/* Header */}
+            <p
+              className="font-bold uppercase"
+              style={{ fontSize: 10, letterSpacing: '0.2em', color: 'var(--color-accent)', marginBottom: 4 }}
+            >
+              Social
+            </p>
+            <h3
+              className="font-serif font-bold leading-tight mb-5"
+              style={{ fontSize: 22, color: 'var(--color-ink)' }}
+            >
+              People in your stacks
+            </h3>
 
-          {/* Tab content */}
-          <div>
+            {/* Grouped tab pill */}
+            <div className="mb-5">
+              <SocialTabBar
+                activeTab={activeTab}
+                onSelect={(t) => setActiveTab(t)}
+                tabs={[
+                  { key: 'friends',   label: 'Friends',   count: friendsCount    },
+                  { key: 'following', label: 'Following', count: following.length },
+                  { key: 'followers', label: 'Followers', count: followers.length },
+                ]}
+              />
+            </div>
 
             {/* Friends tab */}
             {activeTab === 'friends' && (
               profileFriendsLoading ? (
-                <div className="space-y-3">
-                  {[1, 2, 3].map(i => (
-                    <div key={i} className="h-14 rounded-2xl animate-pulse" style={{ backgroundColor: 'var(--color-grove)' }} />
+                <div className="grid grid-cols-2 gap-3">
+                  {[1, 2, 3, 4].map(i => (
+                    <div key={i} className="h-16 rounded-xl animate-pulse" style={{ backgroundColor: 'var(--color-surface)' }} />
                   ))}
                 </div>
               ) : friendsList.length === 0 ? (
                 <div className="py-10 text-center">
-                  <Users size={32} className="mx-auto mb-3" style={{ color: 'var(--color-lit-3)' }} />
-                  <p className="text-sm font-medium" style={{ color: 'var(--color-lit-2)' }}>
+                  <p style={{ fontSize: 13, color: 'var(--color-ink-3)' }}>
                     {isOwnProfile ? 'No friends yet — add someone!' : 'No friends to show'}
                   </p>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {friendsList.map(friend => (
-                    <div
-                      key={friend.id}
-                      className="flex items-center gap-4 p-3 rounded-2xl transition-colors"
-                      style={{ backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-rim)' }}
-                    >
-                      <button onClick={() => router.push(`/users/${friend.id}`)} className="flex-shrink-0">
-                        <Avatar src={friend.avatar_url} name={friend.display_name || friend.username} size="sm" />
-                      </button>
-                      <button onClick={() => router.push(`/users/${friend.id}`)} className="flex-1 min-w-0 text-left">
-                        <p className="font-bold text-sm truncate" style={{ color: 'var(--color-lit)' }}>
-                          {friend.display_name || friend.username}
-                        </p>
-                        {friend.display_name && (
-                          <p className="text-xs" style={{ color: 'var(--color-lit-3)' }}>@{friend.username}</p>
-                        )}
-                      </button>
-                      <Button variant="outline" size="sm" onClick={() => router.push(`/users/${friend.id}`)}>
-                        View
-                      </Button>
-                    </div>
-                  ))}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {friendsList.map(friend => {
+                    const name  = friend.display_name || friend.username
+                    const initial = name.charAt(0).toUpperCase()
+                    const subtext = [
+                      `@${friend.username}`,
+                      (friend as any).bio,
+                    ].filter(Boolean).join(' · ')
+                    return (
+                      <div
+                        key={friend.id}
+                        className="flex items-center gap-3"
+                        style={{
+                          border: '2px solid var(--color-ink)',
+                          borderRadius: 12,
+                          boxShadow: '3px 3px 0px var(--color-ink)',
+                          padding: '10px 12px',
+                          backgroundColor: 'var(--color-canvas)',
+                        }}
+                      >
+                        <SocialAvatar name={name} initial={initial} />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-serif font-bold truncate" style={{ fontSize: 15, color: 'var(--color-ink)' }}>
+                            {name}
+                          </p>
+                          <p className="truncate" style={{ fontSize: 11, color: 'var(--color-ink-3)', marginTop: 1 }}>
+                            {subtext}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => router.push(`/users/${friend.id}`)}
+                          className="font-bold uppercase flex-shrink-0 transition-opacity hover:opacity-70"
+                          style={{
+                            fontSize: 11, letterSpacing: '0.12em',
+                            border: '2px solid var(--color-ink)',
+                            borderRadius: 999,
+                            padding: '6px 14px',
+                            color: 'var(--color-ink)',
+                            backgroundColor: 'transparent',
+                          }}
+                        >
+                          View
+                        </button>
+                      </div>
+                    )
+                  })}
                 </div>
               )
             )}
@@ -499,74 +503,87 @@ function UserProfileContent() {
             {/* Following tab */}
             {activeTab === 'following' && (
               following.length === 0 ? (
-                <p className="py-8 text-center text-sm" style={{ color: 'var(--color-lit-2)' }}>
+                <p className="py-8 text-center" style={{ fontSize: 13, color: 'var(--color-ink-3)' }}>
                   Not following anyone yet
                 </p>
               ) : (
-                <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {following.map(f => {
                     if (f.followable_type === 'Author' && f.followable) {
                       const author = f.followable as any
+                      const name   = author.name || 'Unknown Author'
                       return (
-                        <button
+                        <div
                           key={f.id}
-                          onClick={() => author.id && router.push(`/authors/${author.id}`)}
-                          className="w-full flex items-center text-left"
+                          className="flex items-center gap-3"
                           style={{
-                            backgroundColor: 'var(--color-grove)',
-                            border: '1px solid var(--color-rim)',
-                            borderRadius: 14,
+                            border: '2px solid var(--color-ink)',
+                            borderRadius: 12,
+                            boxShadow: '3px 3px 0px var(--color-ink)',
                             padding: '10px 12px',
-                            gap: 10,
+                            backgroundColor: 'var(--color-canvas)',
                           }}
                         >
-                          <span
-                            className="flex-shrink-0"
-                            style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: 'var(--color-accent)' }}
-                          />
-                          <span
-                            className="flex-1 min-w-0 truncate"
-                            style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-lit)' }}
-                          >
-                            {author.name}
-                          </span>
-                          <span
-                            className="flex-shrink-0"
-                            style={{
-                              backgroundColor: 'var(--color-surface)',
-                              border: '1px solid var(--color-rim)',
-                              borderRadius: 9999,
-                              padding: '2px 8px',
-                              fontSize: 11,
-                              fontWeight: 700,
-                              color: 'var(--color-lit-2)',
-                            }}
-                          >
-                            Author
-                          </span>
-                        </button>
+                          <SocialAvatar name={name} initial={name.charAt(0).toUpperCase()} />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-serif font-bold truncate" style={{ fontSize: 15, color: 'var(--color-ink)' }}>{name}</p>
+                            <p style={{ fontSize: 11, color: 'var(--color-ink-3)', marginTop: 1 }}>Author</p>
+                          </div>
+                          {author.id && (
+                            <button
+                              onClick={() => router.push(`/authors/${author.id}`)}
+                              className="font-bold uppercase flex-shrink-0 transition-opacity hover:opacity-70"
+                              style={{
+                                fontSize: 11, letterSpacing: '0.12em',
+                                border: '2px solid var(--color-ink)',
+                                borderRadius: 999,
+                                padding: '6px 14px',
+                                color: 'var(--color-ink)',
+                                backgroundColor: 'transparent',
+                              }}
+                            >
+                              View
+                            </button>
+                          )}
+                        </div>
                       )
                     }
-                    if (f.followable_type === 'Book' && f.followable) {
-                      return <BookCard key={f.id} book={f.followable as any} showDescription={true} />
-                    }
                     if (f.followable_type === 'User' && f.followable) {
-                      const fu = f.followable as User
+                      const fu   = f.followable as User
+                      const name = fu.display_name || fu.username
                       return (
-                        <div key={f.id} className="flex items-center gap-4 p-3 rounded-2xl transition-colors"
-                          style={{ backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-rim)' }}>
-                          <Avatar src={fu.avatar_url} name={fu.display_name || fu.username} size="sm" />
+                        <div
+                          key={f.id}
+                          className="flex items-center gap-3"
+                          style={{
+                            border: '2px solid var(--color-ink)',
+                            borderRadius: 12,
+                            boxShadow: '3px 3px 0px var(--color-ink)',
+                            padding: '10px 12px',
+                            backgroundColor: 'var(--color-canvas)',
+                          }}
+                        >
+                          <SocialAvatar name={name} initial={name.charAt(0).toUpperCase()} />
                           <div className="flex-1 min-w-0">
-                            <p className="font-bold text-sm truncate" style={{ color: 'var(--color-lit)' }}>
-                              {fu.display_name || fu.username}
+                            <p className="font-serif font-bold truncate" style={{ fontSize: 15, color: 'var(--color-ink)' }}>{name}</p>
+                            <p className="truncate" style={{ fontSize: 11, color: 'var(--color-ink-3)', marginTop: 1 }}>
+                              @{fu.username}{fu.bio ? ` · ${fu.bio}` : ''}
                             </p>
-                            {fu.display_name && (
-                              <p className="text-xs" style={{ color: 'var(--color-lit-3)' }}>@{fu.username}</p>
-                            )}
                           </div>
-                          <Button variant="outline" size="sm" onClick={() => router.push(`/users/${fu.id}`)}>
+                          <button
+                            onClick={() => router.push(`/users/${fu.id}`)}
+                            className="font-bold uppercase flex-shrink-0 transition-opacity hover:opacity-70"
+                            style={{
+                              fontSize: 11, letterSpacing: '0.12em',
+                              border: '2px solid var(--color-ink)',
+                              borderRadius: 999,
+                              padding: '6px 14px',
+                              color: 'var(--color-ink)',
+                              backgroundColor: 'transparent',
+                            }}
+                          >
                             View
-                          </Button>
+                          </button>
                         </div>
                       )
                     }
@@ -579,33 +596,49 @@ function UserProfileContent() {
             {/* Followers tab */}
             {activeTab === 'followers' && (
               followers.length === 0 ? (
-                <p className="py-8 text-center text-sm" style={{ color: 'var(--color-lit-2)' }}>
+                <p className="py-8 text-center" style={{ fontSize: 13, color: 'var(--color-ink-3)' }}>
                   No followers yet
                 </p>
               ) : (
-                <div className="space-y-3">
-                  {followers.map(follower => (
-                    <div key={follower.id} className="flex items-center gap-4 p-3 rounded-2xl transition-colors"
-                      style={{ backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-rim)' }}>
-                      <Avatar src={follower.avatar_url} name={follower.display_name || follower.username} size="sm" />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-bold text-sm truncate" style={{ color: 'var(--color-lit)' }}>
-                          {follower.display_name || follower.username}
-                        </p>
-                        {follower.display_name && (
-                          <p className="text-xs" style={{ color: 'var(--color-lit-3)' }}>@{follower.username}</p>
-                        )}
-                        {follower.bio && (
-                          <p className="text-xs mt-0.5 line-clamp-1" style={{ color: 'var(--color-lit-2)' }}>
-                            {follower.bio}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {followers.map(follower => {
+                    const name = follower.display_name || follower.username
+                    return (
+                      <div
+                        key={follower.id}
+                        className="flex items-center gap-3"
+                        style={{
+                          border: '2px solid var(--color-ink)',
+                          borderRadius: 12,
+                          boxShadow: '3px 3px 0px var(--color-ink)',
+                          padding: '10px 12px',
+                          backgroundColor: 'var(--color-canvas)',
+                        }}
+                      >
+                        <SocialAvatar name={name} initial={name.charAt(0).toUpperCase()} />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-serif font-bold truncate" style={{ fontSize: 15, color: 'var(--color-ink)' }}>{name}</p>
+                          <p className="truncate" style={{ fontSize: 11, color: 'var(--color-ink-3)', marginTop: 1 }}>
+                            @{follower.username}{follower.bio ? ` · ${follower.bio}` : ''}
                           </p>
-                        )}
+                        </div>
+                        <button
+                          onClick={() => router.push(`/users/${follower.id}`)}
+                          className="font-bold uppercase flex-shrink-0 transition-opacity hover:opacity-70"
+                          style={{
+                            fontSize: 11, letterSpacing: '0.12em',
+                            border: '2px solid var(--color-ink)',
+                            borderRadius: 999,
+                            padding: '6px 14px',
+                            color: 'var(--color-ink)',
+                            backgroundColor: 'transparent',
+                          }}
+                        >
+                          View
+                        </button>
                       </div>
-                      <Button variant="outline" size="sm" onClick={() => router.push(`/users/${follower.id}`)}>
-                        View
-                      </Button>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )
             )}

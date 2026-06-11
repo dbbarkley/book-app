@@ -16,8 +16,9 @@ module Api
                           .where(visibility: 'public')
                           .order(updated_at: :desc)
 
+        own = @user == current_user
         render json: {
-          user_books: user_books.map { |ub| serialize_user_book(ub) }
+          user_books: user_books.map { |ub| serialize_user_book(ub, include_notes: own) }
         }, status: :ok
       end
 
@@ -377,6 +378,7 @@ module Api
 
           data[:favourite_authors]      = favourite_authors
           data[:onboarding_completed]   = user.onboarding_completed
+          data[:reading_streak]         = user.reading_streak.to_i
           data[:preferences] = {
             milestones_viewed: user.preferences['milestones_viewed'] || [],
             reading_goal: user.preferences['reading_goal']
@@ -436,7 +438,7 @@ module Api
         }
       end
 
-      def serialize_user_book(user_book)
+      def serialize_user_book(user_book, include_notes: false)
         {
           id: user_book.id,
           book_id: user_book.book_id,
@@ -449,6 +451,7 @@ module Api
           completion_percentage: user_book.completion_percentage,
           rating: user_book.rating,
           review: user_book.review,
+          notes: include_notes ? user_book.notes : nil,
           dnf_reason: user_book.dnf_reason,
           dnf_page: user_book.dnf_page,
           started_at: user_book.started_at,

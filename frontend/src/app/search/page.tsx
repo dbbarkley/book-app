@@ -2,96 +2,37 @@
 
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { motion } from 'framer-motion'
 import {
   useAuth,
   useUserSearch,
   useBookSearch,
-  apiClient,
+  useBooksStore,
 } from '@book-app/shared'
-import { mockGenres } from '@/utils/onboardingData'
 
-import BookCard from '@/components/BookCard'
-import Button from '@/components/Button'
 import Avatar from '@/components/Avatar'
-import BarcodeScannerModal from '@/components/BarcodeScannerModal'
-import { BookCoverImage } from '@/components/BookCoverImage'
 import Link from 'next/link'
 import {
   Search, Users, BookOpen, X, AlertCircle,
-  Newspaper, Eye, Zap, Heart, Rocket,
-  Wand2, Skull, Landmark, User, PenLine, TrendingUp,
-  Briefcase, Brain, Feather, Star, Smile, LayoutGrid,
-  ScanLine, CalendarDays, ChevronRight,
+  ScanLine, ArrowRight,
 } from 'lucide-react'
+import BarcodeScannerModal from '@/components/BarcodeScannerModal'
 
 type SearchType = 'books' | 'people'
-
-// Map genre IDs to Lucide icons
-const GENRE_ICONS: Record<string, React.ElementType> = {
-  'fiction':      BookOpen,
-  'non-fiction':  Newspaper,
-  'mystery':      Eye,
-  'thriller':     Zap,
-  'romance':      Heart,
-  'sci-fi':       Rocket,
-  'fantasy':      Wand2,
-  'horror':       Skull,
-  'historical':   Landmark,
-  'biography':    User,
-  'memoir':       PenLine,
-  'self-help':    TrendingUp,
-  'business':     Briefcase,
-  'philosophy':   Brain,
-  'poetry':       Feather,
-  'young-adult':  Star,
-  'children':     Smile,
-  'graphic-novel':LayoutGrid,
-}
-
-// Per-genre accent colors — used for category tile icon backgrounds and borders.
-const GENRE_COLORS: Record<string, string> = {
-  'fiction':       '#5B7FA6',
-  'non-fiction':   '#5A9B72',
-  'mystery':       '#8B6CC7',
-  'thriller':      '#C9A84C',
-  'romance':       '#D4872A',
-  'sci-fi':        '#5B7FA6',
-  'fantasy':       '#8B6CC7',
-  'horror':        '#A14B4B',
-  'historical':    '#A07830',
-  'biography':     '#5A9B72',
-  'memoir':        '#6BAD8B',
-  'self-help':     '#5A9B72',
-  'business':      '#5B7FA6',
-  'philosophy':    '#8B6CC7',
-  'poetry':        '#D4872A',
-  'young-adult':   '#C9A84C',
-  'children':      '#6BAD8B',
-  'graphic-novel': '#8B6CC7',
-}
 
 function SearchContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const initialQuery = searchParams.get('q') || ''
-  const initialType = searchParams.get('type')
-  // Default to 'books' — drop the confusing 'all' tab
-  const initialTab: SearchType =
-    initialType === 'people' ? 'people' : 'books'
+  const initialType  = searchParams.get('type')
+  const initialTab: SearchType = initialType === 'people' ? 'people' : 'books'
 
   const { user: currentUser } = useAuth()
+  const { cacheSearchResults } = useBooksStore()
 
-  const [activeTab, setActiveTab] = useState<SearchType>(initialTab)
+  const [activeTab, setActiveTab]   = useState<SearchType>(initialTab)
   const [searchInput, setSearchInput] = useState(initialQuery)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const [scannerOpen, setScannerOpen] = useState(false)
-
-  // Genre browsing state — separate from text search
-  const [selectedGenre, setSelectedGenre] = useState<{ id: string; name: string } | null>(null)
-  const [genreBooks, setGenreBooks] = useState<any[]>([])
-  const [genreSource, setGenreSource] = useState<string | null>(null)
-  const [genreLoading, setGenreLoading] = useState(false)
 
   const isSearching = searchInput.trim().length > 0
 
@@ -99,11 +40,11 @@ function SearchContent() {
     books,
     loading: booksLoading,
     error: booksError,
-    search: searchBooks,
+    setQuery: setBookQuery,
     loadMore: loadMoreBooks,
     hasMore: hasMoreBooks,
   } = useBookSearch({
-    debounceMs: 600,
+    debounceMs: 350,
     initialQuery: activeTab === 'books' ? initialQuery : '',
     perPage: 20,
   })
@@ -115,7 +56,7 @@ function SearchContent() {
     loadMore: loadMoreUsers,
     hasMore: hasMoreUsers,
   } = useUserSearch({
-    debounceMs: 600,
+    debounceMs: 350,
     initialQuery: activeTab === 'people' ? initialQuery : '',
     pageSize: 20,
   })
@@ -128,12 +69,7 @@ function SearchContent() {
 
   const handleSearchChange = (value: string) => {
     setSearchInput(value)
-    // Typing clears any active genre browse
-    if (selectedGenre) {
-      setSelectedGenre(null)
-      setGenreBooks([])
-    }
-    if (activeTab === 'books') searchBooks(value)
+    if (activeTab === 'books')  setBookQuery(value)
     if (activeTab === 'people') searchUsers(value)
 
     const params = new URLSearchParams()
@@ -142,121 +78,113 @@ function SearchContent() {
     router.replace(`/search?${params.toString()}`, { scroll: false })
   }
 
-  const handleGenreSelect = async (genre: { id: string; name: string }) => {
-    setSelectedGenre(genre)
-    setGenreBooks([])
-    setGenreLoading(true)
-    setSearchInput('')
-    try {
-      const token = apiClient.getToken()
-      const res = await fetch(`/api/books/genre?id=${genre.id}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      })
-      const data = await res.json()
-      setGenreBooks(data.books ?? [])
-      setGenreSource(data._source ?? null)
-    } catch (err) {
-      console.error('Genre fetch failed:', err)
-    } finally {
-      setGenreLoading(false)
-    }
-  }
-
   const handleTabChange = (tab: SearchType) => {
     setActiveTab(tab)
-    setSelectedGenre(null)
-    setGenreBooks([])
     const params = new URLSearchParams()
     params.set('type', tab)
     if (searchInput.trim()) params.set('q', searchInput)
     router.replace(`/search?${params.toString()}`, { scroll: false })
 
     if (searchInput.trim()) {
-      if (tab === 'books') searchBooks(searchInput)
+      if (tab === 'books')  setBookQuery(searchInput)
       if (tab === 'people') searchUsers(searchInput)
     }
   }
+
+  const isRateLimited = booksError?.includes('429') || booksError?.includes('Too Many')
 
   const tabs: { id: SearchType; label: string; icon: React.ElementType }[] = [
     { id: 'books',  label: 'Books',  icon: BookOpen },
     { id: 'people', label: 'People', icon: Users    },
   ]
 
-  const isRateLimited =
-    booksError?.includes('429') || booksError?.includes('Too Many')
-
   return (
-    <div className="container-mobile py-6 sm:py-10">
-      <div className="max-w-5xl mx-auto">
+    <div className="min-h-screen" style={{ backgroundColor: 'var(--color-canvas)' }}>
+      <div className="container-mobile py-8 sm:py-12">
+        <div style={{ maxWidth: 720, margin: '0 auto' }}>
 
-        {/* Search bar + tabs */}
-        <div className="mb-10">
-          {/* Input */}
-          <div className="relative group mb-4">
+          {/* Page eyebrow */}
+          <div className="flex items-center gap-3" style={{ marginBottom: 20 }}>
+            <div style={{ width: 22, height: 2, backgroundColor: 'var(--color-accent)' }} />
+            <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.22em', color: 'var(--color-accent)', textTransform: 'uppercase' }}>
+              Search
+            </span>
+          </div>
+
+          {/* Search input */}
+          <div style={{ position: 'relative', marginBottom: 12 }}>
             <Search
-              className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none transition-colors group-focus-within:text-accent"
-              size={20}
-              style={{ color: 'var(--color-lit-3)' }}
+              size={18}
+              style={{
+                position: 'absolute', left: 18, top: '50%',
+                transform: 'translateY(-50%)',
+                color: 'var(--color-ink-3)', pointerEvents: 'none',
+              }}
             />
             <input
               ref={searchInputRef}
               type="text"
               value={searchInput}
               onChange={e => handleSearchChange(e.target.value)}
-
               placeholder={activeTab === 'books' ? 'Search titles, authors, ISBN…' : 'Search readers by name or username…'}
-              className="w-full pl-12 text-base font-medium outline-none transition-all"
               style={{
-                height: 48,
-                paddingRight: activeTab === 'books' ? 52 : 44,
-                borderRadius: 14,
-                backgroundColor: 'var(--color-grove)',
-                border: '1px solid var(--color-rim)',
-                color: 'var(--color-lit)',
+                width: '100%',
+                height: 52,
+                paddingLeft: 48,
+                paddingRight: searchInput ? 80 : activeTab === 'books' ? 52 : 18,
+                borderRadius: 999,
+                border: '2px solid var(--color-ink)',
+                backgroundColor: 'var(--color-canvas)',
+                color: 'var(--color-ink)',
+                fontSize: 15,
+                fontWeight: 500,
+                outline: 'none',
+                boxShadow: '3px 3px 0px var(--color-ink)',
+                transition: 'box-shadow 0.12s',
               }}
-              onFocus={e => (e.currentTarget.style.borderColor = 'var(--color-accent)')}
-              onBlur={e => (e.currentTarget.style.borderColor = 'var(--color-rim)')}
+              onFocus={e  => (e.currentTarget.style.boxShadow = '4px 4px 0px var(--color-accent)')}
+              onBlur={e   => (e.currentTarget.style.boxShadow = '3px 3px 0px var(--color-ink)')}
             />
             {searchInput ? (
               <button
                 onClick={() => handleSearchChange('')}
-
-                className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-full transition-colors"
-                style={{ color: 'var(--color-lit-3)' }}
-                onMouseEnter={e => (e.currentTarget.style.color = 'var(--color-lit)')}
-                onMouseLeave={e => (e.currentTarget.style.color = 'var(--color-lit-3)')}
+                style={{
+                  position: 'absolute', right: activeTab === 'books' ? 48 : 14,
+                  top: '50%', transform: 'translateY(-50%)',
+                  color: 'var(--color-ink-3)', padding: 6,
+                }}
               >
-                <X size={16} />
+                <X size={15} />
               </button>
-            ) : activeTab === 'books' && (
+            ) : null}
+            {activeTab === 'books' && (
               <button
                 onClick={() => setScannerOpen(true)}
                 title="Scan book barcode"
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center justify-center transition-all"
                 style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 10,
-                  backgroundColor: 'rgba(201,168,76,0.12)',
+                  position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
+                  width: 32, height: 32, borderRadius: 8,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  backgroundColor: 'var(--color-accent-subtle)',
                   color: 'var(--color-accent)',
                 }}
               >
-                <ScanLine size={16} />
+                <ScanLine size={15} />
               </button>
             )}
           </div>
 
-          {/* Segment toggle (Books / People) */}
+          {/* Tab toggle */}
           <div
             style={{
               display: 'flex',
-              backgroundColor: 'var(--color-surface)',
-              border: '1px solid var(--color-rim)',
-              borderRadius: 12,
-              padding: 3,
+              border: '2px solid var(--color-ink)',
+              borderRadius: 999,
+              overflow: 'hidden',
+              marginBottom: 36,
             }}
           >
-            {tabs.map(tab => {
+            {tabs.map((tab, i) => {
               const active = activeTab === tab.id
               return (
                 <button
@@ -264,12 +192,15 @@ function SearchContent() {
                   onClick={() => handleTabChange(tab.id)}
                   style={{
                     flex: 1,
-                    padding: '8px 0',
-                    borderRadius: 10,
-                    backgroundColor: active ? 'var(--color-grove)' : 'transparent',
-                    color: active ? 'var(--color-lit)' : 'var(--color-lit-2)',
+                    padding: '10px 0',
+                    borderLeft: i > 0 ? '2px solid var(--color-ink)' : 'none',
+                    backgroundColor: active ? 'var(--color-ink)' : 'transparent',
+                    color: active ? 'var(--color-canvas)' : 'var(--color-ink)',
                     fontSize: 13,
-                    fontWeight: 600,
+                    fontWeight: 700,
+                    letterSpacing: '0.06em',
+                    textTransform: 'uppercase',
+                    transition: 'background-color 0.12s, color 0.12s',
                   }}
                 >
                   {tab.label}
@@ -277,351 +208,275 @@ function SearchContent() {
               )
             })}
           </div>
-        </div>
 
-        {/* ── GENRE BROWSE ── */}
-        {!isSearching && selectedGenre && (
-          <section>
-            <div className="flex items-center gap-3 mb-6">
-              <button
-                onClick={() => { setSelectedGenre(null); setGenreBooks([]) }}
-                className="flex items-center gap-1.5 text-sm font-bold transition-opacity hover:opacity-70"
-                style={{ color: 'var(--color-lit-3)' }}
+          {/* ── Empty state ── */}
+          {!isSearching && (
+            <div style={{ textAlign: 'center', paddingTop: 48 }}>
+              <div
+                style={{
+                  width: 56, height: 56, borderRadius: 16,
+                  border: '2px solid var(--color-ink)',
+                  boxShadow: '3px 3px 0px var(--color-ink)',
+                  backgroundColor: 'var(--color-cave)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  margin: '0 auto 16px',
+                }}
               >
-                ← All Genres
-              </button>
-              <span style={{ color: 'var(--color-rim)' }}>·</span>
-              <h2 className="font-serif text-xl font-bold" style={{ color: 'var(--color-lit)' }}>
-                {selectedGenre.name}
-              </h2>
-              {genreSource === 'nyt' && (
-                <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--color-grove)', color: 'var(--color-lit-3)', border: '1px solid var(--color-rim)' }}>
-                  NYT Bestsellers
-                </span>
-              )}
+                <Search size={22} style={{ color: 'var(--color-ink-2)' }} />
+              </div>
+              <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-ink)', fontFamily: 'var(--font-playfair), Georgia, serif' }}>
+                Start typing to search
+              </p>
+              <p style={{ fontSize: 13, color: 'var(--color-ink-3)', marginTop: 4 }}>
+                {activeTab === 'books' ? 'Search by title, author, or ISBN' : 'Search readers by name or username'}
+              </p>
             </div>
+          )}
 
-            {genreLoading ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {[1,2,3,4,5,6,7,8,9,10].map(i => (
-                  <div key={i} className="rounded-[28px] overflow-hidden animate-pulse" style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-rim)' }}>
-                    <div className="w-full" style={{ aspectRatio: '2/3', backgroundColor: 'var(--color-grove)' }} />
-                    <div className="p-4 space-y-2">
-                      <div className="h-3 rounded-full w-3/4" style={{ backgroundColor: 'var(--color-grove)' }} />
-                      <div className="h-3 rounded-full w-1/2" style={{ backgroundColor: 'var(--color-grove)' }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : genreBooks.length > 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {genreBooks.map((book, i) => (
-                  <BookCard key={book.google_books_id ?? book.isbn ?? i} book={book} showDescription={false} coverSize="medium" />
-                ))}
-              </div>
-            ) : (
-              <div className="py-16 rounded-2xl text-center" style={{ backgroundColor: 'var(--color-grove)', border: '1px dashed var(--color-rim)' }}>
-                <BookOpen size={32} className="mx-auto mb-3" style={{ color: 'var(--color-lit-3)' }} />
-                <p className="font-semibold" style={{ color: 'var(--color-lit-2)' }}>No books found for this genre</p>
-              </div>
-            )}
-          </section>
-        )}
+          {/* ── Results ── */}
+          {isSearching && (
+            <div>
 
-        {/* ── DISCOVER HOME (no query, no genre selected) ── */}
-        {!isSearching && !selectedGenre && (
-          <div className="space-y-10">
-
-            {/* ── Upcoming Releases entry card ── */}
-            <Link
-              href="/upcoming-releases"
-              className="flex items-center gap-3 transition-all w-full"
-              style={{
-                backgroundColor: 'var(--color-surface)',
-                borderRadius: 16,
-                border: '1px solid rgba(74,124,89,0.375)',
-                padding: 14,
-              }}
-            >
-              <div
-                className="flex items-center justify-center flex-shrink-0"
-                style={{
-                  width: 42,
-                  height: 42,
-                  borderRadius: 13,
-                  background: 'rgba(74,124,89,0.2)',
-                }}
-              >
-                <CalendarDays size={22} style={{ color: '#6BAD8B' }} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 style={{ color: 'var(--color-lit)', fontSize: 15, fontWeight: 700 }}>
-                  Upcoming Releases
-                </h3>
-                <p style={{ color: 'var(--color-lit-3)', fontSize: 11, marginTop: 2 }}>
-                  Browse by week or month · Filter by genre
-                </p>
-              </div>
-              <ChevronRight size={18} style={{ color: 'var(--color-lit-3)' }} className="flex-shrink-0" />
-            </Link>
-
-            {/* ── Browse Categories ── */}
-            <section>
-              <h2
-                style={{
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: 'var(--color-lit-2)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.8px',
-                  marginBottom: 12,
-                }}
-              >
-                Browse Categories
-              </h2>
-              <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                {mockGenres.map(genre => {
-                  const Icon = GENRE_ICONS[genre.id] || BookOpen
-                  const color = GENRE_COLORS[genre.id] || 'var(--color-accent)'
-                  return (
-                    <button
-                      key={genre.id}
-                      onClick={() => handleGenreSelect(genre)}
-                      className="flex flex-col transition-all"
-                      style={{
-                        backgroundColor: 'var(--color-surface)',
-                        border: `1px solid ${color}40`,
-                        borderRadius: 16,
-                        padding: 12,
-                        gap: 6,
-                        alignItems: 'flex-start',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                      }}
-                    >
-                      <div
-                        className="flex items-center justify-center"
-                        style={{
-                          width: 36,
-                          height: 36,
-                          borderRadius: 10,
-                          backgroundColor: `${color}22`,
-                        }}
-                      >
-                        <Icon size={20} style={{ color }} />
-                      </div>
-                      <span
-                        className="text-left"
-                        style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-lit)', lineHeight: '16px' }}
-                      >
-                        {genre.name}
-                      </span>
-                    </button>
-                  )
-                })}
-              </div>
-            </section>
-
-          </div>
-        )}
-
-        {/* ── RESULTS ── */}
-        {isSearching && (
-          <div className="space-y-6">
-
-            {/* Rate limit warning */}
-            {isRateLimited && (
-              <div
-                className="flex items-start gap-3 px-4 py-3 rounded-2xl text-sm"
-                style={{ backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-rim-accent)', color: 'var(--color-lit-2)' }}
-              >
-                <AlertCircle size={18} className="flex-shrink-0 mt-0.5" style={{ color: 'var(--color-accent)' }} />
-                <p>
-                  <span className="font-semibold" style={{ color: 'var(--color-lit)' }}>Search temporarily unavailable.</span>
-                  {' '}Google Books free-tier rate limit reached. Results will be available again shortly — try again in a few minutes.
-                </p>
-              </div>
-            )}
-
-            {/* Books results */}
-            {activeTab === 'books' && (
-              <section>
-                <div className="flex items-center justify-between mb-5 px-1">
-                  <h3 className="font-serif text-lg font-bold flex items-center gap-2" style={{ color: 'var(--color-lit)' }}>
-                    <BookOpen size={18} style={{ color: 'var(--color-accent)' }} />
-                    Books
-                  </h3>
-                  {!booksLoading && books.length > 0 && (
-                    <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ backgroundColor: 'var(--color-grove)', color: 'var(--color-lit-3)' }}>
-                      {books.length} results
-                    </span>
-                  )}
+              {/* Rate limit warning */}
+              {isRateLimited && (
+                <div
+                  className="flex items-start gap-3"
+                  style={{
+                    padding: '12px 16px', borderRadius: 12, marginBottom: 20,
+                    backgroundColor: 'var(--color-cave)',
+                    border: '1.5px solid var(--color-rim-accent)',
+                  }}
+                >
+                  <AlertCircle size={16} style={{ color: 'var(--color-accent)', flexShrink: 0, marginTop: 2 }} />
+                  <p style={{ fontSize: 13, color: 'var(--color-ink-2)' }}>
+                    <span style={{ fontWeight: 700, color: 'var(--color-ink)' }}>Search temporarily unavailable.</span>
+                    {' '}Google Books rate limit reached — try again in a few minutes.
+                  </p>
                 </div>
+              )}
 
-                {booksLoading ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                    {[1,2,3,4,5].map(i => (
-                      <div key={i} className="rounded-[28px] overflow-hidden animate-pulse" style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-rim)' }}>
-                        <div className="w-full" style={{ aspectRatio: '2/3', backgroundColor: 'var(--color-grove)' }} />
-                        <div className="p-4 space-y-2">
-                          <div className="h-3 rounded-full w-3/4" style={{ backgroundColor: 'var(--color-grove)' }} />
-                          <div className="h-3 rounded-full w-1/2" style={{ backgroundColor: 'var(--color-grove)' }} />
-                        </div>
-                      </div>
-                    ))}
+              {/* Books */}
+              {activeTab === 'books' && (
+                <section>
+                  <div className="flex items-center justify-between" style={{ marginBottom: 14 }}>
+                    <div className="flex items-center gap-3">
+                      <div style={{ width: 22, height: 2, backgroundColor: 'var(--color-accent)' }} />
+                      <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.22em', color: 'var(--color-accent)', textTransform: 'uppercase' }}>
+                        Books
+                      </span>
+                    </div>
+                    {!booksLoading && books.length > 0 && (
+                      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-ink-3)' }}>
+                        {books.length} results
+                      </span>
+                    )}
                   </div>
-                ) : books.length > 0 ? (
-                  <>
-                    {/* List-view rows — cover + info, navigates to detail */}
-                    <div>
-                      {books.map((book, i) => (
-                        <div key={book.google_books_id || book.id || i}>
-                          {i > 0 && (
-                            <div style={{ height: 1, backgroundColor: 'var(--color-rim)' }} />
-                          )}
+
+                  {booksLoading ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                      {[1,2,3,4,5,6,7,8].map(i => (
+                        <div key={i} className="animate-pulse" style={{
+                          border: '2px solid var(--color-rim)', borderRadius: 8,
+                          backgroundColor: 'var(--color-surface)', overflow: 'hidden',
+                        }}>
+                          <div style={{ width: '100%', height: 220, backgroundColor: 'var(--color-cave)' }} />
+                          <div style={{ padding: '10px 12px', borderTop: '2px solid var(--color-rim)' }}>
+                            <div style={{ height: 13, width: '80%', borderRadius: 3, backgroundColor: 'var(--color-cave)', marginBottom: 6 }} />
+                            <div style={{ height: 11, width: '55%', borderRadius: 3, backgroundColor: 'var(--color-cave)' }} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : books.length > 0 ? (
+                    <>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                        {books.map((book, i) => (
                           <button
-                            onClick={() => router.push(`/books/${book.google_books_id ?? book.id}`)}
-                            className="w-full flex items-center text-left"
-                            style={{ gap: 12, padding: '12px 0' }}
+                            key={book.google_books_id || book.id || i}
+                            onClick={() => { cacheSearchResults([book]); router.push(`/books/${book.google_books_id ?? book.id}`) }}
+                            className="flex flex-col text-left"
+                            style={{
+                              border: '2px solid var(--color-ink)',
+                              borderRadius: 8,
+                              boxShadow: '4px 4px 0px var(--color-ink)',
+                              backgroundColor: 'var(--color-canvas)',
+                              overflow: 'hidden',
+                              cursor: 'pointer',
+                              transition: 'box-shadow 0.1s, border-color 0.1s',
+                            }}
+                            onMouseEnter={e => {
+                              e.currentTarget.style.boxShadow = '5px 5px 0px var(--color-accent)'
+                              e.currentTarget.style.borderColor = 'var(--color-accent)'
+                            }}
+                            onMouseLeave={e => {
+                              e.currentTarget.style.boxShadow = '4px 4px 0px var(--color-ink)'
+                              e.currentTarget.style.borderColor = 'var(--color-ink)'
+                            }}
                           >
-                            {/* Cover */}
-                            <div
-                              className="flex-none overflow-hidden shadow-md"
-                              style={{ width: 52, aspectRatio: '2/3', borderRadius: 8 }}
-                            >
-                              <BookCoverImage
-                                src={book.cover_image_url}
-                                title={book.title}
-                                author={book.author_name}
-                                size="small"
-                                className="w-full h-full object-cover"
-                              />
+                            {/* Cover — fills container height, natural width */}
+                            <div style={{
+                              position: 'relative', width: '100%', height: 220,
+                              backgroundColor: 'var(--color-cave)',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              overflow: 'hidden',
+                            }}>
+                              {book.cover_image_url ? (
+                                <img
+                                  src={book.cover_image_url}
+                                  alt={book.title}
+                                  style={{ height: '100%', width: 'auto', maxWidth: '100%', objectFit: 'contain', display: 'block' }}
+                                  onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
+                                />
+                              ) : null}
+                              {/* Rank badge */}
+                              <span style={{
+                                position: 'absolute', top: 8, left: 8,
+                                fontSize: 10, fontWeight: 900, letterSpacing: '0.1em',
+                                color: 'var(--color-canvas)', backgroundColor: 'var(--color-ink)',
+                                border: '1.5px solid var(--color-canvas)',
+                                borderRadius: 4, padding: '3px 6px', lineHeight: 1.3,
+                              }}>
+                                {String(i + 1).padStart(2, '0')}
+                              </span>
                             </div>
                             {/* Info */}
-                            <div className="flex-1 min-w-0">
-                              <p className="truncate" style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-lit)' }}>
+                            <div style={{ padding: '10px 12px', flex: 1, borderTop: '2px solid var(--color-ink)' }}>
+                              <p className="font-serif" style={{
+                                fontSize: 13, fontWeight: 700, color: 'var(--color-ink)', lineHeight: 1.25,
+                                display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+                              }}>
                                 {book.title}
                               </p>
                               {book.author_name && (
-                                <p className="truncate" style={{ fontSize: 12, color: 'var(--color-lit-2)' }}>
+                                <p className="truncate" style={{ fontSize: 11, color: 'var(--color-ink-3)', marginTop: 3 }}>
                                   {book.author_name}
                                 </p>
                               )}
                               {book.release_date && (
-                                <p style={{ fontSize: 11, color: 'var(--color-lit-3)' }}>
+                                <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.14em', color: 'var(--color-accent)', textTransform: 'uppercase', display: 'block', marginTop: 5 }}>
                                   {String(book.release_date).slice(0, 4)}
-                                </p>
+                                </span>
                               )}
                             </div>
-                            {/* Action */}
-                            <span
-                              className="flex items-center justify-center flex-none"
-                              style={{
-                                width: 44,
-                                height: 44,
-                                borderRadius: 9999,
-                                backgroundColor: 'var(--color-accent)',
-                              }}
-                            >
-                              <ChevronRight size={18} style={{ color: 'var(--color-accent-on)' }} />
-                            </span>
                           </button>
+                        ))}
+                      </div>
+                      {hasMoreBooks && !isRateLimited && (
+                        <button
+                          onClick={loadMoreBooks}
+                          className="w-full font-bold transition-opacity hover:opacity-70"
+                          style={{ marginTop: 16, padding: '12px 0', fontSize: 11, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--color-accent)', borderTop: '1.5px dashed var(--color-rim)' }}
+                        >
+                          Load more results
+                        </button>
+                      )}
+                    </>
+                  ) : !isRateLimited ? (
+                    <div style={{ padding: '48px 24px', textAlign: 'center', border: '1.5px dashed var(--color-rim)', borderRadius: 14 }}>
+                      <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-ink-2)', fontFamily: 'var(--font-playfair), Georgia, serif' }}>
+                        No books found for &ldquo;{searchInput}&rdquo;
+                      </p>
+                      <p style={{ fontSize: 12, color: 'var(--color-ink-3)', marginTop: 4 }}>
+                        Try checking the spelling or searching by author name.
+                      </p>
+                    </div>
+                  ) : null}
+                </section>
+              )}
+
+              {/* People */}
+              {activeTab === 'people' && (
+                <section>
+                  <div className="flex items-center justify-between" style={{ marginBottom: 14 }}>
+                    <div className="flex items-center gap-3">
+                      <div style={{ width: 22, height: 2, backgroundColor: 'var(--color-accent)' }} />
+                      <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.22em', color: 'var(--color-accent)', textTransform: 'uppercase' }}>
+                        Readers
+                      </span>
+                    </div>
+                    {!usersLoading && filteredUsers.length > 0 && (
+                      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-ink-3)' }}>
+                        {filteredUsers.length} results
+                      </span>
+                    )}
+                  </div>
+
+                  {usersLoading ? (
+                    <div className="grid grid-cols-2 gap-3">
+                      {[1,2,3,4].map(i => (
+                        <div key={i} className="flex items-center animate-pulse" style={{
+                          gap: 12, padding: '14px 16px',
+                          border: '2px solid var(--color-rim)', borderRadius: 14,
+                          backgroundColor: 'var(--color-surface)',
+                        }}>
+                          <div style={{ width: 40, height: 40, borderRadius: '50%', backgroundColor: 'var(--color-cave)', flexShrink: 0 }} />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ height: 13, width: '70%', borderRadius: 4, backgroundColor: 'var(--color-cave)', marginBottom: 6 }} />
+                            <div style={{ height: 11, width: '50%', borderRadius: 4, backgroundColor: 'var(--color-cave)' }} />
+                          </div>
                         </div>
                       ))}
                     </div>
-                    {hasMoreBooks && (
-                      <div className="mt-6 text-center">
-                        <Button variant="outline" onClick={loadMoreBooks} className="px-8 rounded-xl">
-                          Load More
-                        </Button>
+                  ) : filteredUsers.length > 0 ? (
+                    <>
+                      <div className="grid grid-cols-2 gap-3">
+                        {filteredUsers.map((user) => (
+                          <Link
+                            key={user.id}
+                            href={`/users/${user.id}`}
+                            className="flex items-center"
+                            style={{
+                              gap: 12, padding: '14px 16px',
+                              border: '2px solid var(--color-ink)',
+                              borderRadius: 14,
+                              boxShadow: '3px 3px 0px var(--color-ink)',
+                              backgroundColor: 'var(--color-canvas)',
+                              transition: 'box-shadow 0.1s, border-color 0.1s',
+                            }}
+                            onMouseEnter={e => {
+                              (e.currentTarget as HTMLElement).style.boxShadow = '4px 4px 0px var(--color-accent)'
+                              ;(e.currentTarget as HTMLElement).style.borderColor = 'var(--color-accent)'
+                            }}
+                            onMouseLeave={e => {
+                              (e.currentTarget as HTMLElement).style.boxShadow = '3px 3px 0px var(--color-ink)'
+                              ;(e.currentTarget as HTMLElement).style.borderColor = 'var(--color-ink)'
+                            }}
+                          >
+                            <Avatar src={user.avatar_url} name={user.display_name || user.username} size="md" />
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <p className="truncate" style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-ink)' }}>
+                                {user.display_name || user.username}
+                              </p>
+                              <p className="truncate" style={{ fontSize: 11, color: 'var(--color-ink-3)' }}>@{user.username}</p>
+                            </div>
+                          </Link>
+                        ))}
                       </div>
-                    )}
-                  </>
-                ) : !isRateLimited ? (
-                  <div
-                    className="py-16 rounded-2xl text-center"
-                    style={{ backgroundColor: 'var(--color-grove)', border: '1px dashed var(--color-rim)' }}
-                  >
-                    <Search size={32} className="mx-auto mb-3" style={{ color: 'var(--color-lit-3)' }} />
-                    <p className="font-semibold mb-1" style={{ color: 'var(--color-lit-2)' }}>
-                      No books found for &ldquo;{searchInput}&rdquo;
-                    </p>
-                    <p className="text-sm" style={{ color: 'var(--color-lit-3)' }}>
-                      Try checking the spelling or searching by author name.
-                    </p>
-                  </div>
-                ) : null}
-              </section>
-            )}
-
-            {/* People results */}
-            {activeTab === 'people' && (
-              <section>
-                <div className="flex items-center justify-between mb-5 px-1">
-                  <h3 className="font-serif text-lg font-bold flex items-center gap-2" style={{ color: 'var(--color-lit)' }}>
-                    <Users size={18} style={{ color: 'var(--color-accent)' }} />
-                    People
-                  </h3>
-                  {!usersLoading && filteredUsers.length > 0 && (
-                    <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ backgroundColor: 'var(--color-grove)', color: 'var(--color-lit-3)' }}>
-                      {filteredUsers.length} results
-                    </span>
-                  )}
-                </div>
-
-                {usersLoading ? (
-                  <div className="space-y-3">
-                    {[1,2,3].map(i => (
-                      <div key={i} className="h-20 animate-pulse rounded-2xl" style={{ backgroundColor: 'var(--color-grove)' }} />
-                    ))}
-                  </div>
-                ) : filteredUsers.length > 0 ? (
-                  <>
-                    <div className="space-y-3">
-                      {filteredUsers.map(user => (
-                        <Link
-                          key={user.id}
-                          href={`/users/${user.id}`}
-                          className="flex items-center gap-4 p-4 rounded-2xl transition-all group"
-                          style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-rim)', boxShadow: '0 4px 16px rgba(0,0,0,0.3)' }}
-                          onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--color-rim-accent)')}
-                          onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--color-rim)')}
+                      {hasMoreUsers && (
+                        <button
+                          onClick={loadMoreUsers}
+                          className="w-full font-bold transition-opacity hover:opacity-70"
+                          style={{ marginTop: 16, padding: '12px 0', fontSize: 11, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--color-accent)', borderTop: '1.5px dashed var(--color-rim)' }}
                         >
-                          <Avatar src={user.avatar_url} name={user.display_name || user.username} size="md" />
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-bold text-sm truncate transition-colors group-hover:text-accent" style={{ color: 'var(--color-lit)' }}>
-                              {user.display_name || user.username}
-                            </h4>
-                            <p className="text-xs" style={{ color: 'var(--color-lit-3)' }}>@{user.username}</p>
-                          </div>
-                        </Link>
-                      ))}
+                          Load more results
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    <div style={{ padding: '48px 24px', textAlign: 'center', border: '1.5px dashed var(--color-rim)', borderRadius: 14 }}>
+                      <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-ink-2)', fontFamily: 'var(--font-playfair), Georgia, serif' }}>
+                        No readers found for &ldquo;{searchInput}&rdquo;
+                      </p>
+                      <p style={{ fontSize: 12, color: 'var(--color-ink-3)', marginTop: 4 }}>
+                        Try searching by username or display name.
+                      </p>
                     </div>
-                    {hasMoreUsers && (
-                      <div className="mt-6 text-center">
-                        <Button variant="outline" onClick={loadMoreUsers} className="px-8 rounded-xl">
-                          Load More
-                        </Button>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div
-                    className="py-16 rounded-2xl text-center"
-                    style={{ backgroundColor: 'var(--color-grove)', border: '1px dashed var(--color-rim)' }}
-                  >
-                    <Users size={32} className="mx-auto mb-3" style={{ color: 'var(--color-lit-3)' }} />
-                    <p className="font-semibold mb-1" style={{ color: 'var(--color-lit-2)' }}>
-                      No readers found for &ldquo;{searchInput}&rdquo;
-                    </p>
-                    <p className="text-sm" style={{ color: 'var(--color-lit-3)' }}>
-                      Try searching by username or display name.
-                    </p>
-                  </div>
-                )}
-              </section>
-            )}
-          </div>
-        )}
+                  )}
+                </section>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       <BarcodeScannerModal isOpen={scannerOpen} onClose={() => setScannerOpen(false)} />
@@ -629,14 +484,13 @@ function SearchContent() {
   )
 }
 
-export default function DiscoverPage() {
+export default function SearchPage() {
   return (
     <Suspense fallback={
-      <div className="container-mobile py-10 animate-pulse max-w-5xl mx-auto">
-        <div className="h-10 w-40 rounded-2xl mb-10" style={{ backgroundColor: 'var(--color-grove)' }} />
-        <div className="h-14 w-full rounded-2xl mb-6" style={{ backgroundColor: 'var(--color-grove)' }} />
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-          {[1,2,3,4,5,6].map(i => <div key={i} className="h-28 rounded-2xl" style={{ backgroundColor: 'var(--color-grove)' }} />)}
+      <div className="min-h-screen" style={{ backgroundColor: 'var(--color-canvas)' }}>
+        <div className="container-mobile py-8 animate-pulse" style={{ maxWidth: 720, margin: '0 auto' }}>
+          <div style={{ height: 52, borderRadius: 999, backgroundColor: 'var(--color-cave)', marginBottom: 12 }} />
+          <div style={{ height: 44, borderRadius: 999, backgroundColor: 'var(--color-cave)', marginBottom: 36 }} />
         </div>
       </div>
     }>

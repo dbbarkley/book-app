@@ -10,24 +10,24 @@ import type { Genre, Author } from '@book-app/shared'
  * Expected response: { genres: Genre[] }
  */
 export const mockGenres: Genre[] = [
-  { id: 'fiction', name: 'Fiction', description: 'Literary works of imagination' },
-  { id: 'non-fiction', name: 'Non-Fiction', description: 'Factual and informative works' },
-  { id: 'mystery', name: 'Mystery', description: 'Crime and detective stories' },
-  { id: 'thriller', name: 'Thriller', description: 'Suspenseful and exciting stories' },
-  { id: 'romance', name: 'Romance', description: 'Love stories and romantic fiction' },
-  { id: 'sci-fi', name: 'Science Fiction', description: 'Futuristic and speculative fiction' },
-  { id: 'fantasy', name: 'Fantasy', description: 'Magical and mythical worlds' },
-  { id: 'horror', name: 'Horror', description: 'Scary and suspenseful stories' },
-  { id: 'historical', name: 'Historical Fiction', description: 'Stories set in the past' },
-  { id: 'biography', name: 'Biography', description: 'Life stories of real people' },
-  { id: 'memoir', name: 'Memoir', description: 'Personal accounts and experiences' },
-  { id: 'self-help', name: 'Self-Help', description: 'Personal development and growth' },
-  { id: 'business', name: 'Business', description: 'Business and entrepreneurship' },
-  { id: 'philosophy', name: 'Philosophy', description: 'Philosophical works and ideas' },
-  { id: 'poetry', name: 'Poetry', description: 'Poetic works and collections' },
-  { id: 'young-adult', name: 'Young Adult', description: 'Books for young adult readers' },
-  { id: 'children', name: 'Children\'s Books', description: 'Books for children' },
-  { id: 'graphic-novel', name: 'Graphic Novels', description: 'Comics and graphic novels' },
+  { id: 'fiction',       name: 'Fiction',        description: 'Imagined worlds' },
+  { id: 'non-fiction',   name: 'Non-Fiction',    description: 'Factual & true' },
+  { id: 'mystery',       name: 'Mystery',        description: 'Whodunits' },
+  { id: 'thriller',      name: 'Thriller',       description: 'Pulse-quickening' },
+  { id: 'romance',       name: 'Romance',        description: 'Love stories' },
+  { id: 'sci-fi',        name: 'Sci-Fi',         description: 'Future, machines, stars' },
+  { id: 'fantasy',       name: 'Fantasy',        description: 'Magic & myth' },
+  { id: 'horror',        name: 'Horror',         description: 'Read with the light on' },
+  { id: 'historical',    name: 'Historical',     description: 'Set in the past' },
+  { id: 'biography',     name: 'Biography',      description: 'Real lives' },
+  { id: 'memoir',        name: 'Memoir',         description: 'Personal accounts' },
+  { id: 'self-help',     name: 'Self-Help',      description: 'Personal growth' },
+  { id: 'business',      name: 'Business',       description: 'Work, money, ideas' },
+  { id: 'philosophy',    name: 'Philosophy',     description: 'Big ideas' },
+  { id: 'poetry',        name: 'Poetry',         description: 'Verse & collections' },
+  { id: 'young-adult',   name: 'Young Adult',    description: 'Coming of age' },
+  { id: 'children',      name: "Children's",     description: 'For little readers' },
+  { id: 'graphic-novel', name: 'Graphic Novels', description: 'Comics & illustrated' },
 ]
 
 /**
@@ -36,65 +36,15 @@ export const mockGenres: Genre[] = [
  * Expected response: { authors: Author[] }
  */
 export const mockAuthors: Author[] = [
-  {
-    id: 1,
-    name: 'Jane Austen',
-    bio: 'English novelist known for social commentary',
-    avatar_url: undefined,
-  },
-  {
-    id: 2,
-    name: 'Ernest Hemingway',
-    bio: 'American novelist and short story writer',
-    avatar_url: undefined,
-  },
-  {
-    id: 3,
-    name: 'Toni Morrison',
-    bio: 'American novelist and Nobel Prize winner',
-    avatar_url: undefined,
-  },
-  {
-    id: 4,
-    name: 'Gabriel García Márquez',
-    bio: 'Colombian novelist and Nobel Prize winner',
-    avatar_url: undefined,
-  },
-  {
-    id: 5,
-    name: 'Maya Angelou',
-    bio: 'American poet, memoirist, and civil rights activist',
-    avatar_url: undefined,
-  },
-  {
-    id: 6,
-    name: 'Haruki Murakami',
-    bio: 'Japanese writer known for surrealist fiction',
-    avatar_url: undefined,
-  },
-  {
-    id: 7,
-    name: 'Chimamanda Ngozi Adichie',
-    bio: 'Nigerian writer and feminist',
-    avatar_url: undefined,
-  },
-  {
-    id: 8,
-    name: 'J.K. Rowling',
-    bio: 'British author of the Harry Potter series',
-    avatar_url: undefined,
-  },
-  {
-    id: 9,
-    name: 'Stephen King',
-    bio: 'American author of horror and suspense',
-    avatar_url: undefined,
-  },
-  {
-    id: 10,
-    name: 'Margaret Atwood',
-    bio: 'Canadian poet, novelist, and literary critic',
-    avatar_url: undefined,
-  },
+  { id: 1,  name: 'Jane Austen',               bio: 'English novelist, sharp social satire',       avatar_url: undefined },
+  { id: 2,  name: 'Ernest Hemingway',           bio: 'American, sparse and aching',                 avatar_url: undefined },
+  { id: 3,  name: 'Toni Morrison',              bio: 'American, Nobel laureate, unforgettable',     avatar_url: undefined },
+  { id: 4,  name: 'Gabriel García Márquez',     bio: 'Colombian, magical realism',                  avatar_url: undefined },
+  { id: 5,  name: 'Maya Angelou',               bio: 'Poet, memoirist, activist',                   avatar_url: undefined },
+  { id: 6,  name: 'Haruki Murakami',            bio: 'Japanese, surreal and solitary',              avatar_url: undefined },
+  { id: 7,  name: 'Chimamanda Ngozi Adichie',   bio: 'Nigerian, feminist, essential',               avatar_url: undefined },
+  { id: 8,  name: 'J.K. Rowling',               bio: 'British, built a generation\'s childhood',   avatar_url: undefined },
+  { id: 9,  name: 'Stephen King',               bio: 'American, master of the dark',                avatar_url: undefined },
+  { id: 10, name: 'Margaret Atwood',            bio: 'Canadian, feminist, prescient',               avatar_url: undefined },
 ]
 

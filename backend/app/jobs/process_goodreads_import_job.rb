@@ -25,6 +25,7 @@ class ProcessGoodreadsImportJob < ApplicationJob
 
     # ── In-memory caches (scoped to this job run) ───────────────────────────
     @author_cache    = {}
+    @work_cache      = {}
     @isbn_book_cache = build_isbn_book_cache(csv_data)
 
     successful = 0
@@ -32,6 +33,7 @@ class ProcessGoodreadsImportJob < ApplicationJob
     errors     = []
     book_ids   = []
 
+    Thread.current[:skip_feed_fanout] = true
     csv_data.each_with_index do |row, index|
       begin
         book = process_book_row(row, import.user)
@@ -54,6 +56,7 @@ class ProcessGoodreadsImportJob < ApplicationJob
         )
       end
     end
+    Thread.current[:skip_feed_fanout] = nil
 
     import.update_progress!(
       processed:  csv_data.length,
@@ -62,7 +65,12 @@ class ProcessGoodreadsImportJob < ApplicationJob
     )
 
     import.update!(metadata: import.metadata.merge(errors: errors.first(10))) if errors.any?
-    import.mark_as_completed!
+
+    if successful == 0 && failed > 0
+      import.mark_as_failed!("No books could be imported — #{failed} row#{'s' if failed != 1} failed. Check that your file is a valid Goodreads CSV export.")
+    else
+      import.mark_as_completed!
+    end
 
     File.delete(csv_file_path) if File.exist?(csv_file_path)
 
@@ -79,6 +87,8 @@ class ProcessGoodreadsImportJob < ApplicationJob
     Rails.logger.error(e.backtrace.join("\n"))
     import.mark_as_failed!(e.message)
     File.delete(csv_file_path) if File.exist?(csv_file_path)
+  ensure
+    Thread.current[:skip_feed_fanout] = nil
   end
 
   private
@@ -131,12 +141,16 @@ class ProcessGoodreadsImportJob < ApplicationJob
       page_count: page_count
     )
 
+    work = find_or_create_work(title, author_name, isbn13 || isbn)
+    book.update_column(:work_id, work.id) if book.work_id.nil?
+
     status = convert_shelf_to_status(exclusive_shelf, row)
 
     user_book = UserBook.find_or_initialize_by(user: user, book: book)
     user_book.assign_attributes(
       status:      status,
       shelf:       status,
+      work_id:     work.id,
       rating:      my_rating > 0 ? my_rating : nil,
       total_pages: page_count || book.page_count,
       started_at:  date_added,
@@ -164,6 +178,19 @@ class ProcessGoodreadsImportJob < ApplicationJob
     author = Author.find_by('LOWER(name) = ?', key) || Author.create!(name: name)
     @author_cache[key] = author
     author
+  end
+
+  # ── Work handling ───────────────────────────────────────────────────────────
+
+  # Caches by normalized title+author to avoid a DB hit for every row when
+  # the same work appears across multiple editions in a single import.
+  def find_or_create_work(title, author_name, isbn = nil)
+    key = "#{WorkResolutionService.normalize_title(title)}|#{WorkResolutionService.normalize_author(author_name)}"
+    return @work_cache[key] if @work_cache.key?(key)
+
+    work = WorkResolutionService.resolve(title: title, author: author_name, isbn: isbn)
+    @work_cache[key] = work
+    work
   end
 
   # ── Book handling ───────────────────────────────────────────────────────────

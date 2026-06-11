@@ -27,12 +27,8 @@ export default function TrendingNowSection() {
     setLoading(true)
     setBooks([])
     try {
-      const token = apiClient.getToken()
-      const res   = await fetch(`/api/books/genre?id=${genreId}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      })
-      const data = await res.json()
-      setBooks(data.books ?? [])
+      const { books } = await apiClient.getGenreBooks(genreId)
+      setBooks(books)
     } catch {
       setBooks([])
     } finally {

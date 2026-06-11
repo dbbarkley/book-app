@@ -198,6 +198,18 @@ categories = [
     display_order:     14,
     active:            true,
   },
+  {
+    code:              'POE000000',
+    name:              'Poetry',
+    parent_code:       nil,
+    color:             '#4A7A5C',
+    query_terms:       ['poetry'],
+    data_source:       'hardcover',
+    source_identifier: 'poetry',                 # Hardcover genre tag
+    stale_hours:       168,
+    display_order:     15,
+    active:            true,
+  },
 ]
 
 now = Time.current

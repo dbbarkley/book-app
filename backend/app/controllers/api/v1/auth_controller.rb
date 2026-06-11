@@ -142,6 +142,7 @@ module Api
           zipcode: user.zipcode,
           created_at: user.created_at,
           onboarding_completed: user.onboarding_completed || false,
+          reading_streak: user.reading_streak.to_i,
           favourite_authors: favourite_authors,
           preferences: {
             milestones_viewed: user.preferences['milestones_viewed'] || [],

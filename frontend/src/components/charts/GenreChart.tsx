@@ -1,142 +1,120 @@
 'use client'
 
-import React from 'react'
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
-import { BookOpen } from 'lucide-react'
-
-interface GenreData extends Record<string, any> {
+interface GenreData {
   name: string
   count: number
-  percentage?: number
 }
 
 interface GenreChartProps {
   data: GenreData[]
+  totalBooks?: number
 }
 
-const COLORS = [
-  '#C9A84C',
-  '#A07830',
-  '#5A9E7A',
-  '#7C9E6A',
-  '#8B7355',
-  '#6B8E7A',
-  '#9E8A5A',
+const GENRE_COLORS = [
+  '#D5582E',  // orange
+  '#234A5A',  // navy
+  '#C4973A',  // amber
+  '#2D6A4F',  // green
+  '#8B3A2A',  // dark red
+  '#8B8378',  // warm gray
+  '#5B7FA6',  // slate blue
 ]
 
-const RADIAN = Math.PI / 180
-
-const renderLabel = ({
-  cx, cy, midAngle, outerRadius, name, percent, index,
-}: any) => {
-  if (percent < 0.05) return null
-
-  const labelRadius = outerRadius + 32
-  const lx = cx + labelRadius * Math.cos(-midAngle * RADIAN)
-  const ly = cy + labelRadius * Math.sin(-midAngle * RADIAN)
-  const anchor = lx > cx ? 'start' : 'end'
-
-  const x1 = cx + (outerRadius + 6) * Math.cos(-midAngle * RADIAN)
-  const y1 = cy + (outerRadius + 6) * Math.sin(-midAngle * RADIAN)
-  const x2 = cx + (outerRadius + 20) * Math.cos(-midAngle * RADIAN)
-  const y2 = cy + (outerRadius + 20) * Math.sin(-midAngle * RADIAN)
-
-  return (
-    <g key={`label-${index}`}>
-      <line x1={x1} y1={y1} x2={x2} y2={y2}
-        stroke={COLORS[index % COLORS.length]}
-        strokeWidth={1.5}
-        opacity={0.7}
-      />
-      <text x={lx} y={ly - 7}
-        textAnchor={anchor}
-        dominantBaseline="central"
-        fontSize={11}
-        fontWeight={700}
-        fill="var(--color-lit)"
-      >
-        {name}
-      </text>
-      <text x={lx} y={ly + 7}
-        textAnchor={anchor}
-        dominantBaseline="central"
-        fontSize={11}
-        fontWeight={500}
-        fill="var(--color-accent)"
-      >
-        {`${(percent * 100).toFixed(0)}%`}
-      </text>
-    </g>
-  )
-}
-
-const CustomTooltip = ({ active, payload }: any) => {
-  if (active && payload && payload.length) {
-    const { name, value } = payload[0]
-    return (
-      <div
-        className="px-3 py-2 rounded-xl text-sm"
-        style={{
-          backgroundColor: 'var(--color-surface)',
-          border: '1px solid var(--color-rim-accent)',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
-          color: 'var(--color-lit)',
-        }}
-      >
-        <p className="font-bold">{name}</p>
-        <p style={{ color: 'var(--color-accent)' }}>
-          {value} {value === 1 ? 'book' : 'books'}
-        </p>
-      </div>
-    )
-  }
-  return null
-}
-
-export default function GenreChart({ data }: GenreChartProps) {
+export default function GenreChart({ data, totalBooks }: GenreChartProps) {
   if (!data || data.length === 0) return null
 
+  const filtered = data.filter(d => d.name.toLowerCase() !== 'other')
+  const total    = totalBooks ?? data.reduce((sum, d) => sum + d.count, 0)
+  const maxCount = Math.max(...filtered.map(d => d.count))
+
+  if (filtered.length === 0) return null
+
   return (
-    <div className="w-full">
-      <div className="flex items-center gap-2 mb-6">
-        <BookOpen size={18} style={{ color: 'var(--color-accent)' }} />
-        <h3 className="font-serif text-lg font-bold" style={{ color: 'var(--color-lit)' }}>
-          Reading Genres
-        </h3>
+    <div
+      style={{
+        backgroundColor: 'var(--color-canvas)',
+        border: '2px solid var(--color-ink)',
+        borderRadius: 16,
+        boxShadow: '5px 5px 0px var(--color-accent)',
+        padding: '20px 22px 22px',
+        height: '100%',
+      }}
+    >
+      {/* Header */}
+      <div className="flex items-start justify-between mb-5">
+        <div>
+          <p
+            className="font-bold uppercase"
+            style={{ fontSize: 10, letterSpacing: '0.2em', color: 'var(--color-accent)', marginBottom: 4 }}
+          >
+            Reading Mix
+          </p>
+          <h3
+            className="font-serif font-bold leading-tight"
+            style={{ fontSize: 24, fontWeight: 700, color: 'var(--color-ink)' }}
+          >
+            Where the hours go
+          </h3>
+        </div>
+
+        {total > 0 && (
+          <div className="text-right flex-shrink-0">
+            <span
+              className="font-serif font-black block"
+              style={{ fontSize: 42, color: 'var(--color-ink)', lineHeight: 1 }}
+            >
+              {total}
+            </span>
+            <p
+              className="font-bold uppercase"
+              style={{ fontSize: 9, letterSpacing: '0.2em', color: 'var(--color-ink-3)', marginTop: 2 }}
+            >
+              Books Read
+            </p>
+          </div>
+        )}
       </div>
 
-      {/*
-        px-16 reserves physical space for labels on left/right.
-        [&_svg]:overflow-visible lets SVG text render outside its own bounds
-        without being clipped by the SVG viewport.
-      */}
-      <div className="h-[320px] w-full px-16 [&_svg]:overflow-visible">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie
-              data={data}
-              cx="50%"
-              cy="50%"
-              innerRadius={60}
-              outerRadius={90}
-              paddingAngle={3}
-              dataKey="count"
-              minAngle={5}
-              label={renderLabel}
-              labelLine={false}
-            >
-              {data.map((_, index) => (
-                <Cell
-                  key={`cell-${index}`}
-                  fill={COLORS[index % COLORS.length]}
-                  stroke="var(--color-surface)"
-                  strokeWidth={2}
+      {/* Genre rows */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
+        {filtered.map((genre, i) => {
+          const color = GENRE_COLORS[i % GENRE_COLORS.length]
+          const pct   = (genre.count / maxCount) * 100
+
+          return (
+            <div key={genre.name}>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="font-bold text-[13px]" style={{ color: 'var(--color-ink)' }}>
+                  {genre.name}
+                </span>
+                <span className="font-bold text-[13px]" style={{ color }}>
+                  {genre.count}
+                </span>
+              </div>
+
+              {/* Track */}
+              <div
+                style={{
+                  width: '100%', height: 12,
+                  borderRadius: 999,
+                  backgroundColor: 'var(--color-surface)',
+                  position: 'relative',
+                }}
+              >
+                {/* Fill */}
+                <div
+                  style={{
+                    position: 'absolute', top: 0, left: 0,
+                    width: `${pct}%`, height: '100%',
+                    backgroundColor: color,
+                    borderRadius: 999,
+                    transition: 'width 0.6s ease',
+                  }}
                 />
-              ))}
-            </Pie>
-            <Tooltip content={<CustomTooltip />} />
-          </PieChart>
-        </ResponsiveContainer>
+              </div>
+            </div>
+          )
+        })}
       </div>
     </div>
   )

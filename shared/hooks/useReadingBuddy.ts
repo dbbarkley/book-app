@@ -26,8 +26,10 @@ export function useReadingBuddy() {
     createSession:   store.createSession,
     acceptSession:   store.acceptSession,
     declineSession:  store.declineSession,
+    cancelSession:   store.cancelSession,
     dnfSession:      store.dnfSession,
     sendMessage:     store.sendMessage,
+    toggleReaction:  store.toggleReaction,
     createHighlight: store.createHighlight,
     deleteHighlight: store.deleteHighlight,
 
