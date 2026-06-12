@@ -54,8 +54,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    # schema:load on first deploy (fresh DB); switch to db:migrate after first successful boot
-    command: bash -c "bundle exec rails db:schema:load && bundle exec rails server -b 0.0.0.0"
+    command: bash -c "bundle exec rails db:migrate && bundle exec rails server -b 0.0.0.0"
 
   sidekiq:
     build:
