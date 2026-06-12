@@ -61,13 +61,23 @@ export default function Navigation() {
                 }}>W</span>
               </div>
               <span
-                className="hidden sm:block"
                 style={{
                   fontFamily: 'var(--font-playfair), Georgia, serif',
                   fontSize: 20, fontWeight: 700,
                   letterSpacing: '-0.44px', color: 'var(--color-ink)',
                 }}
               >WellRead</span>
+              <span
+                style={{
+                  fontSize: 9, fontWeight: 800, letterSpacing: '0.18em',
+                  textTransform: 'uppercase',
+                  color: 'var(--color-accent)',
+                  border: '1.5px solid var(--color-accent)',
+                  borderRadius: 4,
+                  padding: '2px 5px',
+                  lineHeight: 1,
+                }}
+              >Beta</span>
             </Link>
 
             {/* Desktop nav links — hidden on mobile and during onboarding */}

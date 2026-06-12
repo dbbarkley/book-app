@@ -84,13 +84,13 @@ services:
 
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: frontend/Dockerfile.dev
     volumes:
-      - ./frontend:/app
-      - ./shared:/shared
-      - /app/node_modules
-      - /app/.next
+      - ./frontend:/app/frontend
+      - ./shared:/app/shared
+      - /app/frontend/node_modules
+      - /app/frontend/.next
     ports:
       - "${NEXT_PORT:-3001}:3000"
     environment:

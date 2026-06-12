@@ -177,10 +177,11 @@ export default function ProfileHeroCard({
             transform: 'translateY(-50%)',
             left: nameLeft,
             right: 20,
-            fontSize: 'clamp(1.9rem, 4vw, 3rem)',
+            fontSize: 'clamp(1.2rem, 4vw, 3rem)',
             color: '#FAF6EB',
             zIndex: 15,
             textShadow: '1px 1px 0 rgba(0,0,0,0.15)',
+            wordBreak: 'break-word',
           }}
         >
           {name}
@@ -190,8 +191,8 @@ export default function ProfileHeroCard({
       {/* ── Cream body ──────────────────────────────────────────────────────── */}
       <div style={{ padding: '18px 20px 22px' }}>
 
-        {/* Username + location + action buttons — full width, no indent needed */}
-        <div className="flex items-start justify-between gap-4">
+        {/* Username + location + action buttons */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-bold text-[13px]" style={{ color: 'var(--color-accent)' }}>

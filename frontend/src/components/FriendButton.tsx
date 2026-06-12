@@ -92,17 +92,17 @@ export default function FriendButton({
     none: {
       icon: UserPlus,
       label: 'Add Friend',
-      style: { backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-rim)', color: 'var(--color-lit)' },
+      style: { backgroundColor: 'var(--color-ink)', border: '2px solid var(--color-ink)', borderRadius: 999, padding: '10px 18px', fontSize: 11, color: 'var(--color-canvas)' },
     },
     pending_sent: {
       icon: Clock,
       label: 'Request Sent',
-      style: { backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-rim)', color: 'var(--color-lit-3)' },
+      style: { backgroundColor: 'transparent', border: '2px solid var(--color-ink)', borderRadius: 999, padding: '10px 18px', fontSize: 11, color: 'var(--color-ink-2)' },
     },
     accepted: {
       icon: UserCheck,
       label: 'Friends',
-      style: { backgroundColor: 'var(--color-grove)', border: '1px solid var(--color-accent)', color: 'var(--color-accent)' },
+      style: { backgroundColor: 'transparent', border: '2px solid var(--color-accent)', borderRadius: 999, padding: '10px 18px', fontSize: 11, color: 'var(--color-accent)' },
     },
   } as const
 
@@ -113,7 +113,7 @@ export default function FriendButton({
     <button
       onClick={handleAction}
       disabled={sending || status === 'pending_sent'}
-      className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold transition-all disabled:opacity-60 hover:opacity-80"
+      className="flex items-center gap-1.5 font-bold uppercase tracking-[0.15em] transition-all disabled:opacity-60 hover:opacity-80"
       style={current.style}
     >
       <Icon size={15} />

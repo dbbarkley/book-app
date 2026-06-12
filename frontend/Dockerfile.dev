@@ -1,0 +1,18 @@
+# Build context must be repo root (.) — same as prod Dockerfile.
+# Used by local docker-compose.yml only.
+FROM node:20-alpine
+WORKDIR /app
+
+RUN apk add --no-cache libc6-compat
+
+COPY shared/package.json ./shared/package.json
+COPY frontend/package.json frontend/package-lock.json* ./frontend/
+COPY shared/ ./shared/
+RUN cd shared && npm install
+RUN cd frontend && npm ci
+
+ENV NODE_ENV=development
+ENV NEXT_TELEMETRY_DISABLED=1
+
+WORKDIR /app/frontend
+CMD ["npm", "run", "dev"]
