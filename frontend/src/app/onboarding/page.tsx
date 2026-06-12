@@ -74,18 +74,18 @@ function WelcomeStep() {
   const TASKS = [
     {
       num: '01', Icon: Layers, bg: 'var(--color-accent-teal)', iconColor: '#fff',
-      title: 'Import your Goodreads library',
-      sub: 'Books, ratings, shelves — all of it.',
+      title: 'Import your Library',
+      sub: 'Books, ratings, shelves. All of it.',
     },
     {
       num: '02', Icon: Sparkles, bg: 'var(--color-accent)', iconColor: '#fff',
       title: 'Pick the genres you actually read',
-      sub: "We'll bias recommendations toward them, never away from yours.",
+      sub: "We'll bias recommendations toward them",
     },
     {
       num: '03', Icon: Heart, bg: 'var(--color-accent-yellow)', iconColor: 'var(--color-ink)',
-      title: "Tag the authors you'd buy in hardcover",
-      sub: "We'll wake you when they publish next — once, quietly.",
+      title: "Authors you'd buy hardcover",
+      sub: "We'll notify you on their new book",
     },
   ]
 
@@ -101,7 +101,7 @@ function WelcomeStep() {
 
       {/* Quote card + book stack */}
       <div className="grid sm:grid-cols-2 gap-5 mb-8 items-start">
-        <div style={{ backgroundColor: 'var(--color-accent-yellow)', borderRadius: 14, padding: '22px 24px', border: '2px solid var(--color-ink)', boxShadow: '4px 4px 0px var(--color-ink)' }}>
+        <div className="hidden sm:block" style={{ backgroundColor: 'var(--color-accent-yellow)', borderRadius: 14, padding: '22px 24px', border: '2px solid var(--color-ink)', boxShadow: '4px 4px 0px var(--color-ink)' }}>
           <p className="font-serif" style={{ fontSize: 17, fontStyle: 'italic', color: 'var(--color-ink)', lineHeight: 1.55, marginBottom: 14 }}>
             &ldquo;Three small questions, then we leave you alone with your books.&rdquo;
           </p>
@@ -125,15 +125,19 @@ function WelcomeStep() {
         {TASKS.map(({ num, Icon, bg, iconColor, title, sub }) => (
           <div
             key={num}
-            style={{ display: 'flex', alignItems: 'center', gap: 18, padding: '16px 20px', border: '2px solid var(--color-ink)', borderRadius: 14, backgroundColor: 'var(--color-canvas)', boxShadow: '3px 3px 0px var(--color-ink)' }}
+            className="flex items-center gap-3 sm:gap-[18px] px-3 py-3 sm:px-5 sm:py-4"
+            style={{ border: '2px solid var(--color-ink)', borderRadius: 14, backgroundColor: 'var(--color-canvas)', boxShadow: '3px 3px 0px var(--color-ink)' }}
           >
-            <div style={{ width: 44, height: 44, borderRadius: 10, backgroundColor: bg, border: '2px solid var(--color-ink)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '2px 2px 0px var(--color-ink)' }}>
-              <Icon size={18} style={{ color: iconColor }} />
+            <div
+              className="w-9 h-9 sm:w-11 sm:h-11 flex items-center justify-center flex-shrink-0"
+              style={{ borderRadius: 10, backgroundColor: bg, border: '2px solid var(--color-ink)', boxShadow: '2px 2px 0px var(--color-ink)' }}
+            >
+              <Icon size={16} style={{ color: iconColor }} />
             </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 3 }}>
-                <span className="font-serif" style={{ fontSize: 11, fontStyle: 'italic', fontWeight: 700, color: 'var(--color-accent)' }}>№ {num}</span>
-                <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-ink)' }}>{title}</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 3 }}>
+                <span className="font-serif flex-shrink-0" style={{ fontSize: 11, fontStyle: 'italic', fontWeight: 700, color: 'var(--color-accent)' }}>№ {num}</span>
+                <span className="text-[13px] sm:text-[14px] font-bold" style={{ color: 'var(--color-ink)' }}>{title}</span>
               </div>
               <p style={{ fontSize: 13, color: 'var(--color-ink-2)', lineHeight: 1.5 }}>{sub}</p>
             </div>
@@ -224,7 +228,7 @@ function GenreStep({ selectedGenres, onToggle, genres }: {
         .
       </h2>
       <p style={{ fontSize: 15, color: 'var(--color-ink-2)', lineHeight: 1.65, marginBottom: 24 }}>
-        We&rsquo;ll use these to personalise — never to profile.
+        We&rsquo;ll use these to personalise recommendations.
       </p>
 
       {/* Subheader row */}
@@ -720,7 +724,7 @@ export default function OnboardingPage() {
         )}
 
         {/* Step card */}
-        <div style={{ border: '2px solid var(--color-ink)', borderRadius: 28, boxShadow: '6px 6px 0px var(--color-ink)', backgroundColor: 'var(--color-canvas)', padding: '40px 44px', overflow: 'hidden' }}>
+        <div className="px-5 py-8 sm:px-11 sm:py-10" style={{ border: '2px solid var(--color-ink)', borderRadius: 28, boxShadow: '6px 6px 0px var(--color-ink)', backgroundColor: 'var(--color-canvas)', overflow: 'hidden' }}>
           <ChapterHeader step={currentStep} />
           {renderStep()}
         </div>

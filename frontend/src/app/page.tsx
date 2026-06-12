@@ -15,6 +15,7 @@ import ScrollSpine from '@/components/landing/ScrollSpine'
 import ClipRevealSection from '@/components/landing/ClipRevealSection'
 import ChapterHeading from '@/components/landing/ChapterHeading'
 import InteractiveShelf from '@/components/landing/InteractiveShelf'
+import SiteFooter from '@/components/SiteFooter'
 
 /* ═══════════════════════════════════════════════════════════════
    LIBRAIO LANDING PAGE — Scroll-Triggered Storytelling
@@ -209,7 +210,7 @@ const SHELF_TABS = [
 
 function LibraryMockup() {
   return (
-    <div className="zine-card shadow-zine-ink p-6"
+    <div className="zine-card shadow-zine-ink p-6 overflow-hidden"
     >
       {/* Shelf tabs */}
       <div
@@ -353,7 +354,7 @@ function LibraryMockup() {
 // ── Reading Buddies chat mockup ──────────────────────────────
 function BuddiesChatMockup() {
   return (
-    <div className="zine-card shadow-zine-accent p-6"
+    <div className="zine-card shadow-zine-accent p-6 overflow-hidden"
     >
       {/* Header — dark navy */}
       <div
@@ -873,32 +874,18 @@ export default function HomePage() {
           padding: '16px 0',
         }}
       >
-        <motion.div
-          style={{ display: 'flex', whiteSpace: 'nowrap' }}
-          animate={{ x: ['0%', '-50%'] }}
-          transition={{ duration: 30, repeat: Infinity, ease: 'linear', repeatType: 'loop' }}
-        >
+        <div className="marquee-track">
           {[...Array(2)].map((_, copy) => (
-            <div key={copy} style={{ display: 'flex', alignItems: 'center' }}>
+            <div key={copy} className="marquee-copy">
               {['NO AI', 'NO ALGORITHM', 'NO TRACKING', 'JUST BOOKS', 'FOR READERS', 'NO PAYWALLS'].map((text, i) => (
                 <span key={i} style={{ display: 'inline-flex', alignItems: 'center' }}>
-                  <span style={{
-                    fontSize: 24,
-                    fontWeight: 900,
-                    letterSpacing: '0.18em',
-                    color: 'var(--color-ink)',
-                    textTransform: 'uppercase' as const,
-                    padding: '0 28px',
-                    fontFamily: 'var(--font-inter), sans-serif',
-                  }}>
-                    {text}
-                  </span>
-                  <span style={{ color: 'var(--color-accent)', fontSize: 44, lineHeight: 1, fontWeight: 900 }}>·</span>
+                  <span className="marquee-text">{text}</span>
+                  <span className="marquee-dot">·</span>
                 </span>
               ))}
             </div>
           ))}
-        </motion.div>
+        </div>
       </div>
 
       {/* ── MANIFESTO ──────────────────────────────────────────── */}
@@ -1025,8 +1012,7 @@ export default function HomePage() {
                 built by people who actually read.
               </p>
               <p className="text-lg leading-relaxed" style={{ color: 'var(--color-ink-2)' }}>
-                Your reading data belongs to you. We don't sell it, we don't train on it,
-                and we don't even look at it.
+                Your reading data belongs to you. We don't sell it, we don't train on it.
               </p>
             </motion.div>
 
@@ -1047,7 +1033,7 @@ export default function HomePage() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.7, ease: EASE_OUT_STRONG }}
-              className="lg:sticky lg:top-28"
+              className="lg:sticky lg:top-28 min-w-0"
             >
               {/* Eyebrow */}
               <div className="flex items-center gap-3 mb-6">
@@ -1062,7 +1048,7 @@ export default function HomePage() {
 
               <h2
                 className="font-serif font-bold leading-[1.03] tracking-tight mb-6"
-                style={{ color: 'var(--color-ink)', fontSize: 'clamp(2.6rem, 5vw, 4.5rem)' }}
+                style={{ color: 'var(--color-ink)', fontSize: 'clamp(2rem, 7vw, 4.5rem)' }}
               >
                 Every book.{' '}
                 <em style={{ color: 'var(--color-accent)', fontStyle: 'italic' }}>Including</em>{' '}
@@ -1141,6 +1127,7 @@ export default function HomePage() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.75, ease: EASE_OUT_STRONG, delay: 0.1 }}
+              className="min-w-0"
             >
               <LibraryMockup />
             </motion.div>
@@ -1154,24 +1141,26 @@ export default function HomePage() {
           ══════════════════════════════════════════════════════ */}
       <section style={{ backgroundColor: 'var(--color-canvas)' }}>
         <div className="container-mobile py-24 sm:py-32">
-          <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+          <div className="grid lg:grid-cols-2 lg:grid-rows-2 gap-12 lg:gap-x-16 lg:gap-y-8">
 
-            {/* Left — chat mockup */}
+            {/* Left — chat mockup (spans 2 rows on desktop, order-2 on mobile) */}
             <motion.div
               initial={{ opacity: 0, y: 32 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.75, ease: EASE_OUT_STRONG }}
+              className="min-w-0 order-2 lg:order-1 lg:row-span-2 lg:self-start"
             >
               <BuddiesChatMockup />
             </motion.div>
 
-            {/* Right — headline + feature cards */}
+            {/* Right top — headline + body (order-1 on mobile) */}
             <motion.div
               initial={{ opacity: 0, y: 24 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.7, ease: EASE_OUT_STRONG, delay: 0.1 }}
+              className="min-w-0 order-1 lg:order-2"
             >
               {/* Eyebrow */}
               <div className="flex items-center gap-3 mb-6">
@@ -1186,7 +1175,7 @@ export default function HomePage() {
 
               <h2
                 className="font-serif font-bold leading-[1.03] tracking-tight mb-6"
-                style={{ color: 'var(--color-ink)', fontSize: 'clamp(2.6rem, 5vw, 4.5rem)' }}
+                style={{ color: 'var(--color-ink)', fontSize: 'clamp(2rem, 7vw, 4.5rem)' }}
               >
                 The{' '}
                 <em style={{ color: 'var(--color-accent-teal)', fontStyle: 'italic' }}>group chat</em>
@@ -1197,19 +1186,25 @@ export default function HomePage() {
               </h2>
 
               <p
-                className="text-lg leading-relaxed mb-10"
+                className="text-lg leading-relaxed"
                 style={{ color: 'var(--color-ink-2)', maxWidth: 460 }}
               >
                 Pick a book. Invite a friend (or three). Reactions thread by chapter
                 and unlock as you both reach them — so no one accidentally spoils the twist.
               </p>
+            </motion.div>
 
-              {/* Feature cards */}
+            {/* Right bottom — feature cards (order-3 on mobile) */}
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.7, ease: EASE_OUT_STRONG, delay: 0.15 }}
+              className="min-w-0 order-3 lg:order-3"
+            >
               <div className="grid grid-cols-2 gap-4">
                 {/* Spoiler-safe */}
-                <div
-                  className="zine-card shadow-zine-accent-sm p-4"
-                >
+                <div className="zine-card shadow-zine-accent-sm p-4">
                   <div className="flex items-center gap-3 mb-2">
                     <div
                       className="flex items-center justify-center flex-shrink-0"
@@ -1233,9 +1228,7 @@ export default function HomePage() {
                 </div>
 
                 {/* Shared highlights */}
-                <div
-                  className="zine-card shadow-zine-teal-sm p-4"
-                >
+                <div className="zine-card shadow-zine-teal-sm p-4">
                   <div className="flex items-center gap-3 mb-2">
                     <div
                       className="flex items-center justify-center flex-shrink-0"
@@ -1286,7 +1279,7 @@ export default function HomePage() {
             </div>
             <h2
               className="font-serif font-bold leading-[1.03] tracking-tight"
-              style={{ color: 'var(--color-ink)', fontSize: 'clamp(2.6rem, 5vw, 4.5rem)' }}
+              style={{ color: 'var(--color-ink)', fontSize: 'clamp(2rem, 7vw, 4.5rem)' }}
             >
               Small features.{' '}
               <em style={{ color: 'var(--color-accent)', fontStyle: 'italic' }}>Big rituals.</em>
@@ -1545,7 +1538,7 @@ export default function HomePage() {
               </div>
               <h2
                 className="font-serif font-bold leading-[1.03] tracking-tight"
-                style={{ color: 'var(--color-ink)', fontSize: 'clamp(2.4rem, 5vw, 4.2rem)' }}
+                style={{ color: 'var(--color-ink)', fontSize: 'clamp(2rem, 7vw, 4.2rem)' }}
               >
                 Ring the bell.
                 <br />
@@ -1560,14 +1553,14 @@ export default function HomePage() {
             </p>
           </motion.div>
 
-          {/* 4 book cards */}
+          {/* book cards — 2 cols mobile, 5 cols desktop */}
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 lg:gap-5 lg:max-w-7xl mx-auto">
             {[
-              { title: 'The Tainted Cup', author: 'Robert Jackson Bennett', cover: '#142D4A', days: 19, date: 'JUN 3',  rotate: -1.5, shadow: 'var(--color-accent)'        },
-              { title: 'James',           author: 'Percival Everett',        cover: '#120E08', days: 33, date: 'JUN 17', rotate:  1,   shadow: '#1B2A4A', spine: '#C9A84C' },
-              { title: 'The Ministry of Time', author: 'Kaliane Bradley',   cover: '#2E1040', days: 47, date: 'JUL 1',  rotate: -1,   shadow: 'var(--color-accent)'        },
-              { title: 'Funny Story',     author: 'Emily Henry',             cover: '#241C0A', days: 60, date: 'JUL 14', rotate:  1.5, shadow: '#1B2A4A'                    },
-              { title: 'Funny Story',     author: 'Emily Henry',             cover: '#241C0A', days: 60, date: 'JUL 14', rotate:  0, shadow: '#1B2A4A'                    },
+              { title: 'The Tainted Cup',      author: 'Robert Jackson Bennett', cover: '#142D4A', days: 19, date: 'JUN 3',  rotate: -1.5, shadow: 'var(--color-accent)'        },
+              { title: 'James',                author: 'Percival Everett',        cover: '#120E08', days: 33, date: 'JUN 17', rotate:  1,   shadow: '#1B2A4A', spine: '#C9A84C' },
+              { title: 'The Ministry of Time', author: 'Kaliane Bradley',        cover: '#2E1040', days: 47, date: 'JUL 1',  rotate: -1,   shadow: 'var(--color-accent)'        },
+              { title: 'Funny Story',          author: 'Emily Henry',             cover: '#241C0A', days: 60, date: 'JUL 14', rotate:  1.5, shadow: '#1B2A4A'                    },
+              { title: 'All Fours',            author: 'Miranda July',            cover: '#3A1A2E', days: 74, date: 'JUL 28', rotate: -0.5, shadow: 'var(--color-accent)'        },
             ].map((book, i) => (
               <motion.div
                 key={book.title}
@@ -1576,6 +1569,7 @@ export default function HomePage() {
                 viewport={{ once: true }}
                 transition={{ duration: 0.6, ease: EASE_OUT_STRONG, delay: i * 0.07 }}
                 style={{ rotate: `${book.rotate}deg` }}
+                className={i === 4 ? 'hidden lg:block' : ''}
               >
                 <div
                   style={{
@@ -1825,6 +1819,7 @@ export default function HomePage() {
         </div>
       </section>
 
+      <SiteFooter />
     </div>
   )
 }

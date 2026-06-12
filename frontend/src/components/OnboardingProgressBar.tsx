@@ -17,7 +17,7 @@ export default function OnboardingProgressBar() {
   if (pathname !== '/onboarding') return null
 
   return (
-    <div style={{ backgroundColor: 'var(--color-ink)', borderBottom: '2px solid var(--color-ink)' }}>
+    <div className="hidden md:block" style={{ backgroundColor: 'var(--color-ink)', borderBottom: '2px solid var(--color-ink)' }}>
       <div
         className="container-mobile"
         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 48 }}

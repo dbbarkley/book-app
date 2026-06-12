@@ -28,12 +28,9 @@ export default function Navigation() {
   const desktopLinks = isAuthenticated ? [
     { href: '/dashboard',         label: 'Home'     },
     { href: '/library',           label: 'Library'  },
-    { href: '/discover',          label: 'Discover' },
     { href: '/reading-buddy',     label: 'Buddies'  },
     { href: `/users/${user?.id}`, label: 'Profile'  },
-  ] : [
-    { href: '/discover', label: 'Discover' },
-  ]
+  ] : []
 
   return (
     <>

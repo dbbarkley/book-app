@@ -111,7 +111,7 @@ function StepUpload({
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
       {/* Instructions */}
-      <div style={{ border: '1.5px dashed var(--color-ink-3)', borderRadius: 10, padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div className="border-0 p-0 sm:border sm:border-dashed sm:p-5 sm:rounded-[10px]" style={{ borderColor: 'var(--color-ink-3)', display: 'flex', flexDirection: 'column', gap: 14 }}>
 
         <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
           <Info size={14} style={{ color: 'var(--color-ink-3)', flexShrink: 0, marginTop: 2 }} />
