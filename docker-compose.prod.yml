@@ -32,6 +32,8 @@ services:
       context: ./backend
       dockerfile: Dockerfile
       target: production
+    volumes:
+      - imports_tmp:/app/tmp/imports
     environment:
       RAILS_ENV: production
       DATABASE_HOST: db
@@ -61,6 +63,8 @@ services:
       context: ./backend
       dockerfile: Dockerfile
       target: production
+    volumes:
+      - imports_tmp:/app/tmp/imports
     environment:
       RAILS_ENV: production
       DATABASE_HOST: db
@@ -122,3 +126,4 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  imports_tmp:
