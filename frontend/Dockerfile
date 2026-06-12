@@ -23,12 +23,15 @@ RUN cd frontend && npm ci
 FROM node:20-alpine AS builder
 WORKDIR /app
 
+# NEXT_PUBLIC_* vars must be present at build time — they get inlined by webpack
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+ENV NEXT_TELEMETRY_DISABLED=1
+
 COPY --from=deps /app/shared/node_modules ./shared/node_modules
 COPY --from=deps /app/frontend/node_modules ./frontend/node_modules
 COPY shared/ ./shared/
 COPY frontend/ ./frontend/
-
-ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN cd frontend && npm run build
 
