@@ -19,16 +19,16 @@ jobs:
           key: ${{ secrets.DROPLET_SSH_KEY }}
           script: |
             set -e
-            cd /opt/book-app
+            cd /opt/wellread
 
             echo "Pulling latest code..."
             git pull origin main
 
             echo "Building images..."
-            docker compose -f docker-compose.prod.yml build
+            docker compose -f docker-compose.prod.yml --env-file .env.prod build
 
             echo "Restarting services..."
-            docker compose -f docker-compose.prod.yml up -d
+            docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
 
             echo "Removing old images..."
             docker image prune -f
