@@ -10,6 +10,7 @@ module Api
         :author_works, :genre, :catalog_search, :catalog_bulk_upsert,
         :search, :external_search, :isbn_search
       ]
+      before_action :verify_internal_token, only: [:catalog_bulk_upsert]
       # Disable Rails ParamsWrapper so POST bodies are accessible as flat params
       # (e.g. params[:title]) instead of being nested under params[:book].
       wrap_parameters false
@@ -1092,6 +1093,14 @@ module Api
         end
       rescue ArgumentError
         nil
+      end
+
+      def verify_internal_token
+        expected = ENV['INTERNAL_API_SECRET']
+        provided = request.headers['X-Internal-Token']
+        unless expected.present? && ActiveSupport::SecurityUtils.secure_compare(provided.to_s, expected)
+          render json: { error: 'Forbidden' }, status: :forbidden
+        end
       end
 
       def strip_html(text)

@@ -2,7 +2,7 @@ module Api
   module V1
     class UsersController < BaseController
       include Authenticable
-      before_action :authenticate_user!, except: [:show, :stats]
+      before_action :authenticate_user!, except: [:show]
       before_action :set_user, only: [:show, :update, :profile, :following, :followers, :library, :stats, :genre_books, :friends]
 
       def show
@@ -364,11 +364,10 @@ module Api
           display_name: user.display_name,
           bio: user.bio,
           avatar_url: user.avatar_url_with_attachment,
-          zipcode: user.zipcode,
           created_at: user.created_at
         }
 
-        # Add private fields only when serializing the current user's own profile
+        # Private fields — only returned when a user requests their own profile
         if user == current_user
           favourite_author_ids = user.preferences['author_ids'] || []
           favourite_authors = favourite_author_ids.any? ?
@@ -376,9 +375,10 @@ module Api
                   .select(:id, :name)
                   .map { |a| { id: a.id, name: a.name } } : []
 
-          data[:favourite_authors]      = favourite_authors
-          data[:onboarding_completed]   = user.onboarding_completed
-          data[:reading_streak]         = user.reading_streak.to_i
+          data[:zipcode]              = user.zipcode
+          data[:favourite_authors]    = favourite_authors
+          data[:onboarding_completed] = user.onboarding_completed
+          data[:reading_streak]       = user.reading_streak.to_i
           data[:preferences] = {
             milestones_viewed: user.preferences['milestones_viewed'] || [],
             reading_goal: user.preferences['reading_goal']

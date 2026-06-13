@@ -15,6 +15,7 @@ class UserBook < ApplicationRecord
   belongs_to :book
   belongs_to :work, optional: true
   has_many :book_notes, dependent: :destroy
+  has_many :user_genre_stat_books, dependent: :destroy
 
   # Scopes
   scope :to_read, -> { where(status: 'to_read') }

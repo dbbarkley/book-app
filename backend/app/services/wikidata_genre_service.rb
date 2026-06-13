@@ -100,7 +100,7 @@ class WikidataGenreService
 
     request = Net::HTTP::Get.new(uri)
     request['Accept']     = 'application/sparql-results+json'
-    request['User-Agent'] = 'Libraio/1.0 (book tracking app; contact@libraio.app)'
+    request['User-Agent'] = 'WellRead/1.0 (book tracking app; contact@getwellread.com)'
 
     response = http.request(request)
     return nil unless response.is_a?(Net::HTTPSuccess)

@@ -17,7 +17,7 @@ module Authenticable
     token = extract_token_from_header
     return nil unless token
 
-    decoded_token = JwtService.decode(token)
+    decoded_token = JwtService.decode_access(token)
     return nil unless decoded_token
 
     @current_user = User.find_by(id: decoded_token[:user_id])

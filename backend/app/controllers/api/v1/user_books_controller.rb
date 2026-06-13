@@ -1,7 +1,7 @@
 module Api
   module V1
     class UserBooksController < BaseController
-      before_action :set_user_book, only: [:show, :update]
+      before_action :set_user_book, only: [:show, :update, :destroy]
 
       # GET /api/v1/user/books
       def index
@@ -117,6 +117,12 @@ module Api
         render json: { user_book: serialize_user_book(user_book) }, status: :created
       end
 
+      # DELETE /api/v1/user/books/:id
+      def destroy
+        @user_book.destroy!
+        head :no_content
+      end
+
       # PATCH /api/v1/user/books/:book_id
       def update
         update_params = user_book_params
@@ -176,9 +182,7 @@ module Api
           :review,
           :notes,
           :dnf_reason,
-          :dnf_page,
-          :started_at,
-          :finished_at
+          :dnf_page
         )
       end
 

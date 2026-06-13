@@ -11,12 +11,24 @@
  */
 
 import { useEffect, useRef } from 'react'
-import { useAuth } from '@book-app/shared'
+import { useAuth, useAuthStore } from '@book-app/shared'
 
 export default function AuthInitializer() {
-  const { token, refreshToken, isAuthenticated } = useAuth()
+  const { token, doTokenRefresh, isAuthenticated } = useAuth()
+  const hasHydrated = useAuthStore(s => s._hasHydrated)
   const refreshIntervalRef = useRef<NodeJS.Timeout>()
-  const lastRefreshRef = useRef<number>(0)
+  const lastRefreshRef = useRef<number>(Date.now())
+
+  // Sync a non-sensitive session cookie so Next.js middleware can gate
+  // protected routes server-side without touching localStorage.
+  useEffect(() => {
+    if (!hasHydrated) return
+    if (isAuthenticated) {
+      document.cookie = `session=1; Path=/; SameSite=Strict; Max-Age=${90 * 24 * 60 * 60}`
+    } else {
+      document.cookie = 'session=; Path=/; SameSite=Strict; Max-Age=0'
+    }
+  }, [isAuthenticated, hasHydrated])
 
   // Refresh token periodically (every 7 days) to keep it fresh
   // Token expires after 30 days, so this ensures continuous sessions
@@ -41,7 +53,7 @@ export default function AuthInitializer() {
       
       lastRefreshRef.current = now
       try {
-        await refreshToken()
+        await doTokenRefresh()
       } catch (error) {
         console.error('Failed to refresh token:', error)
       }
@@ -58,7 +70,7 @@ export default function AuthInitializer() {
         clearInterval(refreshIntervalRef.current)
       }
     }
-  }, [isAuthenticated, token, refreshToken])
+  }, [isAuthenticated, token, doTokenRefresh])
 
   // Refresh token when app comes back into focus
   useEffect(() => {
@@ -73,7 +85,7 @@ export default function AuthInitializer() {
 
         if (timeSinceLastRefresh > ONE_HOUR) {
           lastRefreshRef.current = now
-          refreshToken().catch((error) => {
+          doTokenRefresh().catch((error) => {
             console.error('Failed to refresh token on visibility change:', error)
           })
         }
@@ -84,7 +96,7 @@ export default function AuthInitializer() {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
-  }, [isAuthenticated, token, refreshToken])
+  }, [isAuthenticated, token, doTokenRefresh])
 
   // This component doesn't render anything
   return null

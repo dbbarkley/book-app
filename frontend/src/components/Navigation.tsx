@@ -25,9 +25,12 @@ export default function Navigation() {
     return pathname === href || pathname.startsWith(href + '/')
   }
 
+  const isLanding = pathname === '/'
+
   const desktopLinks = isAuthenticated ? [
     { href: '/dashboard',         label: 'Home'     },
     { href: '/library',           label: 'Library'  },
+    { href: '/discover',          label: 'Discover' },
     { href: '/reading-buddy',     label: 'Buddies'  },
     { href: `/users/${user?.id}`, label: 'Profile'  },
   ] : []
@@ -80,8 +83,8 @@ export default function Navigation() {
               >Beta</span>
             </Link>
 
-            {/* Desktop nav links — hidden on mobile and during onboarding */}
-            {!isOnboarding && (
+            {/* Desktop nav links — hidden on mobile, during onboarding, and on the landing page */}
+            {!isOnboarding && !isLanding && (
               <div className="hidden md:flex items-center gap-8 flex-1 justify-center">
                 {desktopLinks.map((link) => (
                   <Link

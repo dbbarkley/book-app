@@ -34,8 +34,10 @@ services:
       target: production
     volumes:
       - imports_tmp:/app/tmp/imports
+      - active_storage:/app/storage
     environment:
       RAILS_ENV: production
+      BACKEND_URL: ${BACKEND_URL}
       DATABASE_HOST: db
       DATABASE_USERNAME: ${DB_USERNAME}
       DATABASE_PASSWORD: ${DB_PASSWORD}
@@ -145,3 +147,4 @@ volumes:
   postgres_data:
   redis_data:
   imports_tmp:
+  active_storage:

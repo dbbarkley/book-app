@@ -120,7 +120,10 @@ function writeToCatalog(items: any[]): void {
 
   fetch(`${RAILS_API}/books/catalog_bulk_upsert`, {
     method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Internal-Token': process.env.INTERNAL_API_SECRET || '',
+    },
     body:    JSON.stringify({ books, source: 'google_books' }),
   }).catch((err) => console.warn('[catalog write-through]', err))
 }

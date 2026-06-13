@@ -6,7 +6,11 @@ class JwtService
     @secret_key ||= begin
       key = Rails.application.credentials.secret_key_base
       key ||= ENV['SECRET_KEY_BASE']
-      key ||= 'development_secret_key_change_in_production'
+      key ||= if Rails.env.development? || Rails.env.test?
+                'development_secret_key_not_for_production'
+              else
+                raise 'SECRET_KEY_BASE must be set in production/staging environments'
+              end
       key
     end
   end
@@ -23,14 +27,22 @@ class JwtService
 
   def self.encode(payload, exp = ACCESS_TOKEN_EXP.from_now)
     payload[:exp] = exp.to_i
-    JWT.encode(payload, secret_key)
+    JWT.encode(payload, secret_key, 'HS256')
   end
 
   def self.decode(token)
-    decoded = JWT.decode(token, secret_key)[0]
+    decoded = JWT.decode(token, secret_key, true, algorithms: ['HS256'])[0]
     HashWithIndifferentAccess.new(decoded)
   rescue JWT::DecodeError, JWT::ExpiredSignature
     nil
+  end
+
+  # Returns decoded payload or nil if token is invalid or not an access token
+  def self.decode_access(token)
+    decoded = decode(token)
+    return nil unless decoded
+    return nil unless decoded[:type] == 'access'
+    decoded
   end
 
   # Returns decoded payload or nil if token is invalid or not a refresh token

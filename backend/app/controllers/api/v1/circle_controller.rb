@@ -1,6 +1,6 @@
 module Api
   module V1
-    class CircleController < ApplicationController
+    class CircleController < Api::V1::BaseController
       before_action :authenticate_user!
 
       # GET /api/v1/circle/trending

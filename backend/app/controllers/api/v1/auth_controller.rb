@@ -1,26 +1,65 @@
 module Api
   module V1
     class AuthController < BaseController
-      skip_before_action :authenticate_user!, only: [:register, :login, :refresh, :callback, :facebook, :forgot_password, :reset_password]
+      skip_before_action :authenticate_user!, only: [:register, :login, :refresh, :callback, :facebook, :exchange, :forgot_password, :reset_password]
 
-      # Generic callback for all OmniAuth providers
+      # Generic callback for all OmniAuth providers.
+      # Issues a short-lived one-time code stored in the Rails cache rather than
+      # putting the JWT directly in the redirect URL (which would expose it in
+      # browser history, server logs, and Referer headers).
       def callback
         auth = request.env['omniauth.auth']
         user = User.from_omniauth(auth)
 
+        frontend_url = ENV['FRONTEND_URL'] || 'http://localhost:3002'
+
         if user.persisted?
-          token = JwtService.encode_access(user.id)
-          frontend_url = ENV['FRONTEND_URL'] || 'http://localhost:3002'
-          redirect_to "#{frontend_url}/auth/callback?token=#{token}"
+          access_token  = JwtService.encode_access(user.id)
+          refresh_token = JwtService.encode_refresh(user.id)
+          code = SecureRandom.urlsafe_base64(32)
+          Rails.cache.write(
+            "oauth_code:#{code}",
+            { user_id: user.id, access_token: access_token, refresh_token: refresh_token }.to_json,
+            expires_in: 30.seconds
+          )
+          redirect_to "#{frontend_url}/auth/callback?code=#{code}"
         else
           error_msg = user.errors.full_messages.join(', ')
-          frontend_url = ENV['FRONTEND_URL'] || 'http://localhost:3002'
           redirect_to "#{frontend_url}/login?error=#{CGI.escape(error_msg)}"
         end
       end
 
       def facebook
         callback
+      end
+
+      # POST /api/v1/auth/exchange
+      # Redeems a one-time OAuth code (issued by #callback above) for a full
+      # token pair. The code is consumed on first use and expires after 30 seconds.
+      def exchange
+        code = params[:code].to_s.strip
+        return render json: { error: 'Code is required' }, status: :bad_request if code.blank?
+
+        cache_key = "oauth_code:#{code}"
+        raw       = Rails.cache.read(cache_key)
+        return render json: { error: 'Code is invalid or has expired' }, status: :unauthorized unless raw
+
+        Rails.cache.delete(cache_key)
+
+        data = JSON.parse(raw)
+        user = User.find_by(id: data['user_id'])
+        return render json: { error: 'Code is invalid or has expired' }, status: :unauthorized unless user
+
+        set_refresh_cookie(data['refresh_token'])
+        render json: {
+          user:          serialize_user(user),
+          token:         data['access_token'],
+          access_token:  data['access_token'],
+          refresh_token: data['refresh_token'],
+        }, status: :ok
+      rescue => e
+        Rails.logger.error("[auth/exchange] #{e.message}")
+        render json: { error: 'Exchange failed' }, status: :internal_server_error
       end
 
       def register
@@ -45,25 +84,29 @@ module Api
       end
 
       def logout
+        clear_refresh_cookie
         render json: { message: 'Logged out successfully' }, status: :ok
       end
 
       # POST /api/v1/auth/refresh
-      # Expects the 90-day refresh token in the Authorization header.
-      # Returns a rotated token pair — both tokens are replaced so the
-      # 90-day window resets on every successful refresh.
+      # Accepts the 90-day refresh token either via Authorization header (mobile)
+      # or via the httpOnly refresh_token cookie (web). On success, rotates both
+      # tokens and resets the cookie so the 90-day window keeps rolling.
       def refresh
         raw    = extract_token_from_header
+        raw  ||= cookies[:refresh_token].presence
         result = JwtService.rotate(raw)
 
         if result
           access_token, refresh_token = result
+          set_refresh_cookie(refresh_token)
           render json: {
             token:         access_token,   # kept for backward compat
             access_token:  access_token,
             refresh_token: refresh_token,
           }, status: :ok
         else
+          clear_refresh_cookie
           render json: { error: 'Invalid or expired refresh token' }, status: :unauthorized
         end
       end
@@ -108,17 +151,37 @@ module Api
       private
 
       # Build the standard login/register response with both token types.
-      # `token` is kept as an alias for access_token for backward compat with
-      # any existing web clients that read response.token.
+      # Sets the httpOnly refresh_token cookie (web) and also includes the
+      # refresh token in the JSON body for mobile clients that use the header.
       def token_response(user)
         access_token  = JwtService.encode_access(user.id)
         refresh_token = JwtService.encode_refresh(user.id)
+        set_refresh_cookie(refresh_token)
         {
           user:          serialize_user(user),
           token:         access_token,
           access_token:  access_token,
           refresh_token: refresh_token,
         }
+      end
+
+      # Sets the refresh token as an httpOnly cookie scoped to the refresh path.
+      # SameSite=None; Secure in production allows the cookie to be sent on
+      # cross-origin requests (e.g. getwellread.com → api.getwellread.com).
+      def set_refresh_cookie(token)
+        is_secure = !Rails.env.development?
+        cookies[:refresh_token] = {
+          value:     token,
+          httponly:  true,
+          secure:    is_secure,
+          same_site: is_secure ? :none : :lax,
+          expires:   90.days.from_now,
+          path:      '/api/v1/auth/refresh'
+        }
+      end
+
+      def clear_refresh_cookie
+        cookies.delete(:refresh_token, path: '/api/v1/auth/refresh')
       end
 
       def user_params

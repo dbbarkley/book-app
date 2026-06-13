@@ -18,9 +18,10 @@ Rails.application.routes.draw do
       post 'auth/reset-password',  to: 'auth#reset_password'
       
       # Social Auth
-      get 'auth/:provider/callback', to: 'auth#callback'
-      get 'auth/facebook/callback', to: 'auth#facebook' # Legacy support
-      get 'auth/failure', to: redirect('http://localhost:3002/login?error=auth_failed')
+      get  'auth/:provider/callback', to: 'auth#callback'
+      get  'auth/facebook/callback',  to: 'auth#facebook' # Legacy support
+      post 'auth/exchange',           to: 'auth#exchange'
+      get  'auth/failure', to: redirect("#{ENV.fetch('FRONTEND_URL', 'http://localhost:3002')}/login?error=auth_failed")
       
       # Users
       # Preferences routes must come BEFORE resources to avoid route conflicts
@@ -121,7 +122,7 @@ Rails.application.routes.draw do
       end
       
       # User Books (shelves, reading progress)
-      resources :user_books, only: [:index, :create, :show, :update], path: 'user/books' do
+      resources :user_books, only: [:index, :create, :show, :update, :destroy], path: 'user/books' do
         get 'by_book/:book_id', on: :collection, action: :show_by_book
         post 'review', on: :member
         patch 'notes', on: :member  # legacy single-note endpoint — kept for compatibility

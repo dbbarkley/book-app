@@ -50,10 +50,10 @@ const SECTIONS = [
     num: '05',
     heading: 'Your rights',
     body: [
-      'Export: email privacy@libraio.com to request a full export of your data. We\'ll send it within 30 days.',
-      'Deletion: email privacy@libraio.com to delete your account. This permanently removes your profile, shelf, notes, and all personal data within 30 days. (Self-service deletion is coming to Settings.)',
+      'Export: email privacy@getwellread.com to request a full export of your data. We\'ll send it within 30 days.',
+      'Deletion: email privacy@getwellread.com to delete your account. This permanently removes your profile, shelf, notes, and all personal data within 30 days. (Self-service deletion is coming to Settings.)',
       'Correction: if any of your data is wrong, you can update most of it directly in Settings, or contact us for anything you can\'t change yourself.',
-      'If you\'re in the EU/UK, you have additional rights under GDPR/UK GDPR: access, portability, restriction, and the right to object. Email privacy@libraio.com to exercise any of these.',
+      'If you\'re in the EU/UK, you have additional rights under GDPR/UK GDPR: access, portability, restriction, and the right to object. Email privacy@getwellread.com to exercise any of these.',
     ],
   },
   {
@@ -184,11 +184,11 @@ export default function PrivacyPage() {
               <p className="text-[14px]" style={{ color: 'var(--color-ink-2)' }}>
                 Email us at{' '}
                 <a
-                  href="mailto:privacy@libraio.com"
+                  href="mailto:privacy@getwellread.com"
                   className="font-bold transition-opacity hover:opacity-60"
                   style={{ color: 'var(--color-ink)', textDecoration: 'underline', textDecorationColor: 'var(--color-accent)', textUnderlineOffset: 3 }}
                 >
-                  privacy@libraio.com
+                  privacy@getwellread.com
                 </a>
               </p>
             </div>

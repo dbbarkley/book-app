@@ -49,6 +49,7 @@ export class ApiClient {
       baseURL: baseUrl,
       headers: { 'Content-Type': 'application/json' },
       timeout: 30000,
+      withCredentials: true,
     })
 
     // Attach access token to every request
@@ -73,9 +74,11 @@ export class ApiClient {
         const isRetry = originalRequest?._retry === true
         const isRefreshEndpoint = originalRequest?.url?.includes('/auth/refresh')
 
-        // If we have a refresh token and this isn't already a retry or the
-        // refresh endpoint itself, attempt a silent token rotation.
-        if (is401 && !isRetry && !isRefreshEndpoint && this._refreshToken) {
+        // Attempt a silent token rotation when we get a 401.
+        // On web, the httpOnly refresh_token cookie is sent automatically via
+        // withCredentials. On mobile, the Authorization header carries the token.
+        const canRefresh = this._refreshToken != null || typeof document !== 'undefined'
+        if (is401 && !isRetry && !isRefreshEndpoint && canRefresh) {
           if (this.isRefreshing) {
             // Another refresh is already running — queue this request
             return new Promise<string>((resolve, reject) => {
@@ -93,7 +96,12 @@ export class ApiClient {
             const { data } = await axios.post(
               `${baseUrl}/auth/refresh`,
               {},
-              { headers: { Authorization: `Bearer ${this._refreshToken}` } }
+              {
+                withCredentials: true, // sends httpOnly cookie on web
+                headers: this._refreshToken
+                  ? { Authorization: `Bearer ${this._refreshToken}` }
+                  : undefined,
+              }
             )
             const newAccess  = data.access_token ?? data.token
             const newRefresh = data.refresh_token ?? this._refreshToken
@@ -200,12 +208,15 @@ export class ApiClient {
   }
 
   async refreshToken() {
-    // Send the refresh token (not the access token) in the Authorization header
-    const response = await this.client.post<{
+    // Use plain axios (not this.client) so the request interceptor doesn't
+    // inject the access token over the refresh token Authorization header.
+    const baseUrl = this.client.defaults.baseURL ?? ''
+    const response = await axios.post<{
       token: string
       access_token: string
       refresh_token: string
-    }>('/auth/refresh', {}, {
+    }>(`${baseUrl}/auth/refresh`, {}, {
+      withCredentials: true,
       headers: this._refreshToken
         ? { Authorization: `Bearer ${this._refreshToken}` }
         : undefined,

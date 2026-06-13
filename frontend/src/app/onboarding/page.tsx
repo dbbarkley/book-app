@@ -633,7 +633,6 @@ export default function OnboardingPage() {
       if (result.success) {
         await refreshUser().catch(() => {})
         router.push('/dashboard')
-        router.refresh()
       }
     } else {
       nextStep()

@@ -73,9 +73,12 @@ module Api
           )
 
           # Store CSV content temporarily (in production, use cloud storage like S3)
-          # For now, we'll pass the CSV content directly to the job
-          # In production: store in S3/GCS and pass the URL
-          temp_path = Rails.root.join('tmp', 'imports', "#{import.id}_#{file.original_filename}")
+          # Sanitize the filename: strip directory components and non-safe characters
+          # to prevent path traversal (e.g. "../../public/evil.html.csv").
+          safe_name = File.basename(file.original_filename.to_s)
+                         .gsub(/[^a-zA-Z0-9._\-]/, '_')
+                         .presence || 'upload.csv'
+          temp_path = Rails.root.join('tmp', 'imports', "#{import.id}_#{safe_name}")
           FileUtils.mkdir_p(temp_path.dirname)
           File.write(temp_path, csv_content)
 

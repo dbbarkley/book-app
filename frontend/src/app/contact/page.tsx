@@ -12,28 +12,28 @@ const CONTACTS = [
     label: 'General',
     heading: 'Say hello.',
     body: 'Questions about the app, feedback, or just want to talk books.',
-    email: 'hello@libraio.com',
+    email: 'hello@getwellread.com',
   },
   {
     icon: Bug,
     label: 'Bug Report',
     heading: 'Found a bug?',
     body: 'Tell us what broke, what you expected to happen, and what device you were on.',
-    email: 'bugs@libraio.com',
+    email: 'bugs@getwellread.com',
   },
   {
     icon: Lock,
     label: 'Privacy',
     heading: 'Data & privacy.',
     body: 'Data export, account deletion, GDPR requests, or anything about how we handle your information.',
-    email: 'privacy@libraio.com',
+    email: 'privacy@getwellread.com',
   },
   {
     icon: Mail,
     label: 'Press',
     heading: 'Working on a story?',
     body: 'Press enquiries, partnerships, or anything else that doesn\'t fit the above.',
-    email: 'press@libraio.com',
+    email: 'press@getwellread.com',
   },
 ]
 

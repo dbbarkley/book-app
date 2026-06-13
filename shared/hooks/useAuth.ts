@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from 'react'
 import { useAuthStore } from '../store/authStore'
+import { apiClient } from '../api/client'
 
 /**
  * Hook for authentication state and actions
@@ -28,17 +29,25 @@ export function useAuth() {
     }
   }, [store._hasHydrated])
 
-  // Initialize auth on mount - fetch user data if we have a token but no user
   useEffect(() => {
-    // Only initialize after hydration is complete
-    if (!isHydrated) {
-      return
-    }
+    if (!isHydrated) return
 
-    // If we have a token and are marked as authenticated but no user data, fetch it
-    if (store.token && store.isAuthenticated && !store.user && !store.loading) {
+    if (store.isAuthenticated && !store.token && !store.user && !store.loading) {
+      // Page reload: isAuthenticated persisted in localStorage but the access token
+      // was not (by design). Attempt a silent rotation using the httpOnly refresh
+      // cookie (web) or the in-memory refresh token (mobile).
+      apiClient.refreshToken()
+        .then((data: any) => {
+          const newAccess  = data.access_token ?? data.token
+          const newRefresh = data.refresh_token ?? null
+          store.setTokens(newAccess, newRefresh)
+          return store.refreshUser()
+        })
+        .catch(() => {
+          store.logout()
+        })
+    } else if (store.token && store.isAuthenticated && !store.user && !store.loading) {
       store.refreshUser().catch(() => {
-        // Token invalid, will be cleared by store
         console.error('Failed to restore user session')
       })
     }
@@ -64,5 +73,6 @@ export function useAuth() {
     logout: store.logout,
     refreshUser: store.refreshUser,
     refreshToken: store.refreshToken,
+    doTokenRefresh: store.doTokenRefresh,
   }
 }

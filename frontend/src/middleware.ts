@@ -1,22 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-/**
- * Middleware to protect internal Next.js API proxy routes.
- *
- * /api/books/* routes proxy to Google Books, Open Library, and NYT APIs.
- * They don't need a valid JWT (the Rails backend handles that separately),
- * but they should only be callable by authenticated users to prevent
- * quota abuse and anonymous scraping.
- *
- * Strategy: require an "Authorization: Bearer <token>" header — the same
- * token the client already holds for Rails API calls. We don't re-validate
- * the JWT here (that's the Rails backend's job); we just verify that a
- * token is present, which is a strong signal the caller is a logged-in user.
- */
+const PROTECTED_PAGES = [
+  '/dashboard',
+  '/library',
+  '/feed',
+  '/reading-buddy',
+  '/recommendations',
+  '/search',
+  '/onboarding',
+  '/users',
+]
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Only guard the book proxy routes
+  // Gate authenticated page routes using the session cookie set by AuthInitializer.
+  // This is a soft UX guard — the real security boundary is the Rails API validating
+  // the JWT on every data request.
+  const isProtectedPage = PROTECTED_PAGES.some(
+    p => pathname === p || pathname.startsWith(`${p}/`)
+  )
+  if (isProtectedPage) {
+    const session = request.cookies.get('session')
+    if (!session?.value) {
+      const loginUrl = new URL('/login', request.url)
+      loginUrl.searchParams.set('next', pathname)
+      return NextResponse.redirect(loginUrl)
+    }
+  }
+
+  // Guard the book proxy routes — require a Bearer token to prevent
+  // quota abuse by anonymous callers.
   if (pathname.startsWith('/api/books/')) {
     const authorization = request.headers.get('Authorization')
     const hasToken =
@@ -34,5 +48,15 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/api/books/:path*'],
+  matcher: [
+    '/api/books/:path*',
+    '/dashboard/:path*',
+    '/library/:path*',
+    '/feed/:path*',
+    '/reading-buddy/:path*',
+    '/recommendations/:path*',
+    '/search/:path*',
+    '/onboarding/:path*',
+    '/users/:path*',
+  ],
 }

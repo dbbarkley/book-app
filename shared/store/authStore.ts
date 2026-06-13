@@ -187,16 +187,18 @@ export const useAuthStore = create<AuthState>()(
     {
       name: 'auth-storage',
       storage: getStorage(),
-      // Only persist the refresh token. The access token is short-lived (15 min)
-      // and will be obtained via silent refresh on the first API call.
+      // Persist only a non-sensitive session flag. The refresh token itself is
+      // NOT stored in localStorage — on web it lives in an httpOnly cookie sent
+      // automatically by the browser; on mobile it is managed by SecureStore
+      // outside this persist layer.
       partialize: (state) => ({
-        refreshToken: state.refreshToken,
+        isAuthenticated: state.isAuthenticated,
       }),
       onRehydrateStorage: () => (state) => {
-        if (state?.refreshToken) {
-          apiClient.setRefreshToken(state.refreshToken)
+        if (state?.isAuthenticated) {
           // Optimistic auth — the first API call will silently exchange the
-          // refresh token for a new access token via the interceptor.
+          // httpOnly cookie (web) or native SecureStore token (mobile) for a
+          // new access token via the interceptor.
           state.isAuthenticated = true
         }
         state?.setHasHydrated(true)

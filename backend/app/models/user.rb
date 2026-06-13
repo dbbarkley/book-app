@@ -134,9 +134,11 @@ class User < ApplicationRecord
   def avatar_url_with_attachment
     if avatar.attached?
       begin
-        # We use localhost:3000 because that's how the browser accesses the backend
-        # even if Rails is running inside Docker.
-        Rails.application.routes.url_helpers.rails_blob_url(avatar, host: 'localhost', port: 3000)
+        host = ENV.fetch('BACKEND_URL', 'http://localhost:3000')
+        uri  = URI.parse(host)
+        opts = { host: uri.host, protocol: uri.scheme }
+        opts[:port] = uri.port if uri.port && ![80, 443].include?(uri.port)
+        Rails.application.routes.url_helpers.rails_blob_url(avatar, **opts)
       rescue
         avatar_url
       end

@@ -17,7 +17,7 @@ Rails.application.configure do
     authentication:       :plain,
     enable_starttls_auto: true,
   }
-  config.action_mailer.default_url_options = { host: ENV.fetch('FRONTEND_URL', 'https://libraio.app') }
+  config.action_mailer.default_url_options = { host: ENV.fetch('FRONTEND_URL', 'https://getwellread.com') }
 
   # Use Redis as the cache store so author_works (and other Rails.cache calls)
   # persist across dynos and survive deploys. Falls back to memory_store if

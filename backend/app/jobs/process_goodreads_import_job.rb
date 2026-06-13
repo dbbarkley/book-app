@@ -146,16 +146,26 @@ class ProcessGoodreadsImportJob < ApplicationJob
 
     status = convert_shelf_to_status(exclusive_shelf, row)
 
+    is_new    = !UserBook.exists?(user: user, book: book)
     user_book = UserBook.find_or_initialize_by(user: user, book: book)
+
+    started = status == 'reading' ? date_added : nil
+
     user_book.assign_attributes(
       status:      status,
       shelf:       status,
       work_id:     work.id,
       rating:      my_rating > 0 ? my_rating : nil,
       total_pages: page_count || book.page_count,
-      started_at:  date_added,
-      finished_at: date_read
+      started_at:  started,
+      finished_at: date_read,
     )
+
+    # Preserve the Goodreads shelf date as created_at for new records so that
+    # "Date Added" sorting reflects when the user shelved the book on Goodreads,
+    # not when they ran the import (which would make all books the same timestamp).
+    user_book.created_at = date_added if is_new && date_added.present?
+
     user_book.save!
 
     # Set cover from ISBN immediately (no network call).

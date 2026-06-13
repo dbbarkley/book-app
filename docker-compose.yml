@@ -40,6 +40,7 @@ services:
     volumes:
       - ./backend:/app
       - bundle_cache:/usr/local/bundle
+      - active_storage:/app/storage
     ports:
       - "${RAILS_PORT:-3000}:3000"
     environment:
@@ -106,4 +107,5 @@ volumes:
   postgres_data:
   redis_data:
   bundle_cache:
+  active_storage:
 
