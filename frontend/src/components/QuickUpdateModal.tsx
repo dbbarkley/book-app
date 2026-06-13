@@ -11,6 +11,7 @@ import {
   useBookNotes,
   useBookReview,
 } from '@book-app/shared/hooks'
+import { useBooksStore } from '@book-app/shared/store/booksStore'
 import type { UserBook, ShelfStatus, Visibility } from '@book-app/shared/types'
 import { BookCoverImage } from './BookCoverImage'
 
@@ -65,6 +66,7 @@ export default function QuickUpdateModal({ userBook, isOpen, onClose, onUpdate }
   const { setVisibility, loading: visibilityLoading }  = useUpdateBookVisibility()
   const { saveNotes,     loading: notesLoading }       = useBookNotes()
   const { saveReview,    loading: reviewLoading }      = useBookReview()
+  const { removeFromShelf } = useBooksStore()
 
   const [status,     setStatus]          = useState<ShelfStatus>(userBook?.status || 'to_read')
   const [visibility, setVisibilityState] = useState<Visibility>(userBook?.visibility || 'public')
@@ -80,8 +82,10 @@ export default function QuickUpdateModal({ userBook, isOpen, onClose, onUpdate }
   const [hoverRating, setHoverRating] = useState<number>(0)
   const [review,     setReview]     = useState(userBook?.review || '')
   const [notes,      setNotes]      = useState(userBook?.notes || '')
+  const [confirmRemove, setConfirmRemove] = useState(false)
+  const [removing,   setRemoving]   = useState(false)
 
-  const isBusy = progressLoading || updateShelfLoading || addShelfLoading || visibilityLoading || notesLoading || reviewLoading
+  const isBusy = progressLoading || updateShelfLoading || addShelfLoading || visibilityLoading || notesLoading || reviewLoading || removing
 
   // Lock body scroll
   useEffect(() => {
@@ -102,8 +106,24 @@ export default function QuickUpdateModal({ userBook, isOpen, onClose, onUpdate }
       setRating(userBook.rating ?? 0)
       setReview(userBook.review || '')
       setNotes(userBook.notes || '')
+      setConfirmRemove(false)
     }
   }, [isOpen, userBook])
+
+  const handleRemove = async () => {
+    if (!confirmRemove) { setConfirmRemove(true); return }
+    setRemoving(true)
+    try {
+      await removeFromShelf(userBook.id)
+      onUpdate?.()
+      onClose()
+    } catch (err) {
+      console.error('Failed to remove book:', err)
+    } finally {
+      setRemoving(false)
+      setConfirmRemove(false)
+    }
+  }
 
   // ── Save ───────────────────────────────────────────────────────────────────
 
@@ -854,7 +874,8 @@ export default function QuickUpdateModal({ userBook, isOpen, onClose, onUpdate }
 
                   <button
                     onClick={onClose}
-                    className="font-bold uppercase tracking-[0.15em] transition-opacity hover:opacity-70 flex-shrink-0"
+                    disabled={isBusy}
+                    className="font-bold uppercase tracking-[0.15em] transition-opacity hover:opacity-70 flex-shrink-0 disabled:opacity-40"
                     style={{
                       border: '2px solid var(--color-ink)',
                       borderRadius: 999,
@@ -866,6 +887,25 @@ export default function QuickUpdateModal({ userBook, isOpen, onClose, onUpdate }
                   >
                     Cancel
                   </button>
+
+                  {userBook.id > 0 && (
+                    <button
+                      onClick={handleRemove}
+                      disabled={isBusy}
+                      className="font-bold uppercase tracking-[0.15em] transition-all hover:opacity-80 flex-shrink-0 disabled:opacity-40"
+                      style={{
+                        border: `2px solid ${confirmRemove ? '#b91c1c' : 'var(--color-rim)'}`,
+                        borderRadius: 999,
+                        padding: '15px 16px',
+                        fontSize: 12,
+                        color: confirmRemove ? '#fff' : 'var(--color-ink-3)',
+                        backgroundColor: confirmRemove ? '#b91c1c' : 'transparent',
+                      }}
+                      aria-label="Remove from library"
+                    >
+                      {removing ? 'Removing…' : confirmRemove ? 'Sure?' : 'Remove'}
+                    </button>
+                  )}
                 </div>
 
               </motion.div>

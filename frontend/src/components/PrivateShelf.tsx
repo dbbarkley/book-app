@@ -85,9 +85,10 @@ export default function PrivateShelf({ books, loading, onUpdate }: PrivateShelfP
           </div>
           </div>
 
-          {/* Count pill */}
-          <span
-            className="flex-shrink-0 text-[11px] font-bold uppercase tracking-[0.15em]"
+          {/* Count pill — links to full shelf view */}
+          <Link
+            href="/library/private"
+            className="flex-shrink-0 text-[11px] font-bold uppercase tracking-[0.15em] transition-opacity hover:opacity-75"
             style={{
               backgroundColor: 'var(--color-accent-yellow)',
               color: 'var(--color-ink)',
@@ -96,8 +97,8 @@ export default function PrivateShelf({ books, loading, onUpdate }: PrivateShelfP
               padding: '10px 18px',
             }}
           >
-            {books.length} Book{books.length !== 1 ? 's' : ''}
-          </span>
+            {books.length} Book{books.length !== 1 ? 's' : ''} →
+          </Link>
         </div>
 
         {/* Books carousel */}

@@ -1,5 +1,7 @@
 'use client'
 
+import Link from 'next/link'
+
 interface ReadingGoalCardProps {
   goal: number | null
   completed: number
@@ -85,13 +87,28 @@ export default function ReadingGoalCard({ goal, completed, onEdit }: ReadingGoal
             <p className="text-[13px] leading-snug mb-4" style={{ color: 'var(--color-ink-2)' }}>
               {paceMsg}
             </p>
-            <button
-              onClick={onEdit}
-              className="text-[11px] font-bold uppercase tracking-[0.15em] transition-opacity hover:opacity-60 flex items-center gap-1"
-              style={{ color: 'var(--color-ink)' }}
-            >
-              Edit Goal →
-            </button>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={onEdit}
+                className="text-[11px] font-bold uppercase tracking-[0.15em] transition-opacity hover:opacity-70"
+                style={{
+                  border: '2px solid var(--color-ink)',
+                  borderRadius: 999,
+                  padding: '7px 14px',
+                  color: 'var(--color-ink)',
+                  backgroundColor: 'transparent',
+                }}
+              >
+                Edit Goal →
+              </button>
+              <Link
+                href="/library/year"
+                className="text-[11px] font-bold uppercase tracking-[0.15em] transition-opacity hover:opacity-60"
+                style={{ color: 'var(--color-accent)' }}
+              >
+                {completed} Completed →
+              </Link>
+            </div>
           </div>
         </div>
       ) : (

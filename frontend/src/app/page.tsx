@@ -10,7 +10,6 @@ import {
   BookOpen, Search, Lock, XCircle, MessageCircle, Bookmark, Send,
   Check, ArrowRight, Quote, Twitter, Instagram, Mail,
 } from 'lucide-react'
-import BookCurtain from '@/components/BookCurtain'
 import ScrollSpine from '@/components/landing/ScrollSpine'
 import ClipRevealSection from '@/components/landing/ClipRevealSection'
 import ChapterHeading from '@/components/landing/ChapterHeading'
@@ -549,9 +548,6 @@ export default function HomePage() {
 
   return (
     <div className="min-h-[100dvh] overflow-x-hidden">
-      {/* ── PROLOGUE — Cinematic intro ─────────────────────────── */}
-      <BookCurtain />
-
       {/* ═══════════════════════════════════════════════════════════
           HERO — Asymmetric split with book cover mosaic
           Left: copy (left-aligned per design-taste skill)

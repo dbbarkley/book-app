@@ -5,11 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Lock, Eye, EyeOff, ArrowRight } from 'lucide-react'
 import { useAuth } from '@/shared/hooks/useAuth'
-import { useCurtain } from '@/context/CurtainContext'
 import { isValidEmail } from '@/shared/utils/validation'
-
-const MIN_CURTAIN_MS = 1400
-const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
 
 const GOOGLE_URL   = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1'}/auth/google_oauth2`
 const FACEBOOK_URL = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1'}/auth/facebook`
@@ -17,7 +13,6 @@ const FACEBOOK_URL = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:300
 export default function LoginPage() {
   const router  = useRouter()
   const { login, loading } = useAuth()
-  const curtain = useCurtain()
 
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
@@ -39,14 +34,10 @@ export default function LoginPage() {
     e.preventDefault()
     if (!validate()) return
     setError(null)
-    curtain.show()
     try {
-      await Promise.all([login(email, password), sleep(MIN_CURTAIN_MS)])
-      curtain.open()
+      await login(email, password)
       router.push('/dashboard')
-      router.refresh()
     } catch (err: any) {
-      curtain.dismiss()
       setError(
         err?.response?.data?.error ||
         err?.response?.data?.errors?.[0] ||

@@ -182,7 +182,7 @@ function ReadingGoalMobile() {
       <BottomSheet>
         <MSheetHeader eyebrow="The Pact · annual pledge" title={<>Your <em style={{ color: M.clay }}>{year}</em> goal.</>} />
         <div style={{ flex: 1, overflowY: 'auto', padding: '18px 22px 24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
-          <p style={{ fontSize: 13, color: M.ink2, lineHeight: 1.5, margin: 0 }}>You're <strong>{completed}</strong> books in. Adjust if life looks different now — no penalty.</p>
+          <p style={{ fontSize: 13, color: M.ink2, lineHeight: 1.5, margin: 0 }}>You're <strong>{completed}</strong> books in. Adjust if life looks different now.</p>
           {/* Stepper */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, padding: '18px 20px', backgroundColor: M.bg, border: `2px solid ${M.ink}`, borderRadius: 16, boxShadow: `4px 4px 0 ${M.clay}` }}>
             <button onClick={() => setGoal(g => Math.max(1, g - step))} style={{ width: 48, height: 48, borderRadius: 12, backgroundColor: M.paper, border: `2px solid ${M.ink}`, color: M.ink, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `3px 3px 0 ${M.ink}`, flexShrink: 0, fontSize: 24, fontWeight: 700 }}>−</button>

@@ -104,7 +104,8 @@ export default function BooksLibraryPage() {
     refreshPrivateLibrary()
   }
 
-  const readingBooks = useMemo(() => sortLibraryBooks(groupedLibrary?.reading || [], sortKey), [groupedLibrary?.reading, sortKey])
+  const privateReadingBooks = useMemo(() => privateBooks.filter(b => b.status === 'reading'), [privateBooks])
+  const readingBooks = useMemo(() => sortLibraryBooks([...(groupedLibrary?.reading || []), ...privateReadingBooks], sortKey), [groupedLibrary?.reading, privateReadingBooks, sortKey])
   const toReadBooks  = useMemo(() => sortLibraryBooks(groupedLibrary?.to_read || [], sortKey), [groupedLibrary?.to_read, sortKey])
   const readBooks    = useMemo(() => sortLibraryBooks(groupedLibrary?.read || [], sortKey), [groupedLibrary?.read, sortKey])
   const dnfBooks     = useMemo(() => sortLibraryBooks(groupedLibrary?.dnf || [], sortKey), [groupedLibrary?.dnf, sortKey])

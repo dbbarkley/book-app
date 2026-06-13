@@ -368,7 +368,7 @@ export default function GoalSettingModal({
                 />
 
                 {/* Dev-only celebration preview toggle */}
-                {process.env.NODE_ENV === 'development' && (
+                {/* {process.env.NODE_ENV === 'development' && (
                   <button
                     onClick={() => setShowCelebration(s => !s)}
                     className="absolute bottom-2 right-5 z-10 text-[9px] font-bold uppercase tracking-widest opacity-30 hover:opacity-70 transition-opacity"
@@ -376,12 +376,12 @@ export default function GoalSettingModal({
                   >
                     [preview celebration]
                   </button>
-                )}
+                )} */}
 
                 {/* Close button */}
                 <button
                   onClick={onClose}
-                  className="absolute top-5 right-5 flex items-center justify-center z-10 transition-opacity hover:opacity-70"
+                  className="absolute top-5 right-5 flex items-center justify-center z-20 transition-opacity hover:opacity-70"
                   style={{
                     width: 36, height: 36,
                     border: '2px solid var(--color-ink)',
@@ -428,7 +428,7 @@ export default function GoalSettingModal({
                 {/* Contextual message */}
                 <p className="text-[14px] leading-snug relative z-10" style={{ color: 'var(--color-ink-2)' }}>
                   {hasGoal
-                    ? <>You&apos;re <strong style={{ color: 'var(--color-ink)' }}>{completedThisYear}</strong> books in. Adjust if life looks different now — no penalty.</>
+                    ? <>You&apos;re <strong style={{ color: 'var(--color-ink)' }}>{completedThisYear}</strong> books in. Adjust if life looks different now.</>
                     : 'How many books for the year? Loose number is fine. No streak counters.'
                   }
                 </p>

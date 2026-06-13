@@ -6,8 +6,6 @@ import OnboardingProgressBar from '@/components/OnboardingProgressBar'
 import SiteFooter from '@/components/SiteFooter'
 import OnboardingGuard from '@/components/OnboardingGuard'
 import AuthInitializer from '@/components/AuthInitializer'
-import { CurtainProvider } from '@/context/CurtainContext'
-import LoginTransitionCurtain from '@/components/LoginTransitionCurtain'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -36,24 +34,13 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${fraunces.variable}`}>
       <body className="min-h-screen" style={{ backgroundColor: 'var(--color-canvas)' }}>
-        <CurtainProvider>
-          {/* Initialize auth and handle token refresh */}
           <AuthInitializer />
-          {/* Onboarding progress bar sits above the nav (only on /onboarding) */}
           <OnboardingProgressBar />
-          {/* Navigation is always visible, even during onboarding */}
           <Navigation />
-          {/*
-            LoginTransitionCurtain lives here so it persists through
-            client-side navigation from /login → /dashboard.
-            It reads state from CurtainContext and renders nothing when idle.
-          */}
-          <LoginTransitionCurtain />
           <OnboardingGuard>
             <main className="min-h-screen pb-20 md:pb-0">{children}</main>
             <div className="hidden lg:block"><SiteFooter /></div>
           </OnboardingGuard>
-        </CurtainProvider>
       </body>
     </html>
   )

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Plus, PenLine, CheckCheck } from 'lucide-react'
+import { Plus, PenLine, CheckCheck, Lock } from 'lucide-react'
 import type { UserBook } from '@book-app/shared'
 import { useUpdateBookShelf } from '@book-app/shared/hooks'
 import { BookCoverImage } from './BookCoverImage'
@@ -91,8 +91,8 @@ export default function ReadingHero({ books, onUpdate }: ReadingHeroProps) {
           {/* Text + buttons */}
           <div className="flex-1 min-w-0">
 
-            {/* "READING NOW" badge */}
-            <div className="mb-3">
+            {/* "READING NOW" badge + optional private pill */}
+            <div className="flex items-center gap-2 mb-3">
               <span
                 style={{
                   display: 'inline-block',
@@ -108,6 +108,25 @@ export default function ReadingHero({ books, onUpdate }: ReadingHeroProps) {
               >
                 Reading Now
               </span>
+              {activeBook.visibility === 'private' && (
+                <span
+                  className="flex items-center gap-1"
+                  style={{
+                    display: 'inline-flex',
+                    border: '2px solid rgba(250,246,235,0.35)',
+                    borderRadius: 6,
+                    padding: '4px 8px',
+                    fontSize: 10,
+                    fontWeight: 800,
+                    letterSpacing: '0.2em',
+                    color: 'rgba(250,246,235,0.6)',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  <Lock size={9} strokeWidth={2.5} />
+                  Private
+                </span>
+              )}
             </div>
 
             {/* Title */}
@@ -246,8 +265,10 @@ export default function ReadingHero({ books, onUpdate }: ReadingHeroProps) {
                       className="w-full h-full object-cover"
                     />
                   </div>
-                  <span className="text-[12px] font-semibold" style={{ color: 'rgba(250,246,235,0.85)' }}>
-                    {ob.book?.title} →
+                  <span className="flex items-center gap-1.5 text-[12px] font-semibold" style={{ color: 'rgba(250,246,235,0.85)' }}>
+                    {ob.book?.title}
+                    {ob.visibility === 'private' && <Lock size={10} strokeWidth={2.5} style={{ color: 'rgba(250,246,235,0.45)', flexShrink: 0 }} />}
+                    →
                   </span>
                 </button>
               ))}

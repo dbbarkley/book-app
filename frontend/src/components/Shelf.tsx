@@ -90,9 +90,10 @@ export default function Shelf({
           </div>
         </div>
 
-        {/* Count pill */}
-        <span
-          className="text-[11px] font-bold uppercase tracking-[0.15em] flex-shrink-0"
+        {/* Count pill — links to full shelf view */}
+        <Link
+          href={`/library/${shelfId === 'to-read' ? 'to_read' : shelfId}`}
+          className="text-[11px] font-bold uppercase tracking-[0.15em] flex-shrink-0 transition-opacity hover:opacity-75"
           style={{
             backgroundColor: 'var(--color-ink)',
             color: 'var(--color-canvas)',
@@ -101,8 +102,8 @@ export default function Shelf({
             padding: '10px 18px',
           }}
         >
-          {books.length} Book{books.length !== 1 ? 's' : ''}
-        </span>
+          {books.length} Book{books.length !== 1 ? 's' : ''} →
+        </Link>
       </div>
 
       {/* Empty search result */}
