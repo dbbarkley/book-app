@@ -178,10 +178,23 @@ module Api
           expires:   90.days.from_now,
           path:      '/api/v1/auth/refresh'
         }
+        # Server-set session flag so Next.js middleware can gate protected routes.
+        # Must be non-httpOnly (middleware reads it from the request) and set via
+        # Set-Cookie header (not document.cookie) so Safari ITP 2.1 doesn't cap
+        # its lifetime to 7 days.
+        cookies[:session] = {
+          value:     '1',
+          httponly:  false,
+          secure:    is_secure,
+          same_site: :lax,
+          expires:   90.days.from_now,
+          path:      '/'
+        }
       end
 
       def clear_refresh_cookie
         cookies.delete(:refresh_token, path: '/api/v1/auth/refresh')
+        cookies.delete(:session, path: '/')
       end
 
       def user_params
