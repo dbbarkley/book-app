@@ -1285,7 +1285,7 @@ export default function DiscoverPage() {
               ref={inputRef}
               value={query}
               onChange={e => handleQueryChange(e.target.value)}
-              placeholder="Search 1.2 million books, authors…"
+              placeholder="Search millions of books, authors…"
               className="flex-1 outline-none bg-transparent font-serif"
               style={{
                 fontSize: 'clamp(1rem, 2vw, 1.15rem)',

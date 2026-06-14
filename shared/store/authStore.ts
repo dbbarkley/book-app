@@ -171,7 +171,10 @@ export const useAuthStore = create<AuthState>()(
       // reactive rotation when a request returns 401.
       doTokenRefresh: async () => {
         const { refreshToken } = get()
-        if (!refreshToken) return
+        // On mobile there's no httpOnly cookie fallback — skip if no token.
+        // On web the cookie is sent automatically so we can always try.
+        const isWeb = typeof window !== 'undefined'
+        if (!refreshToken && !isWeb) return
         try {
           const response = await apiClient.refreshToken()
           const newAccess  = (response as any).access_token ?? response.token
@@ -187,18 +190,19 @@ export const useAuthStore = create<AuthState>()(
     {
       name: 'auth-storage',
       storage: getStorage(),
-      // Persist only a non-sensitive session flag. The refresh token itself is
-      // NOT stored in localStorage — on web it lives in an httpOnly cookie sent
-      // automatically by the browser; on mobile it is managed by SecureStore
-      // outside this persist layer.
+      // Persist the refresh token and authenticated flag. The refresh token in
+      // localStorage lets us restore sessions on page reload via the Authorization
+      // header (reliable fallback). The httpOnly cookie is also set on every
+      // login/refresh for XSS protection — whichever mechanism works, wins.
       partialize: (state) => ({
+        refreshToken: state.refreshToken,
         isAuthenticated: state.isAuthenticated,
       }),
       onRehydrateStorage: () => (state) => {
-        if (state?.isAuthenticated) {
-          // Optimistic auth — the first API call will silently exchange the
-          // httpOnly cookie (web) or native SecureStore token (mobile) for a
-          // new access token via the interceptor.
+        if (state?.refreshToken) {
+          apiClient.setRefreshToken(state.refreshToken)
+          // Treat having a refresh token as authenticated — the first API call
+          // will silently exchange it for a new access token.
           state.isAuthenticated = true
         }
         state?.setHasHydrated(true)

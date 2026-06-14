@@ -43,7 +43,9 @@ export function useAuth() {
           store.setTokens(newAccess, newRefresh)
           return store.refreshUser()
         })
-        .catch(() => {
+        .catch((err: any) => {
+          const status = err?.response?.status
+          console.warn('[auth] Silent refresh failed on page load', { status, message: err?.message })
           store.logout()
         })
     } else if (store.token && store.isAuthenticated && !store.user && !store.loading) {

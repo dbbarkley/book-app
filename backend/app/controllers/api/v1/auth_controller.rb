@@ -174,7 +174,7 @@ module Api
           value:     token,
           httponly:  true,
           secure:    is_secure,
-          same_site: is_secure ? :none : :lax,
+          same_site: :lax,
           expires:   90.days.from_now,
           path:      '/api/v1/auth/refresh'
         }
