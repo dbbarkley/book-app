@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, useRef, useEffect, useMemo } from 'react'
-import { Search, Plus, Users, BookOpen, Bell, BellRing, ArrowRight, X, ChevronRight } from 'lucide-react'
+import { Search, Plus, Users, BookOpen, Bell, BellRing, ArrowRight, X, ChevronRight, ScanLine } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { apiClient, useAuth, useBookSearch, useUserSearch, useBooksStore, useComingSoon } from '@book-app/shared'
 import type { UserList, User, CircleTrendingBook, UpcomingRelease } from '@book-app/shared'
 import Avatar from '@/components/Avatar'
+import BarcodeScannerModal from '@/components/BarcodeScannerModal'
 import { GENRES as GENRE_CONFIG } from './genreConfig'
 
 // ── Newspaper date / issue helpers ────────────────────────────────────────────
@@ -1066,9 +1067,10 @@ type Pill = typeof PILLS[number]
 
 export default function DiscoverPage() {
   const { cacheSearchResults } = useBooksStore()
-  const inputRef            = useRef<HTMLInputElement>(null)
-  const [query, setQuery]   = useState('')
-  const [active, setActive] = useState<Pill>('Books')
+  const inputRef              = useRef<HTMLInputElement>(null)
+  const [query, setQuery]     = useState('')
+  const [active, setActive]   = useState<Pill>('Books')
+  const [scannerOpen, setScannerOpen] = useState(false)
 
   const issueNumber = getIssueNumber()
   const weekDate    = formatNewsDate(getWeekMonday())
@@ -1302,8 +1304,31 @@ export default function DiscoverPage() {
                 <X size={16} />
               </button>
             )}
+            {active === 'Books' && (
+              <button
+                type="button"
+                onClick={() => setScannerOpen(true)}
+                title="Scan book barcode"
+                style={{
+                  flexShrink: 0,
+                  width: 34, height: 34, borderRadius: 8,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  backgroundColor: 'var(--color-accent)',
+                  color: '#FAF6EB',
+                  border: '2px solid var(--color-ink)',
+                  cursor: 'pointer',
+                }}
+                onMouseDown={e => { e.currentTarget.style.opacity = '0.8' }}
+                onMouseUp={e => { e.currentTarget.style.opacity = '1' }}
+                onMouseLeave={e => { e.currentTarget.style.opacity = '1' }}
+              >
+                <ScanLine size={15} />
+              </button>
+            )}
           </div>
         </motion.form>
+
+        <BarcodeScannerModal isOpen={scannerOpen} onClose={() => setScannerOpen(false)} />
 
         {/* Category pills */}
         <motion.div

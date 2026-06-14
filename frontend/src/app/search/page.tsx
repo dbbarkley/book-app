@@ -163,11 +163,16 @@ function SearchContent() {
                 title="Scan book barcode"
                 style={{
                   position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
-                  width: 32, height: 32, borderRadius: 8,
+                  width: 34, height: 34, borderRadius: 8,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  backgroundColor: 'var(--color-accent-subtle)',
-                  color: 'var(--color-accent)',
+                  backgroundColor: 'var(--color-accent)',
+                  color: '#FAF6EB',
+                  border: '2px solid var(--color-ink)',
+                  cursor: 'pointer',
                 }}
+                onMouseDown={e => { e.currentTarget.style.opacity = '0.8' }}
+                onMouseUp={e => { e.currentTarget.style.opacity = '1' }}
+                onMouseLeave={e => { e.currentTarget.style.opacity = '1' }}
               >
                 <ScanLine size={15} />
               </button>
