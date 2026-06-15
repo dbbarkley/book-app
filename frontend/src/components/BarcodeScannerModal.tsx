@@ -72,11 +72,12 @@ function pressLeave(e: React.MouseEvent<HTMLButtonElement>) {
 
 export default function BarcodeScannerModal({ isOpen, onClose }: BarcodeScannerModalProps) {
   const router = useRouter()
-  const videoRef    = useRef<HTMLVideoElement>(null)
-  const streamRef   = useRef<MediaStream | null>(null)
-  const detectorRef = useRef<any>(null)
-  const rafRef      = useRef<number | null>(null)
-  const lastIsbnRef = useRef<string>('')
+  const videoRef         = useRef<HTMLVideoElement>(null)
+  const streamRef        = useRef<MediaStream | null>(null)
+  const detectorRef      = useRef<any>(null)
+  const rafRef           = useRef<number | null>(null)
+  const lastIsbnRef      = useRef<string>('')
+  const zxingControlsRef = useRef<{ stop: () => void } | null>(null)
 
   const [scanState,    setScanState]    = useState<ScanState>('scanning')
   const [foundBook,    setFoundBook]    = useState<Book | null>(null)
@@ -102,10 +103,14 @@ export default function BarcodeScannerModal({ isOpen, onClose }: BarcodeScannerM
   // ── Stop camera ──────────────────────────────────────────────────────────
 
   const stopCamera = useCallback(() => {
-    if (rafRef.current)  { cancelAnimationFrame(rafRef.current); rafRef.current = null }
+    if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null }
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(t => t.stop())
       streamRef.current = null
+    }
+    if (zxingControlsRef.current) {
+      try { zxingControlsRef.current.stop() } catch {}
+      zxingControlsRef.current = null
     }
   }, [])
 
@@ -145,77 +150,98 @@ export default function BarcodeScannerModal({ isOpen, onClose }: BarcodeScannerM
   // ── Start camera + scan loop ──────────────────────────────────────────────
 
   const startCamera = useCallback(async () => {
-    // 1. Secure context check — camera + BarcodeDetector both require HTTPS
-    //    (or localhost). On a local dev server accessed from a phone via LAN IP
-    //    the page is HTTP and both APIs are silently unavailable.
     if (typeof window !== 'undefined' && !window.isSecureContext) {
       setScanState('no_https')
       return
     }
 
-    // 2. Check BarcodeDetector support
-    if (typeof window === 'undefined' || !('BarcodeDetector' in window)) {
-      setScanState('no_support')
-      return
-    }
-
-    // 3. Create detector.
-    //    Prefer EAN/UPC formats (the ones used on book barcodes), but don't
-    //    pre-flight with getSupportedFormats() — Safari reports formats fine
-    //    but the filter was causing false no_support results.
-    try {
-      const BarcodeDetector = (window as any).BarcodeDetector
+    // ── Path A: native BarcodeDetector (Chrome/Chromium) ─────────────────
+    if (typeof window !== 'undefined' && 'BarcodeDetector' in window) {
       try {
-        detectorRef.current = new BarcodeDetector({
-          formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e'],
-        })
+        const BD = (window as any).BarcodeDetector
+        try {
+          detectorRef.current = new BD({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e'] })
+        } catch {
+          detectorRef.current = new BD()
+        }
       } catch {
-        detectorRef.current = new BarcodeDetector()
+        // BarcodeDetector broken — fall through to ZXing below
       }
-    } catch {
-      setScanState('no_support')
-      return
-    }
 
-    // 4. Request camera (prefer rear/environment-facing)
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
-        audio: false,
-      })
-      streamRef.current = stream
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
-        await videoRef.current.play()
-      }
-    } catch {
-      setScanState('no_camera')
-      return
-    }
+      if (detectorRef.current) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+            audio: false,
+          })
+          streamRef.current = stream
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream
+            await videoRef.current.play()
+          }
+        } catch {
+          setScanState('no_camera')
+          return
+        }
 
-    // 5. Detection loop
-    const detect = async () => {
-      if (!videoRef.current || !detectorRef.current || videoRef.current.readyState < 2) {
+        const detect = async () => {
+          if (!videoRef.current || !detectorRef.current || videoRef.current.readyState < 2) {
+            rafRef.current = requestAnimationFrame(detect)
+            return
+          }
+          try {
+            const barcodes: { rawValue: string }[] = await detectorRef.current.detect(videoRef.current)
+            for (const barcode of barcodes) {
+              const isbn = parseIsbn(barcode.rawValue)
+              if (isbn && isbn !== lastIsbnRef.current) {
+                lastIsbnRef.current = isbn
+                stopCamera()
+                await lookupIsbn(isbn)
+                return
+              }
+            }
+          } catch {}
+          rafRef.current = requestAnimationFrame(detect)
+        }
         rafRef.current = requestAnimationFrame(detect)
         return
       }
+    }
+
+    // ── Path B: ZXing JS fallback (Safari, Firefox, everything else) ──────
+    try {
+      const { BrowserMultiFormatReader, BrowserCodeReader } = await import('@zxing/browser')
+      const reader = new BrowserMultiFormatReader()
+
+      // Prefer rear camera on mobile — ZXing's facingMode constraint isn't
+      // always respected, so enumerate devices and pick by label.
+      let deviceId: string | undefined
       try {
-        const barcodes: { rawValue: string }[] = await detectorRef.current.detect(videoRef.current)
-        for (const barcode of barcodes) {
-          const isbn = parseIsbn(barcode.rawValue)
+        const devices = await BrowserCodeReader.listVideoInputDevices()
+        const rear = devices.find(d => /back|rear|environment/i.test(d.label))
+        deviceId = rear?.deviceId
+      } catch {}
+
+      const controls = await reader.decodeFromVideoDevice(
+        deviceId,
+        videoRef.current!,
+        (result) => {
+          if (!result) return
+          const isbn = parseIsbn(result.getText())
           if (isbn && isbn !== lastIsbnRef.current) {
             lastIsbnRef.current = isbn
-            stopCamera()
-            await lookupIsbn(isbn)
-            return
+            zxingControlsRef.current?.stop()
+            zxingControlsRef.current = null
+            lookupIsbn(isbn)
           }
         }
-      } catch {
-        // Detection errors are transient — keep looping
-      }
-      rafRef.current = requestAnimationFrame(detect)
+      )
+      zxingControlsRef.current = controls
+    } catch (err) {
+      const isDenied = err instanceof DOMException &&
+        (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError')
+      setScanState(isDenied ? 'no_camera' : 'no_support')
     }
-    rafRef.current = requestAnimationFrame(detect)
   }, [stopCamera, lookupIsbn])
 
   // ── Lifecycle: start / stop based on isOpen ───────────────────────────────
@@ -509,11 +535,10 @@ export default function BarcodeScannerModal({ isOpen, onClose }: BarcodeScannerM
               </div>
               <div>
                 <p className="font-serif font-black text-lg mb-1.5" style={{ color: 'var(--color-ink)' }}>
-                  Scanner not supported
+                  Scanner unavailable
                 </p>
                 <p className="text-sm" style={{ color: 'var(--color-ink-2)', lineHeight: 1.65 }}>
-                  Your browser doesn't support barcode scanning. Try Chrome or Safari on mobile,
-                  or enter the ISBN manually.
+                  The scanner failed to load. Check your connection and try again, or enter the ISBN manually.
                 </p>
               </div>
               <button
