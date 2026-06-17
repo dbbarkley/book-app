@@ -17,6 +17,7 @@ import type {
   ShelfStatus,
   Visibility,
   RecommendedBook,
+  PeerRecommendation,
   RecommendedAuthor,
   RecommendedEventGroup,
   Forum,
@@ -751,6 +752,17 @@ export class ApiClient {
       {}
     )
     return response.data
+  }
+
+  async getPeerRecommendations(): Promise<PeerRecommendation[]> {
+    const response = await this.client.get<{ peer_recommendations: PeerRecommendation[] }>(
+      '/recommendations/peers'
+    )
+    return response.data.peer_recommendations ?? []
+  }
+
+  async dismissRecommendation(id: number): Promise<void> {
+    await this.client.patch(`/recommendations/${id}/dismiss`, {})
   }
 
   async getRecommendedEvents() {

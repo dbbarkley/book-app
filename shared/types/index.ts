@@ -132,6 +132,13 @@ export interface RecommendedBook {
   source?: string
 }
 
+export interface PeerRecommendation {
+  id: number
+  book: Book
+  reason: string
+  score: number
+  source: 'peer_v1'
+}
 
 export interface RecommendedAuthor {
   id: number
