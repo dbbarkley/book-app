@@ -9,6 +9,7 @@ import type { UserList, User, CircleTrendingBook, UpcomingRelease } from '@book-
 import Avatar from '@/components/Avatar'
 import BarcodeScannerModal from '@/components/BarcodeScannerModal'
 import { GENRES as GENRE_CONFIG } from './genreConfig'
+import { PeerRecommendationsSection } from '../../components/discover/PeerRecommendationsSection'
 
 // ── Newspaper date / issue helpers ────────────────────────────────────────────
 
@@ -1621,9 +1622,9 @@ export default function DiscoverPage() {
               <FriendListsSection />
             </div>
 
-            {/* ── In Your Circle ─────────────────────────────────────────────── */}
+            {/* ── Readers Like You ────────────────────────────────────────────── */}
             <div className="container-mobile">
-              <InYourCircleSection />
+              <PeerRecommendationsSection />
             </div>
 
             {/* ── Browse by section ──────────────────────────────────────────── */}
