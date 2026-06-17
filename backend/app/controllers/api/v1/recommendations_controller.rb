@@ -190,8 +190,11 @@ module Api
         rec = Recommendation.find_by(id: params[:id], user: current_user)
         return render json: { error: 'Not found' }, status: :not_found unless rec
 
-        rec.update!(dismissed_at: Time.current)
-        render json: {}, status: :ok
+        if rec.update(dismissed_at: Time.current)
+          render json: {}, status: :ok
+        else
+          render json: { error: rec.errors.full_messages.first }, status: :unprocessable_entity
+        end
       end
 
       def events
