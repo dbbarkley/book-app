@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_05_27_152137) do
+ActiveRecord::Schema[7.2].define(version: 2026_06_17_191913) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -440,6 +440,8 @@ ActiveRecord::Schema[7.2].define(version: 2026_05_27_152137) do
     t.jsonb "metadata", default: {}
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.datetime "dismissed_at"
+    t.index ["user_id", "dismissed_at"], name: "index_recommendations_on_user_id_and_dismissed_at"
     t.index ["user_id", "recommendable_type", "recommendable_id"], name: "index_recommendations_on_user_and_recommendable", unique: true
     t.index ["user_id"], name: "index_recommendations_on_user_id"
   end

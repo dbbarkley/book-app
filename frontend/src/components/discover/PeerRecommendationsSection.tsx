@@ -144,11 +144,8 @@ export function PeerRecommendationsSection() {
                 }}>
                   {rec.book.title}
                 </p>
-                <p style={{ fontSize: 11, color: 'var(--color-ink-3)', marginBottom: 4 }}>
+                <p style={{ fontSize: 11, color: 'var(--color-ink-3)' }}>
                   {rec.book.author_name}
-                </p>
-                <p style={{ fontSize: 10, color: 'var(--color-ink-3)', fontStyle: 'italic' }}>
-                  {rec.reason}
                 </p>
               </motion.div>
             ))}

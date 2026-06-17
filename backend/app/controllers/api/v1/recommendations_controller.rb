@@ -183,7 +183,7 @@ module Api
 
         GeneratePeerRecommendationsJob.perform_later(current_user.id) if recs.empty? && current_user.onboarding_completed?
 
-        render json: { peer_recommendations: recs.map { |r| serialize_recommendation(r) }.compact }, status: :ok
+        render json: { peer_recommendations: recs.map { |r| serialize_recommendation(r, enrich_cover: false) }.compact }, status: :ok
       end
 
       def dismiss
@@ -230,13 +230,13 @@ module Api
         nil
       end
 
-      def serialize_recommendation(rec)
+      def serialize_recommendation(rec, enrich_cover: true)
         item = rec.recommendable
         return nil unless item
 
         case rec.recommendable_type
         when 'Book'
-          ensure_cover_for(item)
+          ensure_cover_for(item) if enrich_cover
           {
             id: rec.id,
             book: serialize_book_summary(item),
