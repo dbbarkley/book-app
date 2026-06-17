@@ -55,14 +55,13 @@ export function PeerRecommendationsSection() {
 
       {/* Loading skeletons */}
       {loading && (
-        <div className="flex gap-4 overflow-x-auto pb-2">
+        <div className="flex gap-4 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none' }}>
           {[0, 1, 2, 3].map(i => (
-            <div key={i} style={{
+            <div key={i} className="animate-pulse" style={{
               flexShrink: 0, width: 140, height: 220,
               backgroundColor: 'var(--color-surface)',
               border: '2px solid var(--color-rim)',
               borderRadius: 8,
-              animation: 'pulse 1.5s ease-in-out infinite',
             }} />
           ))}
         </div>
@@ -80,7 +79,7 @@ export function PeerRecommendationsSection() {
 
       {/* Book cards */}
       {!loading && recs.length > 0 && (
-        <div className="flex gap-4 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none' }}>
+        <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
           <AnimatePresence initial={false}>
             {recs.map(rec => (
               <motion.div
