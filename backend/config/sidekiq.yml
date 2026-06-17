@@ -20,6 +20,11 @@
       queue: default
       description: "Sends day-before release reminders to users who set the bell"
       timezone: "UTC"
+    generate_peer_recommendations:
+      cron: "0 2 * * *"  # Daily at 2:00 AM
+      class: GeneratePeerRecommendationsJob
+      queue: low_priority
+      description: "Daily peer-based book recommendations via user similarity scoring"
     # scrape_new_releases:
     #   cron: "0 3 */3 * *" # Every 3 days at 3:00 AM (disabled — replaced by ISBNdb)
     #   class: ScrapeNewReleasesJob
