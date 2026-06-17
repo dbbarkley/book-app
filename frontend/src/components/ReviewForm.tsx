@@ -1,37 +1,13 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useBookReview } from '@book-app/shared'
 import type { UserBook } from '@book-app/shared'
+import { StarRatingInput } from './StarRatingInput'
 
 interface ReviewFormProps {
   userBook?: UserBook | null
   onReviewSubmit?: () => void
-}
-
-// ── Quarter-star SVG ──────────────────────────────────────────────────────────
-
-let gradIdCounter = 0
-function StarIcon({ fill, size = 30 }: { fill: number; size?: number }) {
-  const id = useRef(`sg-${++gradIdCounter}`).current
-  const pct = `${Math.round(Math.max(0, Math.min(1, fill)) * 100)}%`
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
-      <defs>
-        <linearGradient id={id} x1="0" x2="1" y1="0" y2="0">
-          <stop offset={pct} stopColor="var(--color-accent)" />
-          <stop offset={pct} stopColor="var(--color-surface)" />
-        </linearGradient>
-      </defs>
-      <path
-        d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l7.1-1.01L12 2z"
-        fill={`url(#${id})`}
-        stroke="var(--color-accent)"
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
 }
 
 // ── Rating messages per star level ───────────────────────────────────────────
@@ -45,50 +21,20 @@ function ratingLabel(r: number): string {
   return "Couldn't put it down"
 }
 
-function clientXToRating(clientX: number, el: HTMLElement): number {
-  const { left, width } = el.getBoundingClientRect()
-  const raw   = (clientX - left) / width
-  const steps = Math.round(raw * 20)
-  return Math.max(1, Math.min(20, steps)) * 0.25
-}
-
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function ReviewForm({ userBook, onReviewSubmit }: ReviewFormProps) {
   const { saveReview, loading } = useBookReview()
   const [rating,       setRating]       = useState<number>(Number(userBook?.rating) || 0)
   const [review,       setReview]       = useState<string>(userBook?.review || '')
-  const [hovered,      setHovered]      = useState<number>(0)
   const [saved,        setSaved]        = useState(false)
   const [hideSpoilers, setHideSpoilers] = useState(true)
-  const starsRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     setRating(Number(userBook?.rating) || 0)
     setReview(userBook?.review || '')
     setSaved(false)
   }, [userBook?.rating, userBook?.review])
-
-  const display = hovered || rating
-
-  const handleMouseMove  = (e: React.MouseEvent) => {
-    if (starsRef.current) setHovered(clientXToRating(e.clientX, starsRef.current))
-  }
-  const handleMouseLeave = () => setHovered(0)
-  const handleClick      = (e: React.MouseEvent) => {
-    if (starsRef.current) { setRating(clientXToRating(e.clientX, starsRef.current)); setSaved(false) }
-  }
-  const handleTouchMove  = (e: React.TouchEvent) => {
-    e.preventDefault()
-    if (starsRef.current) setHovered(clientXToRating(e.touches[0].clientX, starsRef.current))
-  }
-  const handleTouchEnd   = (e: React.TouchEvent) => {
-    if (starsRef.current) {
-      setRating(clientXToRating(e.changedTouches[0].clientX, starsRef.current))
-      setSaved(false)
-    }
-    setHovered(0)
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -111,35 +57,15 @@ export default function ReviewForm({ userBook, onReviewSubmit }: ReviewFormProps
           Rating
         </p>
         <div className="flex items-center gap-3 flex-wrap">
-          <div
-            ref={starsRef}
-            className="flex gap-0.5 cursor-pointer select-none touch-none"
-            onMouseMove={handleMouseMove}
-            onMouseLeave={handleMouseLeave}
-            onClick={handleClick}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-          >
-            {[1, 2, 3, 4, 5].map(star => (
-              <StarIcon
-                key={star}
-                fill={Math.min(Math.max(display - (star - 1), 0), 1)}
-                size={30}
-              />
-            ))}
-          </div>
-
-          {display > 0 ? (
-            <div className="flex items-baseline gap-2">
-              <span className="font-black" style={{ fontSize: 20, color: 'var(--color-accent)', lineHeight: 1 }}>
-                {display % 1 === 0 ? display.toFixed(1) : display.toFixed(2)}
-              </span>
-              <span style={{ fontSize: 13, color: 'var(--color-ink-3)', fontStyle: 'italic' }}>
-                {ratingLabel(display)}
-              </span>
-            </div>
-          ) : (
-            <span style={{ fontSize: 13, color: 'var(--color-ink-3)' }}>Tap stars to rate</span>
+          <StarRatingInput
+            value={rating}
+            onChange={r => { setRating(r); setSaved(false) }}
+            size={30}
+          />
+          {rating > 0 && (
+            <span style={{ fontSize: 13, color: 'var(--color-ink-3)', fontStyle: 'italic' }}>
+              {ratingLabel(rating)}
+            </span>
           )}
         </div>
       </div>

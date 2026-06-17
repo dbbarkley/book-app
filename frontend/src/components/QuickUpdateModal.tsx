@@ -13,6 +13,7 @@ import {
 } from '@book-app/shared/hooks'
 import { useBooksStore } from '@book-app/shared/store/booksStore'
 import type { UserBook, ShelfStatus, Visibility } from '@book-app/shared/types'
+import { StarRatingInput } from './StarRatingInput'
 import { BookCoverImage } from './BookCoverImage'
 
 interface QuickUpdateModalProps {
@@ -79,7 +80,6 @@ export default function QuickUpdateModal({ userBook, isOpen, onClose, onUpdate }
   const [dnfReason,  setDnfReason]  = useState(userBook?.dnf_reason || '')
   const [dnfTags,    setDnfTags]    = useState<string[]>([])
   const [rating,     setRating]     = useState<number>(userBook?.rating ?? 0)
-  const [hoverRating, setHoverRating] = useState<number>(0)
   const [review,     setReview]     = useState(userBook?.review || '')
   const [notes,      setNotes]      = useState(userBook?.notes || '')
   const [confirmRemove, setConfirmRemove] = useState(false)
@@ -619,34 +619,11 @@ export default function QuickUpdateModal({ userBook, isOpen, onClose, onUpdate }
                             · Optional
                           </span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          {[1, 2, 3, 4, 5].map((star) => (
-                            <button
-                              key={star}
-                              onClick={() => setRating(star === rating ? 0 : star)}
-                              onMouseEnter={() => setHoverRating(star)}
-                              onMouseLeave={() => setHoverRating(0)}
-                              className="transition-transform hover:scale-110"
-                              aria-label={`${star} star`}
-                            >
-                              <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
-                                <polygon
-                                  points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"
-                                  fill={star <= (hoverRating || rating) ? 'var(--color-accent)' : 'none'}
-                                  stroke="var(--color-accent)"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                />
-                              </svg>
-                            </button>
-                          ))}
-                          {rating > 0 && (
-                            <span className="text-[13px] font-bold ml-1" style={{ color: 'var(--color-accent)' }}>
-                              {rating}/5
-                            </span>
-                          )}
-                        </div>
+                        <StarRatingInput
+                          value={rating}
+                          onChange={setRating}
+                          size={32}
+                        />
                       </div>
 
                       {/* Public review */}
