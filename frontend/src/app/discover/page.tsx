@@ -1622,6 +1622,12 @@ export default function DiscoverPage() {
               <FriendListsSection />
             </div>
 
+            {/* ── Readers Like You ────────────────────────────────────────────── */}
+            {/* Hidden until user base is large enough for meaningful recs       */}
+            {/* <div className="container-mobile">
+              <PeerRecommendationsSection />
+            </div> */}
+
             {/* ── Browse by section ──────────────────────────────────────────── */}
             <div className="container-mobile">
               <BrowseBySectionSection />
