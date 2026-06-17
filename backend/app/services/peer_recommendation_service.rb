@@ -135,6 +135,7 @@ class PeerRecommendationService
           next if (book_genres & profile[:top_genres].to_a).empty?
         end
 
+        next unless ub.work_id   # skip books without a canonical work identity
         key = ub.work_id
         candidates[key][:book]        = book
         candidates[key][:score]      += peer_data[:score] * (ub.rating.to_f / 5.0)
@@ -163,7 +164,7 @@ class PeerRecommendationService
         r.reason   = reason
         r.metadata = { peer_count: peer_count, avg_peer_rating: avg_rating.round(2) }
       end
-    rescue ActiveRecord::RecordInvalid => e
+    rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
       Rails.logger.warn("[PeerRecs] Skipping rec: #{e.message}")
     end
   end
