@@ -30,6 +30,9 @@ jobs:
             echo "Restarting services..."
             docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
 
+            echo "Running migrations..."
+            docker compose -f docker-compose.prod.yml --env-file .env.prod exec -T backend rails db:migrate
+
             echo "Removing old images..."
             docker image prune -f
 

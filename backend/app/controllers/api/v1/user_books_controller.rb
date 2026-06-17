@@ -108,6 +108,15 @@ module Api
           dnf_page: params[:dnf_page]
         )
 
+        case status
+        when 'read'
+          user_book.finished_at ||= Time.current
+        when 'reading'
+          user_book.started_at ||= Time.current
+        when 'dnf'
+          user_book.finished_at = nil
+        end
+
         unless user_book.save
           Rails.logger.error "[UserBooks#create] save failed: #{user_book.errors.full_messages.inspect}"
           return render_error(user_book.errors.full_messages.join(', '))
