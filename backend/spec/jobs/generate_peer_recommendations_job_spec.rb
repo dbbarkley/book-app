@@ -2,12 +2,14 @@ require 'rails_helper'
 
 RSpec.describe GeneratePeerRecommendationsJob, type: :job do
   describe '#perform' do
-    let(:user_a) { create(:user) }
-    let(:user_b) { create(:user) }
+    let(:user_a)   { create(:user) }
+    let(:user_b)   { create(:user) }
+    let(:unboarded) { create(:user, onboarding_completed: false) }
 
     it 'calls PeerRecommendationService for every onboarded user when no user_id given' do
       expect(PeerRecommendationService).to receive(:new).with(user_a).and_return(double(call: {}))
       expect(PeerRecommendationService).to receive(:new).with(user_b).and_return(double(call: {}))
+      expect(PeerRecommendationService).not_to receive(:new).with(unboarded)
       described_class.new.perform
     end
 
