@@ -156,7 +156,7 @@ function WelcomeStep() {
         <View style={welcomeStyles.iconRing}>
           <BookOpen size={36} color={Colors.accent} />
         </View>
-        <Text style={welcomeStyles.title}>Welcome to Libraio</Text>
+        <Text style={welcomeStyles.title}>Welcome to WellRead</Text>
         <Text style={welcomeStyles.sub}>
           Your personal library — private by default, always yours.
           This quick setup takes about 2 minutes.

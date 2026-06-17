@@ -5,7 +5,7 @@ import { BookOpen, Check, XCircle, Lock, Search, Home, User, Bell } from 'lucide
 
 /* ─────────────────────────────────────────────────────────────
    IPhoneMockup — A pure CSS iPhone 15 Pro frame with a live
-   Libraio app screen rendered inside. No images, no screenshots
+   WellRead app screen rendered inside. No images, no screenshots
    — the entire UI is built with markup so it stays crisp at
    any scale and matches the app's real design language.
 

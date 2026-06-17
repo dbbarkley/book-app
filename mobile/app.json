@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Libraio",
+    "name": "WellRead",
     "slug": "libraio",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -17,7 +17,7 @@
       "bundleIdentifier": "com.libraio.app",
       "buildNumber": "1",
       "infoPlist": {
-        "NSCameraUsageDescription": "Libraio uses your camera to scan book barcodes so you can quickly add books to your library."
+        "NSCameraUsageDescription": "WellRead uses your camera to scan book barcodes so you can quickly add books to your library."
       }
     },
     "android": {

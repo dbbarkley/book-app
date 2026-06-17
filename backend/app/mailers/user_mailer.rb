@@ -8,7 +8,7 @@ class UserMailer < ApplicationMailer
 
     mail(
       to:      @user.email,
-      subject: 'Reset your Libraio password'
+      subject: 'Reset your WellRead password'
     )
   end
 end

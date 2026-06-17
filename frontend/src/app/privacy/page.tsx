@@ -31,7 +31,7 @@ const SECTIONS = [
       'We do not sell your data. Not to advertisers, not to data brokers, not to anyone.',
       'We do not train AI or machine-learning models on your data. Your reading habits are not a training set.',
       'We do not share your personal data with third parties except where required to run the service (e.g. our hosting provider) or comply with law.',
-      'We do not build advertising profiles on you. There are no ads on Libraio.',
+      'We do not build advertising profiles on you. There are no ads on WellRead.',
     ],
   },
   {

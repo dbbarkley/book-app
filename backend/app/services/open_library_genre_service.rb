@@ -89,7 +89,7 @@ class OpenLibraryGenreService
     http.read_timeout = 10
 
     request = Net::HTTP::Get.new(uri)
-    request['User-Agent'] = 'Libraio/1.0 (book tracking app)'
+    request['User-Agent'] = 'WellRead/1.0 (book tracking app)'
 
     response = http.request(request)
     return nil unless response.is_a?(Net::HTTPSuccess)

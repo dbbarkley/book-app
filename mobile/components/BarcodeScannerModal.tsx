@@ -358,7 +358,7 @@ export default function BarcodeScannerModal({ visible, onClose }: Props) {
               </View>
               <Text style={s.stateTitle}>Camera access needed</Text>
               <Text style={s.stateSub}>
-                Allow camera access so Libraio can scan book barcodes.
+                Allow camera access so WellRead can scan book barcodes.
               </Text>
               <TouchableOpacity style={s.primaryBtn} onPress={requestPermission} activeOpacity={0.85}>
                 <Text style={s.primaryBtnText}>Allow Camera</Text>

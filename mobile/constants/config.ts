@@ -38,7 +38,7 @@ function resolveApiBaseUrl(): string {
 
 export const API_BASE_URL: string = resolveApiBaseUrl()
 
-export const APP_NAME = 'Libraio'
+export const APP_NAME = 'WellRead'
 
 export const STORAGE_KEYS = {
   AUTH_TOKEN:     'libraio_auth_token',

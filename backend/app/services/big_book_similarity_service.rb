@@ -240,7 +240,7 @@ class BigBookSimilarityService
     http.read_timeout = TIMEOUT_READ
 
     request = Net::HTTP::Get.new(uri)
-    request['User-Agent'] = 'Libraio/1.0 (book tracking app)'
+    request['User-Agent'] = 'WellRead/1.0 (book tracking app)'
 
     response = http.request(request)
 

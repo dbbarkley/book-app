@@ -390,7 +390,7 @@ class HardcoverSimilarityService
 
     request = Net::HTTP::Post.new(uri)
     request['Content-Type']  = 'application/json'
-    request['User-Agent']    = 'Libraio/1.0 (book tracking app)'
+    request['User-Agent']    = 'WellRead/1.0 (book tracking app)'
 
     api_key = ENV.fetch('HARDCOVER_API_KEY', '')
     request['Authorization'] = "Bearer #{api_key}" if api_key.present?

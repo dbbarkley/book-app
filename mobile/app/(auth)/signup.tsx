@@ -76,7 +76,7 @@ export default function SignupScreen() {
 
         {/* Brand */}
         <View style={styles.brand}>
-          <Text style={styles.logo}>Libraio</Text>
+          <Text style={styles.logo}>WellRead</Text>
           <Text style={styles.tagline}>Create your account</Text>
         </View>
 
