@@ -5,13 +5,21 @@ FactoryBot.define do
     avatar_url      { nil }
   end
 
+  factory :work do
+    sequence(:canonical_title)    { |n| "Work #{n}" }
+    sequence(:canonical_author)   { |n| "Work Author #{n}" }
+    sequence(:normalized_title)   { |n| "work #{n}" }
+    sequence(:normalized_author)  { |n| "work author #{n}" }
+  end
+
   factory :book do
-    sequence(:title)         { |n| "Book #{n}" }
+    sequence(:title)           { |n| "Book #{n}" }
     sequence(:google_books_id) { |n| "gbid_#{n}" }
-    release_date             { 2.years.ago.to_date }
-    categories               { [] }
+    release_date               { 2.years.ago.to_date }
+    categories                 { [] }
     association :author
-    sequence(:work_id)       { |n| n + 1000 }
+    association :work
+    work_id { work.id }
   end
 
   factory :user_book do
