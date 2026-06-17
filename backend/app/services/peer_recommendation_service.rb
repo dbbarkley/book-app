@@ -158,8 +158,7 @@ class PeerRecommendationService
                else           "Many readers with your taste loved this"
                end
 
-      Recommendation.find_or_create_by!(user: @user, recommendable: book) do |r|
-        r.source   = SOURCE
+      Recommendation.find_or_create_by!(user: @user, recommendable: book, source: SOURCE) do |r|
         r.score    = data[:score].round(2)
         r.reason   = reason
         r.metadata = { peer_count: peer_count, avg_peer_rating: avg_rating.round(2) }
