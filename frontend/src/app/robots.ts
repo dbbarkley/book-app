@@ -5,7 +5,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: '*',
       allow: '/',
-      disallow: ['/dashboard', '/library', '/feed', '/onboarding', '/reading-buddy'],
+      disallow: ['/dashboard', '/library', '/feed', '/onboarding', '/reading-buddy', '/settings', '/recommendations', '/upcoming-releases', '/testing'],
     },
     sitemap: 'https://getwellread.com/sitemap.xml',
   }

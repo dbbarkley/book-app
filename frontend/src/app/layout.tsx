@@ -33,7 +33,9 @@ export const metadata: Metadata = {
     type: 'website',
     siteName: 'WellRead',
     url: 'https://getwellread.com',
-    images: [{ url: '/og-image.png', width: 1200, height: 630 }],
+    title: 'WellRead',
+    description: 'Track your reading life. Follow authors, share progress, and read alongside friends.',
+    images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'WellRead — track your reading life' }],
   },
   twitter: { card: 'summary_large_image' },
 }
