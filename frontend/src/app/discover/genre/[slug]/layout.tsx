@@ -9,7 +9,7 @@ export async function generateMetadata(
   const genre = GENRES.find((g) => g.slug === params.slug)
   const name = genre?.name ?? params.slug.replace(/-/g, ' ')
   return {
-    title: `${name} Books`,
+    title: { absolute: `${name} Books | WellRead` },
     description: `Discover the best ${name} books to read next on WellRead.`,
     openGraph: {
       title: `${name} Books | WellRead`,
