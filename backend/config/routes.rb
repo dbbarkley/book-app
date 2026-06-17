@@ -86,11 +86,13 @@ Rails.application.routes.draw do
       # Recommendations
       get  'recommendations/books',      to: 'recommendations#books'
       get  'recommendations/authors',    to: 'recommendations#authors'
+      get  'recommendations/peers',      to: 'recommendations#peers'
       post 'recommendations/regenerate', to: 'recommendations#regenerate'
       # get 'recommendations/events', to: 'recommendations#events'  # disabled: events hidden
       get 'recommendations/new_releases',        to: 'recommendations#new_releases'
       get 'recommendations/coming_soon',         to: 'recommendations#coming_soon'
       get 'recommendations/similar_to/:book_id', to: 'recommendations#similar_to'
+      patch 'recommendations/:id/dismiss',       to: 'recommendations#dismiss'
       
       # Authors
       resources :authors, only: [:index, :show, :create] do

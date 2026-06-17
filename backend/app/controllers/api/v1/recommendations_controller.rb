@@ -175,6 +175,25 @@ module Api
         render json: { recommended_authors: results }, status: :ok
       end
 
+      def peers
+        recs = Recommendation.for_user(current_user)
+                             .books
+                             .where(source: 'peer_v1', dismissed_at: nil)
+                             .includes(recommendable: :author)
+
+        GeneratePeerRecommendationsJob.perform_later(current_user.id) if recs.empty? && current_user.onboarding_completed?
+
+        render json: { peer_recommendations: recs.map { |r| serialize_recommendation(r) }.compact }, status: :ok
+      end
+
+      def dismiss
+        rec = Recommendation.find_by(id: params[:id], user: current_user)
+        return render json: { error: 'Not found' }, status: :not_found unless rec
+
+        rec.update!(dismissed_at: Time.current)
+        render json: {}, status: :ok
+      end
+
       def events
         # author_events = followed_author_events
         # book_events = book_related_events(author_events.map(&:id))
