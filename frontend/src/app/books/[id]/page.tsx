@@ -20,6 +20,7 @@ import {
   QuickUpdateModal,
   SuggestToFriendModal,
   ReadingBuddyBookSection,
+  SeriesRow,
 } from '@/components'
 import { formatDate } from '@/utils/format'
 import {
@@ -763,6 +764,15 @@ export default function BookPage() {
               })()}
             </div>
           </div>
+
+          {/* ── Series row — only renders if this book is part of a series ── */}
+          {book && (
+            <SeriesRow
+              googleBooksId={book.google_books_id ?? rawParam}
+              title={book.title}
+              author={book.author_name}
+            />
+          )}
 
           {/* ── More by this author ── */}
           {(otherWorksLoading || otherWorks.length > 0) && (() => {
