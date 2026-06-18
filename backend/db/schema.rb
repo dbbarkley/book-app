@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_06_17_191913) do
+ActiveRecord::Schema[7.2].define(version: 2026_06_18_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -91,11 +91,15 @@ ActiveRecord::Schema[7.2].define(version: 2026_06_17_191913) do
     t.datetime "updated_at", null: false
     t.string "language"
     t.virtual "search_vector", type: :tsvector, as: "(setweight(to_tsvector('english'::regconfig, (COALESCE(title, ''::character varying))::text), 'A'::\"char\") || setweight(to_tsvector('english'::regconfig, (COALESCE(author_name, ''::character varying))::text), 'B'::\"char\"))", stored: true
+    t.bigint "series_id"
+    t.decimal "series_position", precision: 4, scale: 1
     t.index ["author_name"], name: "index_book_catalog_on_author_name"
     t.index ["cached_at"], name: "index_book_catalog_on_cached_at"
     t.index ["google_books_id"], name: "index_book_catalog_on_google_books_id", unique: true
     t.index ["isbn"], name: "index_book_catalog_on_isbn", unique: true, where: "(isbn IS NOT NULL)"
     t.index ["search_vector"], name: "index_book_catalog_on_search_vector", using: :gin
+    t.index ["series_id", "series_position"], name: "index_book_catalog_on_series_id_and_series_position"
+    t.index ["series_id"], name: "index_book_catalog_on_series_id"
   end
 
   create_table "book_notes", force: :cascade do |t|
@@ -475,6 +479,16 @@ ActiveRecord::Schema[7.2].define(version: 2026_06_17_191913) do
     t.index ["title", "author_name"], name: "index_scraped_books_on_title_and_author_name", unique: true
   end
 
+  create_table "series", force: :cascade do |t|
+    t.string "name", null: false
+    t.bigint "hardcover_series_id", null: false
+    t.integer "total_books"
+    t.datetime "fetched_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["hardcover_series_id"], name: "index_series_on_hardcover_series_id", unique: true
+  end
+
   create_table "upcoming_releases", force: :cascade do |t|
     t.string "isbn13", null: false
     t.string "isbn10"
@@ -652,6 +666,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_06_17_191913) do
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "book_catalog", "series", on_delete: :nullify
   add_foreign_key "book_notes", "user_books", on_delete: :cascade
   add_foreign_key "book_notes", "users", on_delete: :cascade
   add_foreign_key "book_suggestions", "books"
