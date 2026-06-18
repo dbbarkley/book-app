@@ -119,6 +119,8 @@ class HardcoverSeriesService
             position
             book {
               id title users_count default_physical_edition_id
+              description pages
+              contributions(limit: 1) { author { name } }
               image { url }
               english_editions: editions(
                 where: { language: { id: { _eq: 1 } } }
@@ -168,7 +170,9 @@ class HardcoverSeriesService
         title:           book['title'],
         cover_image_url: book.dig('image', 'url')&.gsub('http://', 'https://'),
         isbn:            isbn,
-        author_name:     nil,
+        author_name:     book.dig('contributions', 0, 'author', 'name').presence || @author_name,
+        description:     book['description'].presence,
+        page_count:      book['pages']&.to_i.presence,
       }
     end.sort_by { |b| b[:position] }
   end

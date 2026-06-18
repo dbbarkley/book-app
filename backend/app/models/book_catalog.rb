@@ -103,6 +103,8 @@ class BookCatalog < ApplicationRecord
         title:           b[:title].to_s.truncate(500),
         author_name:     b[:author_name].presence,
         cover_image_url: b[:cover_image_url].presence,
+        description:     b[:description].presence,
+        page_count:      b[:page_count]&.to_i.presence,
         series_id:       series.id,
         series_position: b[:position],
         source:          'hardcover',
@@ -116,7 +118,7 @@ class BookCatalog < ApplicationRecord
 
     upsert_all(records,
       unique_by: :google_books_id,
-      update_only: %i[isbn title author_name cover_image_url series_id series_position cached_at])
+      update_only: %i[isbn title author_name cover_image_url description page_count series_id series_position cached_at])
   end
 
   def to_api_hash
