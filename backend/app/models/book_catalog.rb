@@ -1,6 +1,12 @@
 class BookCatalog < ApplicationRecord
   self.table_name = 'book_catalog'
 
+  belongs_to :series, optional: true
+
+  scope :in_series, ->(series_id) {
+    where(series_id: series_id).order(:series_position)
+  }
+
   validates :google_books_id, presence: true, uniqueness: true
   validates :title, presence: true
 
@@ -84,6 +90,33 @@ class BookCatalog < ApplicationRecord
       }
     end
     upsert_many(book_hashes, source: 'google_books')
+  end
+
+  def self.upsert_series_books(book_data_array, series:)
+    return if book_data_array.blank?
+    now = Time.current
+
+    records = book_data_array.map do |b|
+      {
+        google_books_id: b[:google_books_id].to_s,
+        isbn:            b[:isbn].presence,
+        title:           b[:title].to_s.truncate(500),
+        author_name:     b[:author_name].presence,
+        cover_image_url: b[:cover_image_url].presence,
+        series_id:       series.id,
+        series_position: b[:position],
+        source:          'hardcover',
+        ratings_count:   0,
+        categories:      [],
+        cached_at:       now,
+        created_at:      now,
+        updated_at:      now,
+      }
+    end
+
+    upsert_all(records,
+      unique_by: :google_books_id,
+      update_only: %i[isbn title author_name cover_image_url series_id series_position cached_at updated_at])
   end
 
   def to_api_hash
