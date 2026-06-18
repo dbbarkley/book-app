@@ -116,7 +116,7 @@ class BookCatalog < ApplicationRecord
 
     upsert_all(records,
       unique_by: :google_books_id,
-      update_only: %i[isbn title author_name cover_image_url series_id series_position cached_at updated_at])
+      update_only: %i[isbn title author_name cover_image_url series_id series_position cached_at])
   end
 
   def to_api_hash
