@@ -24,6 +24,7 @@ import type {
   ForumPost,
   ForumComment,
   UpcomingReleasesResponse,
+  SeriesData,
 } from '../types'
 
 // Get API base URL from environment
@@ -1450,6 +1451,23 @@ export class ApiClient {
       }
     )
     return response.data.highlight
+  }
+  async getBookSeries(
+    googleBooksId: string,
+    title?: string,
+    author?: string
+  ): Promise<SeriesData | null> {
+    const params = new URLSearchParams({ google_books_id: googleBooksId })
+    if (title) params.set('title', title)
+    if (author) params.set('author', author)
+    try {
+      const response = await this.client.get<{ series: SeriesData | null }>(
+        `/books/series?${params}`
+      )
+      return response.data?.series ?? null
+    } catch {
+      return null
+    }
   }
 }
 

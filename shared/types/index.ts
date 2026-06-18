@@ -605,6 +605,22 @@ export interface CircleGenreReadsResponse {
   days:  number
 }
 
+// ── Series ─────────────────────────────────────────────────────────────────────
+
+export interface SeriesBook {
+  position: number
+  title: string
+  google_books_id: string
+  cover_image_url?: string
+  isbn?: string
+}
+
+export interface SeriesData {
+  id: number
+  name: string
+  books: SeriesBook[]
+}
+
 // ActionCable message payloads
 export type ReadingBuddyCableEvent =
   | { type: 'new_message';     message: ReadingBuddyMessage }
