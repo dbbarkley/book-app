@@ -8,7 +8,7 @@ module Api
       skip_before_action :authenticate_user!, only: [
         :index, :show, :show_by_google, :show_by_isbn,
         :author_works, :genre, :catalog_search, :catalog_bulk_upsert,
-        :search, :external_search, :isbn_search
+        :search, :external_search, :isbn_search, :series
       ]
       before_action :verify_internal_token, only: [:catalog_bulk_upsert]
       # Disable Rails ParamsWrapper so POST bodies are accessible as flat params
@@ -462,6 +462,45 @@ module Api
           Rails.logger.error("[genre] All sources failed for '#{genre_id}': #{e.message}")
           render json: { books: [], _source: nil }, status: :bad_gateway
         end
+      end
+
+      # GET /api/v1/books/series?google_books_id=abc123&title=...&author=...
+      # Returns series data for a book. Hits the DB cache first; calls Hardcover
+      # on cache miss and stores the result. Returns { series: null } when not in a series.
+      def series
+        google_books_id = params[:google_books_id].to_s.strip
+        return render json: { series: nil }, status: :bad_request if google_books_id.blank?
+
+        # DB cache hit — fast path
+        catalog = BookCatalog.find_by(google_books_id: google_books_id)
+        if catalog&.series_id.present?
+          s = Series.find_by(id: catalog.series_id)
+          if s && !s.stale?
+            books = BookCatalog.in_series(s.id)
+            return render json: { series: serialize_series(s, books) }
+          end
+        end
+
+        # Cache miss — resolve title from catalog or params, then call Hardcover
+        title  = catalog&.title.presence || params[:title].to_s.strip
+        author = catalog&.author_name.presence || params[:author].to_s.strip
+        return render json: { series: nil } if title.blank?
+
+        s = HardcoverSeriesService.new(
+          google_books_id: google_books_id,
+          title:           title,
+          author_name:     author.presence
+        ).call
+
+        if s
+          books = BookCatalog.in_series(s.id)
+          render json: { series: serialize_series(s, books) }
+        else
+          render json: { series: nil }
+        end
+      rescue => e
+        Rails.logger.error("[books/series] #{e.class}: #{e.message}")
+        render json: { series: nil }
       end
 
       # GET /api/v1/books/:id/friends
@@ -1132,6 +1171,22 @@ module Api
           cover_image_url: book.cover_image_url,
           release_date: book.release_date,
           page_count: book.respond_to?(:page_count) ? book.page_count : nil
+        }
+      end
+
+      def serialize_series(series, books)
+        {
+          id:   series.id,
+          name: series.name,
+          books: books.map do |b|
+            {
+              position:        b.series_position,
+              title:           b.title,
+              google_books_id: b.google_books_id,
+              cover_image_url: b.cover_image_url,
+              isbn:            b.isbn,
+            }
+          end,
         }
       end
 

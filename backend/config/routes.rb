@@ -117,6 +117,7 @@ Rails.application.routes.draw do
           get  'isbn_search',         action: :isbn_search
           get  'author_works',        action: :author_works
           get  'genre',               action: :genre
+          get  'series',              action: :series
           get  'catalog_search',      action: :catalog_search
           post 'catalog_bulk_upsert', action: :catalog_bulk_upsert
           post 'ensure',       action: :ensure_book
