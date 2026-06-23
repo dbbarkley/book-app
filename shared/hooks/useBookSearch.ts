@@ -1,8 +1,4 @@
-// Book Search Hook - Search books using Google Books API
-// Reusable in Next.js and React Native
-
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { debounce } from '../utils/debounce'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { searchBooks as searchGoogleBooks } from '../services/googleBooksService'
 import { useBooksStore } from '../store/booksStore'
 import type { Book } from '../types'
@@ -21,33 +17,16 @@ interface UseBookSearchReturn {
   query: string
   setQuery: (query: string) => void
   search: (query: string) => Promise<void>
+  searchNow: () => void
   loadMore: () => Promise<void>
   hasMore: boolean
 }
 
-/**
- * Hook for searching books using Google Books API with debouncing
- * 
- * Usage:
- * ```tsx
- * const { books, loading, query, setQuery, search } = useBookSearch()
- * 
- * // In component:
- * <input value={query} onChange={(e) => setQuery(e.target.value)} />
- * ```
- * 
- * For React Native:
- * - Works the same way, just use with TextInput onChangeText
- * - Debouncing works identically
- * 
- * Note: Google Books API has a limit of 40 results per request.
- * Pagination loads more results by making multiple requests.
- */
 export function useBookSearch(options: UseBookSearchOptions = {}): UseBookSearchReturn {
   const { debounceMs = 600, initialQuery = '', perPage = 20 } = options
 
   const [books, setBooks] = useState<Book[]>([])
-  const [pagination, setPagination] = useState<{ 
+  const [pagination, setPagination] = useState<{
     page: number
     per_page: number
     total_pages: number
@@ -58,10 +37,9 @@ export function useBookSearch(options: UseBookSearchOptions = {}): UseBookSearch
   const [query, setQueryState] = useState(initialQuery)
   const [currentPage, setCurrentPage] = useState(1)
 
-  // Get cache function from store
   const { cacheSearchResults } = useBooksStore()
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Debounced search function
   const performSearch = useCallback(
     async (searchQuery: string, page: number = 1) => {
       if (!searchQuery.trim()) {
@@ -74,13 +52,10 @@ export function useBookSearch(options: UseBookSearchOptions = {}): UseBookSearch
       setLoading(true)
       setError(null)
       try {
-        // Google Books API returns max 40 results per request
-        // We'll fetch perPage results per page
         const googleBooks = await searchGoogleBooks(searchQuery, Math.min(perPage, 40))
-        
-        // Transform Google Books format to our Book type
+
         const transformedBooks: Book[] = googleBooks.map((gb, index) => ({
-          id: -1 * (page * 1000 + index), // Negative ID to indicate Google Books result
+          id: -1 * (page * 1000 + index),
           title: gb.title,
           isbn: gb.isbn,
           description: gb.description,
@@ -88,8 +63,6 @@ export function useBookSearch(options: UseBookSearchOptions = {}): UseBookSearch
           release_date: gb.published_date || new Date().toISOString().split('T')[0],
           author_name: gb.authors.join(', '),
           page_count: gb.page_count,
-          // Note: Google Books IDs are strings, not numbers
-          // When user adds to shelf, we'll create the book in our DB
           google_books_id: gb.id,
         }))
 
@@ -98,12 +71,9 @@ export function useBookSearch(options: UseBookSearchOptions = {}): UseBookSearch
         } else {
           setBooks((prev) => [...prev, ...transformedBooks])
         }
-        
-        // Cache the results in the store for book detail page
+
         cacheSearchResults(transformedBooks)
-        
-        // Google Books doesn't provide total count, so we estimate
-        // If we got fewer results than requested, we're on the last page
+
         const isLastPage = googleBooks.length < perPage
         setPagination({
           page,
@@ -123,39 +93,41 @@ export function useBookSearch(options: UseBookSearchOptions = {}): UseBookSearch
     [perPage, cacheSearchResults]
   )
 
-  // Create debounced search function using useMemo and useRef for stability
-  const debouncedSearchRef = useRef<ReturnType<typeof debounce>>()
-  
-  const debouncedSearch = useMemo(() => {
-    if (debouncedSearchRef.current) {
-      // Clear previous timeout if exists
-      debouncedSearchRef.current = debounce(performSearch, debounceMs)
-    } else {
-      debouncedSearchRef.current = debounce(performSearch, debounceMs)
-    }
-    return debouncedSearchRef.current
-  }, [performSearch, debounceMs])
-
-  // Effect to trigger search when query changes
+  // Fire search for initialQuery on mount only
   useEffect(() => {
-    if (query.trim()) {
-      setCurrentPage(1)
-      debouncedSearch(query, 1)
+    if (initialQuery.trim()) performSearch(initialQuery, 1)
+    return () => { if (timeoutRef.current) clearTimeout(timeoutRef.current) }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // setQuery schedules a debounced search. The timeout is cancelled and restarted
+  // on every call, so only the final keystroke in a burst triggers the API call.
+  const setQuery = useCallback((newQuery: string) => {
+    setQueryState(newQuery)
+    if (timeoutRef.current) clearTimeout(timeoutRef.current)
+    if (newQuery.trim()) {
+      timeoutRef.current = setTimeout(() => {
+        setCurrentPage(1)
+        performSearch(newQuery, 1)
+      }, debounceMs)
     } else {
       setBooks([])
       setPagination(null)
+      setCurrentPage(1)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query])
+  }, [performSearch, debounceMs])
 
-  const setQuery = useCallback((newQuery: string) => {
-    setQueryState(newQuery)
-  }, [])
+  // Cancel any pending debounce and fire immediately — used for Enter key / search button.
+  const searchNow = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current)
+      timeoutRef.current = null
+    }
+    if (query.trim()) {
+      setCurrentPage(1)
+      performSearch(query, 1)
+    }
+  }, [query, performSearch])
 
-  // Only update query state — the useEffect handles the debounced API call.
-  // Do NOT call performSearch directly here; that caused double-firing on
-  // every keystroke (direct call + debounced effect), burning through the
-  // Google Books free-tier rate limit (429) very quickly.
   const search = useCallback(
     (searchQuery: string) => {
       setQueryState(searchQuery)
@@ -181,8 +153,8 @@ export function useBookSearch(options: UseBookSearchOptions = {}): UseBookSearch
     query,
     setQuery,
     search,
+    searchNow,
     loadMore,
     hasMore,
   }
 }
-

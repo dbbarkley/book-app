@@ -10,20 +10,32 @@ class BookCatalog < ApplicationRecord
   validates :google_books_id, presence: true, uniqueness: true
   validates :title, presence: true
 
+  # Trigram similarity search against title and author.
+  # word_similarity(needle, haystack) scores how well the needle appears as a
+  # word or phrase within the haystack — handles partial words, typos, and
+  # mid-word queries (e.g. "love stor" matches "This Is a Love Story").
+  # Title matches are weighted 2× over author matches; an exact title prefix
+  # gets a hard +1.0 boost so exact results always sort first.
   scope :full_text_search, ->(q) {
-    q_lower  = q.downcase
-    tsquery  = Arel.sql("plainto_tsquery('english', #{connection.quote(q_lower)})")
-    q_exact  = connection.quote(q_lower)
-    q_prefix = connection.quote("#{sanitize_sql_like(q_lower)}%")
-    boost    = Arel.sql(
-      "CASE WHEN lower(title) = #{q_exact}     THEN 2.0
-            WHEN lower(title) LIKE #{q_prefix} THEN 1.0
-            ELSE 0.0 END"
+    q_lower       = q.downcase.strip
+    q_prefix_like = "#{sanitize_sql_like(q_lower)}%"
+
+    where(
+      "word_similarity(:q, lower(title)) > 0.2 OR word_similarity(:q, lower(COALESCE(author_name, ''))) > 0.3",
+      q: q_lower
+    ).order(
+      Arel.sql(
+        sanitize_sql_array([
+          "CASE WHEN lower(title) LIKE ? THEN 1.0 ELSE 0.0 END + " \
+          "word_similarity(?, lower(title)) * 2.0 + " \
+          "word_similarity(?, lower(COALESCE(author_name, ''))) DESC",
+          q_prefix_like, q_lower, q_lower,
+        ])
+      )
     )
-    where("search_vector @@ #{tsquery}")
-      .order(Arel.sql("(#{boost} + ts_rank(search_vector, #{tsquery})) DESC"))
   }
 
+  # ILIKE fallback for 1-2 character queries where trigrams can't form (need ≥3 chars).
   scope :prefix_search, ->(q) {
     pattern = "%#{sanitize_sql_like(q)}%"
     where("title ILIKE ? OR author_name ILIKE ?", pattern, pattern)
@@ -33,7 +45,7 @@ class BookCatalog < ApplicationRecord
 
   def self.search(q, limit: 20)
     return none if q.blank?
-    # For very short queries, tsvector lexing gives no tokens — fall back to ILIKE.
+    # Trigrams require at least 3 characters to form; use ILIKE for shorter queries.
     results = q.length < 3 ? prefix_search(q) : full_text_search(q)
     # Exclude pre-1930 books — blank/null published_date passes through (benefit of the doubt).
     results

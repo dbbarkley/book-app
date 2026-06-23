@@ -10,8 +10,9 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_06_18_000001) do
+ActiveRecord::Schema[7.2].define(version: 2026_06_23_000001) do
   # These are extensions that must be enabled in order to support this database
+  enable_extension "pg_trgm"
   enable_extension "plpgsql"
 
   create_table "active_storage_attachments", force: :cascade do |t|
@@ -90,14 +91,14 @@ ActiveRecord::Schema[7.2].define(version: 2026_06_18_000001) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "language"
-    t.virtual "search_vector", type: :tsvector, as: "(setweight(to_tsvector('english'::regconfig, (COALESCE(title, ''::character varying))::text), 'A'::\"char\") || setweight(to_tsvector('english'::regconfig, (COALESCE(author_name, ''::character varying))::text), 'B'::\"char\"))", stored: true
     t.bigint "series_id"
     t.decimal "series_position", precision: 4, scale: 1
+    t.index "lower((author_name)::text) gin_trgm_ops", name: "idx_book_catalog_author_trgm", using: :gin
+    t.index "lower((title)::text) gin_trgm_ops", name: "idx_book_catalog_title_trgm", using: :gin
     t.index ["author_name"], name: "index_book_catalog_on_author_name"
     t.index ["cached_at"], name: "index_book_catalog_on_cached_at"
     t.index ["google_books_id"], name: "index_book_catalog_on_google_books_id", unique: true
     t.index ["isbn"], name: "index_book_catalog_on_isbn", unique: true, where: "(isbn IS NOT NULL)"
-    t.index ["search_vector"], name: "index_book_catalog_on_search_vector", using: :gin
     t.index ["series_id", "series_position"], name: "index_book_catalog_on_series_id_and_series_position"
     t.index ["series_id"], name: "index_book_catalog_on_series_id"
   end

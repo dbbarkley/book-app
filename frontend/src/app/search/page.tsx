@@ -41,6 +41,7 @@ function SearchContent() {
     loading: booksLoading,
     error: booksError,
     setQuery: setBookQuery,
+    searchNow: searchBooksNow,
     loadMore: loadMoreBooks,
     hasMore: hasMoreBooks,
   } = useBookSearch({
@@ -78,6 +79,12 @@ function SearchContent() {
     router.replace(`/search?${params.toString()}`, { scroll: false })
   }
 
+  const handleSearchSubmit = () => {
+    if (!searchInput.trim()) return
+    if (activeTab === 'books')  searchBooksNow()
+    if (activeTab === 'people') searchUsers(searchInput)
+  }
+
   const handleTabChange = (tab: SearchType) => {
     setActiveTab(tab)
     const params = new URLSearchParams()
@@ -112,7 +119,7 @@ function SearchContent() {
           </div>
 
           {/* Search input */}
-          <div style={{ position: 'relative', marginBottom: 12 }}>
+          <div style={{ position: 'relative', marginBottom: searchInput.trim() ? 8 : 12 }}>
             <Search
               size={18}
               style={{
@@ -126,6 +133,7 @@ function SearchContent() {
               type="text"
               value={searchInput}
               onChange={e => handleSearchChange(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSearchSubmit() } }}
               placeholder={activeTab === 'books' ? 'Search titles, authors, ISBN…' : 'Search readers by name or username…'}
               style={{
                 width: '100%',
@@ -178,6 +186,34 @@ function SearchContent() {
               </button>
             )}
           </div>
+
+          {/* Search button — shown when there's a query */}
+          {searchInput.trim() && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+              <button
+                onClick={handleSearchSubmit}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '7px 14px',
+                  borderRadius: 999,
+                  border: '2px solid var(--color-ink)',
+                  backgroundColor: 'var(--color-ink)',
+                  color: 'var(--color-canvas)',
+                  fontSize: 12,
+                  fontWeight: 800,
+                  letterSpacing: '0.1em',
+                  textTransform: 'uppercase',
+                  cursor: 'pointer',
+                  boxShadow: '3px 3px 0px var(--color-accent)',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.boxShadow = '4px 4px 0px var(--color-accent)' }}
+                onMouseLeave={e => { e.currentTarget.style.boxShadow = '3px 3px 0px var(--color-accent)' }}
+              >
+                <Search size={12} />
+                Search
+              </button>
+            </div>
+          )}
 
           {/* Tab toggle */}
           <div

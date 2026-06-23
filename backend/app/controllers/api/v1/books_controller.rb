@@ -121,6 +121,35 @@ module Api
         #    previously written through from Google Books searches
         catalog = BookCatalog.find_by(google_books_id: google_books_id)
         if catalog
+          # For external IDs (hc_, ol_) the user may have shelved this exact book
+          # under a different google_books_id (a real Google Books volume ID). Resolve
+          # to the canonical DB record via ISBN so library status is preserved on the
+          # book detail page. Without this, hc_ series links always show "Add to shelf".
+          if catalog.isbn.present?
+            shelved_book = Book.includes(:author).find_by(isbn: catalog.isbn)
+            shelved_book ||= Book.includes(:author).find_by(google_books_id: catalog.isbn)
+            if shelved_book
+              backfill_description(shelved_book)
+              render json: { book: serialize_book_detail(shelved_book) }, status: :ok
+              return
+            end
+          end
+          # Title+author fallback via Work — covers hc_ entries without ISBN and
+          # cases where ISBN differs between editions. show_by_book uses work_id to
+          # find the user's shelf entry even if they shelved a different edition.
+          if catalog.title.present? && catalog.author_name.present?
+            nt = WorkResolutionService.normalize_title(catalog.title)
+            na = WorkResolutionService.normalize_author(catalog.author_name)
+            if nt.present? && na.present?
+              work = Work.find_by(normalized_title: nt, normalized_author: na)
+              shelved_book = work && Book.includes(:author).find_by(work_id: work.id)
+              if shelved_book
+                backfill_description(shelved_book)
+                render json: { book: serialize_book_detail(shelved_book) }, status: :ok
+                return
+              end
+            end
+          end
           render json: { book: catalog.to_api_hash }, status: :ok
           return
         end
@@ -303,8 +332,9 @@ module Api
       end
 
       # GET /api/v1/books/search?q=...&maxResults=20&type=books|authors
-      # Unified book search: catalog-first, then Google Books (with API key),
-      # then Open Library fallback. Merges and deduplicates by title+author.
+      # Unified book search: catalog-first, then OL + GB in parallel.
+      # Both external sources are always called concurrently and merged so a book
+      # missing from one source is still surfaced by the other.
       # The frontend calls this directly — no Next.js proxy needed.
       def search
         q     = params[:q].to_s.strip
@@ -319,20 +349,21 @@ module Api
           catalog_books = BookCatalog.search(q, limit: limit)
           catalog_items = catalog_books.map { |b| catalog_book_to_volume_item(b) }
           if catalog_items.length >= limit
-            return render json: { items: catalog_items.first(limit), _source: 'catalog' }
+            return render json: { items: dedup_volume_items(catalog_items).first(limit), _source: 'catalog' }
           end
         end
 
-        # OL is primary for title searches (sorts by readinglog popularity → modern books first).
-        # GB is primary for author catalog searches (inauthor: query is GB's strength).
-        external_items =
-          if type == 'authors'
-            items = gb_search(q, limit, type)
-            items.any? ? items : ol_search(q, limit, type)
-          else
-            items = ol_search(q, limit, type)
-            items.any? ? items : gb_search(q, limit, type)
-          end
+        # Call OL and GB in parallel so a miss on one source doesn't block the other.
+        # For books: OL first in merge order (readinglog popularity sort is strong).
+        # For authors: GB first (inauthor: query is GB's strength).
+        ol_thread = Thread.new { ol_search(q, limit, type) rescue [] }
+        gb_thread = Thread.new { gb_search(q, limit, type) rescue [] }
+        ol_items  = ol_thread.value
+        gb_items  = gb_thread.value
+
+        external_items = dedup_volume_items(
+          type == 'authors' ? [*gb_items, *ol_items] : [*ol_items, *gb_items]
+        )
 
         if external_items.any? && type == 'books'
           write_to_catalog(external_items)
@@ -344,7 +375,7 @@ module Api
           combined = dedup_volume_items([*catalog_items, *external_items]).first(limit)
           render json: { items: combined, _source: 'merged' }
         else
-          render json: { items: dedup_volume_items(external_items).first(limit), _source: 'external' }
+          render json: { items: external_items.first(limit), _source: 'external' }
         end
       rescue => e
         Rails.logger.error("[books/search] #{e.class}: #{e.message}")
@@ -478,6 +509,20 @@ module Api
           if s && !s.stale?
             books = BookCatalog.in_series(s.id)
             return render json: { series: serialize_series(s, books) }
+          end
+        end
+
+        # ISBN-based cache fallback: the catalog entry for a real Google Books ID won't
+        # have series_id set (only the hc_ entry does after HardcoverSeriesService runs).
+        # Resolve via ISBN so repeated visits don't fall through to the Hardcover API.
+        if catalog&.series_id.blank? && catalog&.isbn.present?
+          linked = BookCatalog.where(isbn: catalog.isbn).where.not(series_id: nil).first
+          if linked&.series_id.present?
+            s = Series.find_by(id: linked.series_id)
+            if s && !s.stale?
+              books = BookCatalog.in_series(s.id)
+              return render json: { series: serialize_series(s, books) }
+            end
           end
         end
 
@@ -677,9 +722,9 @@ module Api
       end
 
       def ol_search(q, limit, type)
-        # Use 'title' for precise book title searches, 'author' for author searches,
-        # and 'q' only as a generic fallback — 'title' surfaces the right book first.
-        param  = type == 'authors' ? 'author' : 'title'
+        # Use 'q' for book searches so partial/mid-word queries still match (OL's
+        # 'title' field requires complete words). Use 'author' for author tab searches.
+        param  = type == 'authors' ? 'author' : 'q'
         fields = 'key,title,author_name,cover_i,isbn,first_publish_year,number_of_pages_median'
 
         uri = URI('https://openlibrary.org/search.json')
@@ -1175,14 +1220,22 @@ module Api
       end
 
       def serialize_series(series, books)
+        # Prefer the canonical google_books_id from the books table (real Google Books
+        # volume ID) for any series book that has been shelved. This ensures that
+        # clicking a series book navigates to the shelved URL so library status works,
+        # and the isCurrent highlight matches the book detail page's resolved ID.
+        isbns = books.filter_map(&:isbn).uniq
+        shelved_by_isbn = isbns.any? ? Book.where(isbn: isbns).index_by(&:isbn) : {}
+
         {
           id:   series.id,
           name: series.name,
           books: books.map do |b|
+            real = b.isbn.present? ? shelved_by_isbn[b.isbn] : nil
             {
               position:        b.series_position,
               title:           b.title,
-              google_books_id: b.google_books_id,
+              google_books_id: real&.google_books_id || b.google_books_id,
               cover_image_url: b.cover_image_url,
               isbn:            b.isbn,
             }
