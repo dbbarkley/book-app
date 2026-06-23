@@ -1,4 +1,31 @@
-version: '3.8'
+x-backend-env: &backend-env
+  RAILS_ENV: production
+  BACKEND_URL: ${BACKEND_URL}
+  DATABASE_HOST: db
+  DATABASE_USERNAME: ${DB_USERNAME}
+  DATABASE_PASSWORD: ${DB_PASSWORD}
+  DATABASE_NAME: ${DB_NAME:-book_app_production}
+  REDIS_URL: redis://redis:6379/0
+  SECRET_KEY_BASE: ${SECRET_KEY_BASE}
+  RAILS_LOG_TO_STDOUT: "true"
+  FRONTEND_URL: ${FRONTEND_URL}
+  ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
+  ISBNDB_API_KEY: ${ISBNDB_API_KEY}
+  HARDCOVER_API_KEY: ${HARDCOVER_API_KEY}
+  GOOGLE_BOOKS_API_KEY: ${GOOGLE_BOOKS_API_KEY}
+  FACEBOOK_APP_ID: ${FACEBOOK_APP_ID}
+  FACEBOOK_APP_SECRET: ${FACEBOOK_APP_SECRET}
+  GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+  GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+  NEW_YORK_TIMES_API_KEY: ${NEW_YORK_TIMES_API_KEY}
+  SERPER_API_KEY: ${SERPER_API_KEY}
+  BIG_BOOK_API_KEY: ${BIG_BOOK_API_KEY}
+  PENGUI_RANDOMHOUSE_API_KEY: ${PENGUI_RANDOMHOUSE_API_KEY}
+  SMTP_HOST: ${SMTP_HOST:-smtp.sendgrid.net}
+  SMTP_PORT: ${SMTP_PORT:-587}
+  SMTP_USERNAME: ${SMTP_USERNAME}
+  SMTP_PASSWORD: ${SMTP_PASSWORD}
+  INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
 
 services:
   db:
@@ -27,6 +54,22 @@ services:
       timeout: 3s
       retries: 5
 
+  migrate:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: production
+    environment:
+      <<: *backend-env
+    volumes:
+      - imports_tmp:/app/tmp/imports
+      - active_storage:/app/storage
+    depends_on:
+      db:
+        condition: service_healthy
+    command: bundle exec rails db:migrate
+    restart: "no"
+
   backend:
     build:
       context: ./backend
@@ -36,40 +79,16 @@ services:
       - imports_tmp:/app/tmp/imports
       - active_storage:/app/storage
     environment:
-      RAILS_ENV: production
-      BACKEND_URL: ${BACKEND_URL}
-      DATABASE_HOST: db
-      DATABASE_USERNAME: ${DB_USERNAME}
-      DATABASE_PASSWORD: ${DB_PASSWORD}
-      DATABASE_NAME: ${DB_NAME:-book_app_production}
-      REDIS_URL: redis://redis:6379/0
-      SECRET_KEY_BASE: ${SECRET_KEY_BASE}
-      RAILS_LOG_TO_STDOUT: "true"
-      FRONTEND_URL: ${FRONTEND_URL}
-      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
-      ISBNDB_API_KEY: ${ISBNDB_API_KEY}
-      HARDCOVER_API_KEY: ${HARDCOVER_API_KEY}
-      GOOGLE_BOOKS_API_KEY: ${GOOGLE_BOOKS_API_KEY}
-      FACEBOOK_APP_ID: ${FACEBOOK_APP_ID}
-      FACEBOOK_APP_SECRET: ${FACEBOOK_APP_SECRET}
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
-      NEW_YORK_TIMES_API_KEY: ${NEW_YORK_TIMES_API_KEY}
-      SERPER_API_KEY: ${SERPER_API_KEY}
-      BIG_BOOK_API_KEY: ${BIG_BOOK_API_KEY}
-      PENGUI_RANDOMHOUSE_API_KEY: ${PENGUI_RANDOMHOUSE_API_KEY}
-      SMTP_HOST: ${SMTP_HOST:-smtp.sendgrid.net}
-      SMTP_PORT: ${SMTP_PORT:-587}
-      SMTP_USERNAME: ${SMTP_USERNAME}
-      SMTP_PASSWORD: ${SMTP_PASSWORD}
-      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
+      <<: *backend-env
     restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: bash -c "bundle exec rails db:migrate && bundle exec rails server -b 0.0.0.0"
+      migrate:
+        condition: service_completed_successfully
+    command: bundle exec rails server -b 0.0.0.0
 
   sidekiq:
     build:
@@ -79,42 +98,19 @@ services:
     volumes:
       - imports_tmp:/app/tmp/imports
     environment:
-      RAILS_ENV: production
-      DATABASE_HOST: db
-      DATABASE_USERNAME: ${DB_USERNAME}
-      DATABASE_PASSWORD: ${DB_PASSWORD}
-      DATABASE_NAME: ${DB_NAME:-book_app_production}
-      BACKEND_URL: ${BACKEND_URL}
-      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
-      REDIS_URL: redis://redis:6379/0
-      SECRET_KEY_BASE: ${SECRET_KEY_BASE}
-      RAILS_LOG_TO_STDOUT: "true"
-      FRONTEND_URL: ${FRONTEND_URL}
-      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
-      ISBNDB_API_KEY: ${ISBNDB_API_KEY}
-      HARDCOVER_API_KEY: ${HARDCOVER_API_KEY}
-      GOOGLE_BOOKS_API_KEY: ${GOOGLE_BOOKS_API_KEY}
-      FACEBOOK_APP_ID: ${FACEBOOK_APP_ID}
-      FACEBOOK_APP_SECRET: ${FACEBOOK_APP_SECRET}
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
-      NEW_YORK_TIMES_API_KEY: ${NEW_YORK_TIMES_API_KEY}
-      SERPER_API_KEY: ${SERPER_API_KEY}
-      BIG_BOOK_API_KEY: ${BIG_BOOK_API_KEY}
-      PENGUI_RANDOMHOUSE_API_KEY: ${PENGUI_RANDOMHOUSE_API_KEY}
+      <<: *backend-env
     restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
-      backend:
-        condition: service_started
+      migrate:
+        condition: service_completed_successfully
     command: bundle exec sidekiq
 
   frontend:
     build:
-      # Root context so the build can access shared/
       context: .
       dockerfile: frontend/Dockerfile
       args:
@@ -146,7 +142,6 @@ services:
     volumes:
       - ./nginx/certs:/etc/letsencrypt
       - ./nginx/webroot:/var/www/certbot
-    # Auto-renews certs every 12 hours
     entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
 
 volumes:
