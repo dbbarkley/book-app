@@ -869,14 +869,15 @@ export default function QuickUpdateModal({ userBook, isOpen, onClose, onUpdate }
                     <button
                       onClick={handleRemove}
                       disabled={isBusy}
-                      className="font-bold uppercase tracking-[0.15em] transition-all hover:opacity-80 flex-shrink-0 disabled:opacity-40"
+                      className="font-bold uppercase tracking-[0.15em] transition-all flex-shrink-0 disabled:opacity-40"
                       style={{
-                        border: `2px solid ${confirmRemove ? '#b91c1c' : 'var(--color-rim)'}`,
+                        border: '2px solid #b91c1c',
                         borderRadius: 999,
                         padding: '15px 16px',
                         fontSize: 12,
-                        color: confirmRemove ? '#fff' : 'var(--color-ink-3)',
+                        color: confirmRemove ? '#fff' : '#b91c1c',
                         backgroundColor: confirmRemove ? '#b91c1c' : 'transparent',
+                        boxShadow: confirmRemove ? '3px 3px 0px #7f1d1d' : '2px 2px 0px #b91c1c',
                       }}
                       aria-label="Remove from library"
                     >

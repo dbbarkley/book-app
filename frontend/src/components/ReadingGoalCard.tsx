@@ -14,8 +14,11 @@ export default function ReadingGoalCard({ goal, completed, onEdit }: ReadingGoal
   const booksLeft = goal ? Math.max(0, goal - completed) : 0
   const isComplete = !!goal && completed >= goal
 
-  const monthsElapsed = new Date().getMonth() + 1
-  const expectedByNow = goal ? Math.round((monthsElapsed / 12) * goal) : 0
+  const now = new Date()
+  const startOfYear = new Date(now.getFullYear(), 0, 1)
+  const dayOfYear = Math.floor((now.getTime() - startOfYear.getTime()) / 86_400_000) + 1
+  const daysInYear = new Date(now.getFullYear(), 1, 29).getMonth() === 1 ? 366 : 365
+  const expectedByNow = goal ? (dayOfYear / daysInYear) * goal : 0
   const paceAhead = completed - expectedByNow
 
   const RADIUS = 38
@@ -25,8 +28,8 @@ export default function ReadingGoalCard({ goal, completed, onEdit }: ReadingGoal
   let paceMsg = ''
   if (goal) {
     if (isComplete) paceMsg = 'Goal complete. You crushed it.'
-    else if (paceAhead > 0) paceMsg = `You're ${paceAhead} book${paceAhead !== 1 ? 's' : ''} ahead of pace. Keep it boring.`
-    else if (paceAhead < 0) paceMsg = `You're ${Math.abs(paceAhead)} book${Math.abs(paceAhead) !== 1 ? 's' : ''} behind pace. Time to read.`
+    else if (paceAhead > 0) { const n = Math.floor(paceAhead); paceMsg = `You're ${n} book${n !== 1 ? 's' : ''} ahead of pace. Keep it boring.` }
+    else if (paceAhead < 0) { const n = Math.floor(Math.abs(paceAhead)); paceMsg = `You're ${n} book${n !== 1 ? 's' : ''} behind pace. Time to read.` }
     else paceMsg = 'Right on pace. Keep going.'
   }
 

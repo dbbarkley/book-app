@@ -5,7 +5,7 @@ module Api
 
       # GET /api/v1/user/books
       def index
-        user_books = current_user.user_books.includes(book: :author)
+        user_books = current_user.user_books.includes(book: :author).order(created_at: :desc)
 
         status_filter = params[:status].presence || params[:shelf].presence
         user_books = user_books.where(status: status_filter) if status_filter.present?
@@ -144,7 +144,8 @@ module Api
         if normalized_status.present? && normalized_status != @user_book.status
           case normalized_status
           when 'reading'
-            update_params[:started_at] ||= Time.current if @user_book.started_at.nil?
+            update_params[:started_at] = Time.current
+            update_params[:finished_at] = nil
           when 'read'
             update_params[:finished_at] ||= Time.current if @user_book.finished_at.nil?
           when 'dnf'

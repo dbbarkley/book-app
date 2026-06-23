@@ -52,7 +52,7 @@ function sortLibraryBooks(books: UserBook[], sortKey: LibrarySortKey): UserBook[
         return (b.rating ?? 0) - (a.rating ?? 0)
       case 'date_added':
       default:
-        return (b.id ?? 0) - (a.id ?? 0)
+        return new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime()
     }
   })
 }
@@ -221,7 +221,7 @@ export default function BooksLibraryPage() {
                 <span className="font-bold" style={{ color: 'var(--color-ink)' }}>{totalAllBooks}</span>
                 {' '}book{totalAllBooks !== 1 ? 's' : ''}
                 {shelvesWithBooks > 0 && (
-                  <> · <span className="font-bold" style={{ color: 'var(--color-ink)' }}>{shelvesWithBooks}</span> shelf{shelvesWithBooks !== 1 ? 'ves' : ''}</>
+                  <> · <span className="font-bold" style={{ color: 'var(--color-ink)' }}>{shelvesWithBooks}</span> {shelvesWithBooks !== 1 ? 'shelves' : 'shelf'}</>
                 )}
               </p>
 
