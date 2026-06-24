@@ -89,6 +89,12 @@ services:
       migrate:
         condition: service_completed_successfully
     command: bundle exec rails server -b 0.0.0.0
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:3000/api/v1/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 30s
 
   sidekiq:
     build:

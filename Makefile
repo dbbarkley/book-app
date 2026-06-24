@@ -62,3 +62,13 @@ rebuild: ## Rebuild and restart all services
 	docker-compose build --no-cache
 	docker-compose up -d
 
+deploy: ## Build and deploy production services, then reload nginx once backend is healthy
+	docker compose -f docker-compose.prod.yml up -d --build
+	@echo "Waiting for backend to become healthy..."
+	@until docker compose -f docker-compose.prod.yml exec -T backend curl -fs http://localhost:3000/api/v1/health > /dev/null 2>&1; do \
+		sleep 3; \
+	done
+	@echo "Backend healthy — reloading nginx"
+	docker compose -f docker-compose.prod.yml exec nginx nginx -s reload
+	@echo "Deploy complete"
+
