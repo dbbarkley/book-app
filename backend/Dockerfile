@@ -3,6 +3,7 @@ FROM ruby:3.1-slim AS base
 RUN apt-get update -qq && \
     apt-get install -y \
     build-essential \
+    curl \
     libpq-dev \
     libyaml-dev \
     libffi-dev \
