@@ -24,14 +24,16 @@ jobs:
             echo "Pulling latest code..."
             git pull origin main
 
-            echo "Building images..."
-            docker compose -f docker-compose.prod.yml --env-file .env.prod build
+            echo "Building and starting services..."
+            docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
 
-            echo "Restarting services..."
-            docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+            echo "Waiting for backend to become healthy..."
+            until [ "$(docker inspect --format='{{.State.Health.Status}}' $(docker compose -f docker-compose.prod.yml ps -q backend) 2>/dev/null)" = "healthy" ]; do
+              sleep 3
+            done
 
-            echo "Running migrations..."
-            docker compose -f docker-compose.prod.yml --env-file .env.prod exec -T backend rails db:migrate
+            echo "Reloading nginx..."
+            docker compose -f docker-compose.prod.yml --env-file .env.prod exec -T nginx nginx -s reload
 
             echo "Removing old images..."
             docker image prune -f
