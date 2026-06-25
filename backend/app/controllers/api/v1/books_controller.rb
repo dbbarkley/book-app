@@ -610,9 +610,9 @@ module Api
             'publishedDate'       => book.published_date,
             'pageCount'           => book.page_count,
             'description'         => book.description,
-            'imageLinks'          => book.cover_image_url.present? ? {
-              'thumbnail'      => book.cover_image_url,
-              'smallThumbnail' => book.cover_image_url,
+            'imageLinks'          => book.resolved_cover_url.present? ? {
+              'thumbnail'      => book.resolved_cover_url,
+              'smallThumbnail' => book.resolved_cover_url,
             } : nil,
             'industryIdentifiers' => book.isbn.present? ? [{ 'type' => 'ISBN_13', 'identifier' => book.isbn }] : [],
             'averageRating'       => book.average_rating,
@@ -1236,7 +1236,7 @@ module Api
               position:        b.series_position,
               title:           b.title,
               google_books_id: real&.google_books_id || b.google_books_id,
-              cover_image_url: b.cover_image_url,
+              cover_image_url: b.resolved_cover_url,
               isbn:            b.isbn,
             }
           end,

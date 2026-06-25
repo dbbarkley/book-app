@@ -55,7 +55,7 @@ module Api
               id:              b.id,
               title:           b.title,
               author_name:     b.try(:author)&.name,
-              cover_image_url: b.cover_image_url,
+              cover_image_url: b.resolved_cover_url,
               google_books_id: b.google_books_id,
             },
             total_count:    total,
@@ -109,7 +109,7 @@ module Api
               id:              b.id,
               title:           b.title,
               author_name:     b.author_name.presence || b.try(:author)&.name,
-              cover_image_url: b.cover_image_url,
+              cover_image_url: b.resolved_cover_url,
               google_books_id: b.google_books_id,
             },
           }

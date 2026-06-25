@@ -305,7 +305,7 @@ module Api
           title: book.title,
           isbn: book.isbn,
           description: book.description,
-          cover_image_url: book.cover_image_url,
+          cover_image_url: book.resolved_cover_url,
           release_date: book.release_date,
           author_name: book.author.name,
           google_books_id: book.google_books_id,

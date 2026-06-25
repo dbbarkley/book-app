@@ -262,7 +262,7 @@ module Api
           book: {
             id:              book.id,
             title:           book.title,
-            cover_image_url: book.cover_image_url,
+            cover_image_url: book.resolved_cover_url,
             author_name:     book.author&.name,
             google_books_id: book.google_books_id,
           }

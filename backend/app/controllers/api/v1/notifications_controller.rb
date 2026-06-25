@@ -46,7 +46,7 @@ module Api
             type: 'Book',
             id: notifiable.id,
             title: notifiable.title,
-            cover_image_url: notifiable.cover_image_url
+            cover_image_url: notifiable.resolved_cover_url
           }
         when Author
           {
@@ -71,7 +71,7 @@ module Api
             book: {
               id:              notifiable.book.id,
               title:           notifiable.book.title,
-              cover_image_url: notifiable.book.cover_image_url,
+              cover_image_url: notifiable.book.resolved_cover_url,
             },
             initiator: {
               id:           notifiable.initiator.id,

@@ -135,7 +135,7 @@ module Api
             id:              session.book.id,
             title:           session.book.title,
             author_name:     session.book.author&.name,
-            cover_image_url: session.book.cover_image_url,
+            cover_image_url: session.book.resolved_cover_url,
             google_books_id: session.book.google_books_id,
           },
           initiator: serialize_participant(session.initiator, initiator_book),
