@@ -515,9 +515,10 @@ class BisacPopulatorJob < ApplicationJob
     # http upgraded to https for iOS ATS. No zoom tweaks, no constructed URLs;
     # those don't reliably load in React Native.
     raw = v.dig('imageLinks', 'thumbnail') || v.dig('imageLinks', 'smallThumbnail')
+    raw = raw&.gsub('zoom=1', 'zoom=0')&.gsub('&edge=curl', '')&.sub('http://', 'https://')
     return nil if raw.blank?   # skip books Google Books has no cover for
 
-    cover = raw.to_s.gsub('http://', 'https://')
+    cover = raw.to_s
 
     sleep 0.1  # ~10 req/sec — Google Books free quota is 1,000/day per key
 
