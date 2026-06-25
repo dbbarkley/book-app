@@ -11,6 +11,7 @@ interface BookCardProps {
   showDescription?: boolean
   coverSize?: 'small' | 'medium' | 'large'
   userBook?: UserBook
+  priority?: boolean
 }
 
 export default function BookCard({
@@ -18,6 +19,7 @@ export default function BookCard({
   showDescription = true,
   coverSize = 'medium',
   userBook,
+  priority = false,
 }: BookCardProps) {
   const isPrivate = userBook?.visibility === 'private'
   const isDnf     = userBook?.status === 'dnf'
@@ -43,9 +45,11 @@ export default function BookCard({
             src={book.cover_image_url}
             title={book.title}
             author={book.author_name}
+            isbn={book.isbn}
             size={coverSize}
             className="w-full h-full"
             layoutId={`book-cover-${book.google_books_id ?? book.id}`}
+            priority={priority}
           />
           {/* Notes badge — subtle indicator on the cover */}
           {hasNotes && (

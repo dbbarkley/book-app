@@ -25,13 +25,14 @@ export default function UserLibraryShelf({ userBooks, emptyMessage }: UserLibrar
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-      {userBooks.map(ub => (
+      {userBooks.map((ub, index) => (
         <BookCard
           key={ub.id}
           book={ub.book!}
           userBook={ub}
           showDescription={false}
           coverSize="medium"
+          priority={index < 6}
         />
       ))}
     </div>
