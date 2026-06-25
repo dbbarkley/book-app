@@ -39,7 +39,10 @@ class BookCoverService
     cover_data = try_open_library
     return cover_data if cover_data
 
-    # No cover found
+    # Last resort: Serper image search (Google Images via API)
+    cover_data = try_image_search
+    return cover_data if cover_data
+
     { url: nil, quality: NO_COVER, source: 'none' }
   end
 
@@ -187,6 +190,42 @@ class BookCoverService
     true
   rescue StandardError
     false
+  end
+
+  def try_image_search
+    return nil unless ENV['SERPER_API_KEY'].present?
+
+    query = "\"#{@book.title}\" \"#{@book.author.name}\" book cover"
+
+    uri  = URI('https://google.serper.dev/images')
+    http = Net::HTTP.new(uri.host, uri.port)
+    http.use_ssl      = true
+    http.open_timeout = 8
+    http.read_timeout = 12
+
+    req = Net::HTTP::Post.new(uri.request_uri)
+    req['Content-Type'] = 'application/json'
+    req['X-API-KEY']    = ENV['SERPER_API_KEY']
+    req.body            = { q: query, num: 5 }.to_json
+
+    resp = http.request(req)
+    return nil unless resp.is_a?(Net::HTTPSuccess)
+
+    images = JSON.parse(resp.body)['images'] || []
+    return nil if images.empty?
+
+    # Prefer portrait-oriented results — book covers are taller than wide
+    portrait = images.select { |img| img['imageHeight'].to_i > img['imageWidth'].to_i }
+    candidates = portrait.any? ? portrait : images
+
+    url = candidates.first&.dig('imageUrl')
+    return nil unless url.present?
+
+    Rails.logger.info("[BookCoverService] book=#{@book.id}: using image search result #{url}")
+    { url: url, quality: HIGH_QUALITY, source: 'image_search' }
+  rescue StandardError => e
+    Rails.logger.warn("[BookCoverService] Serper image search failed for book #{@book.id}: #{e.message}")
+    nil
   end
 end
 
