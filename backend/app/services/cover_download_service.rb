@@ -23,13 +23,20 @@ class CoverDownloadService
     url = BookCoverService.new(@book).find_best_cover[:url]
 
     unless url.present?
+      Rails.logger.warn("[CoverDownload] book=#{@book.id} (#{@book.title.inspect}): no cover URL found")
       @book.update_column(:cover_last_enriched_at, Time.current)
       return false
     end
 
     data, content_type = fetch(url)
 
-    unless data && valid?(data)
+    unless data
+      Rails.logger.warn("[CoverDownload] book=#{@book.id} (#{@book.title.inspect}): fetch failed or non-image response — url=#{url}")
+      @book.update_column(:cover_last_enriched_at, Time.current)
+      return false
+    end
+
+    unless valid?(data, url)
       @book.update_column(:cover_last_enriched_at, Time.current)
       return false
     end
@@ -61,28 +68,48 @@ class CoverDownloadService
       read_timeout: 10
     ) { |http| http.get(uri.request_uri) }
 
-    return nil unless response.is_a?(Net::HTTPSuccess)
+    unless response.is_a?(Net::HTTPSuccess)
+      Rails.logger.warn("[CoverDownload] book=#{@book.id}: HTTP #{response.code} from #{url}")
+      return nil
+    end
 
     content_type = response['content-type']&.split(';')&.first&.strip
-    return nil unless content_type&.start_with?('image/')
+    unless content_type&.start_with?('image/')
+      Rails.logger.warn("[CoverDownload] book=#{@book.id}: non-image content-type '#{content_type}' from #{url}")
+      return nil
+    end
 
     [response.body, content_type]
   end
 
-  def valid?(data)
-    return false if data.bytesize < MIN_BYTES
-    return false if data.bytesize > MAX_BYTES
-    return false if PLACEHOLDER_HASHES.include?(Digest::MD5.hexdigest(data))
-    return false unless dimensions_ok?(data)
-
+  def valid?(data, url)
+    if data.bytesize < MIN_BYTES
+      Rails.logger.warn("[CoverDownload] book=#{@book.id} (#{@book.title.inspect}): rejected — too small (#{data.bytesize}B < #{MIN_BYTES}B) url=#{url}")
+      return false
+    end
+    if data.bytesize > MAX_BYTES
+      Rails.logger.warn("[CoverDownload] book=#{@book.id} (#{@book.title.inspect}): rejected — too large (#{data.bytesize}B) url=#{url}")
+      return false
+    end
+    if PLACEHOLDER_HASHES.include?(Digest::MD5.hexdigest(data))
+      Rails.logger.warn("[CoverDownload] book=#{@book.id} (#{@book.title.inspect}): rejected — known placeholder hash url=#{url}")
+      return false
+    end
+    unless dimensions_ok?(data, url)
+      return false
+    end
     true
   end
 
-  def dimensions_ok?(data)
+  def dimensions_ok?(data, url)
     info = FastImage.size(StringIO.new(data))
     return true unless info  # unknown format — don't reject
 
-    info[0] >= MIN_DIMENSION && info[1] >= MIN_DIMENSION
+    if info[0] < MIN_DIMENSION || info[1] < MIN_DIMENSION
+      Rails.logger.warn("[CoverDownload] book=#{@book.id} (#{@book.title.inspect}): rejected — dimensions too small (#{info[0]}x#{info[1]}) url=#{url}")
+      return false
+    end
+    true
   rescue StandardError
     true
   end
