@@ -231,7 +231,24 @@ module Api
 
         return render json: { books: [], count: 0 } if q.blank?
 
-        books = BookCatalog.search(q, limit: limit).map(&:to_api_hash)
+        catalog_results = BookCatalog.search(q, limit: limit)
+        books = catalog_results.map(&:to_api_hash)
+
+        # Overlay R2 cover URLs for books already enriched in our DB
+        gids = catalog_results.map(&:google_books_id).compact
+        if gids.any?
+          r2_covers = Book.where(google_books_id: gids)
+                          .where.not(cover_storage_path: nil)
+                          .pluck(:google_books_id, :cover_storage_path)
+                          .to_h
+          if r2_covers.any?
+            books = books.map do |b|
+              path = r2_covers[b[:google_books_id]]
+              path ? b.merge(cover_image_url: ImageStorageService.url_for(path)) : b
+            end
+          end
+        end
+
         render json: { books: books, count: books.size }
       end
 
@@ -638,7 +655,10 @@ module Api
             isbn:            isbn,
             title:           vi['title'],
             author_name:     Array(vi['authors']).first,
-            cover_image_url: vi.dig('imageLinks', 'thumbnail')&.sub('http://', 'https://'),
+            cover_image_url: vi.dig('imageLinks', 'thumbnail')
+              &.gsub('zoom=1', 'zoom=0')
+              &.gsub('&edge=curl', '')
+              &.sub('http://', 'https://'),
             description:     vi['description'],
             published_date:  vi['publishedDate'],
             page_count:      vi['pageCount'],
@@ -1111,7 +1131,10 @@ module Api
           isbn: identifiers.find { |i| i['type'] == 'ISBN_13' }&.dig('identifier') ||
                 identifiers.find { |i| i['type'] == 'ISBN_10' }&.dig('identifier'),
           description: strip_html(v['description']),
-          cover_image_url: image_links['thumbnail'] || image_links['smallThumbnail'],
+          cover_image_url: (image_links['thumbnail'] || image_links['smallThumbnail'])
+            &.gsub('zoom=1', 'zoom=0')
+            &.gsub('&edge=curl', '')
+            &.sub('http://', 'https://'),
           release_date: v['publishedDate'],
           page_count: v['pageCount'],
           author_name: Array(v['authors']).first || 'Unknown Author',
@@ -1154,7 +1177,10 @@ module Api
           title: v['title'] || 'Unknown Title',
           isbn: isbn,
           description: strip_html(v['description']),
-          cover_image_url: image_links['thumbnail'] || image_links['smallThumbnail'],
+          cover_image_url: (image_links['thumbnail'] || image_links['smallThumbnail'])
+            &.gsub('zoom=1', 'zoom=0')
+            &.gsub('&edge=curl', '')
+            &.sub('http://', 'https://'),
           release_date: v['publishedDate'],
           page_count: v['pageCount'],
           author_name: Array(v['authors']).first || 'Unknown Author',
