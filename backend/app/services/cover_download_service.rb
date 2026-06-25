@@ -34,7 +34,7 @@ class CoverDownloadService
       return false
     end
 
-    path = storage_path
+    path = storage_path(content_type)
     ImageStorageService.upload(path, data, content_type: content_type)
 
     @book.update_columns(
@@ -87,8 +87,14 @@ class CoverDownloadService
     true
   end
 
-  def storage_path
+  def storage_path(content_type)
+    ext = case content_type
+          when 'image/png'  then 'png'
+          when 'image/gif'  then 'gif'
+          when 'image/webp' then 'webp'
+          else                   'jpg'
+          end
     id = @book.isbn.presence || @book.google_books_id.presence || @book.id.to_s
-    "covers/#{id}.jpg"
+    "covers/#{id}.#{ext}"
   end
 end
