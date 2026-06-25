@@ -70,7 +70,6 @@ class BookCoverService
   # Check if book needs enrichment
   def needs_enrichment?
     return false if @book.cover_storage_path.present?
-    return true if @book.cover_storage_path.blank?
     return true if @book.cover_image_url.blank?
     return true if @book.respond_to?(:categories)  && @book.categories.blank?
     return true if @book.respond_to?(:page_count)  && @book.page_count.blank?

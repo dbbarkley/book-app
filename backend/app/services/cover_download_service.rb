@@ -24,6 +24,22 @@ class CoverDownloadService
   end
 
   def call
+    # If R2 already has a cover at the expected path, sync the DB and skip the download.
+    # Useful when local and production share the same bucket — avoids re-uploading.
+    %w[jpg png webp gif].each do |ext|
+      id   = @book.isbn.presence || @book.google_books_id.presence || @book.id.to_s
+      path = "covers/#{id}.#{ext}"
+      if ImageStorageService.exists?(path)
+        warn "book=#{@book.id}: R2 already has #{path} — syncing DB, skipping download"
+        @book.update_columns(
+          cover_storage_path:     path,
+          cover_image_source:     'r2',
+          cover_last_enriched_at: Time.current
+        )
+        return true
+      end
+    end
+
     book_cover_service = BookCoverService.new(@book)
     url = data = content_type = nil
 

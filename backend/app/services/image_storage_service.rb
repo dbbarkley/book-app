@@ -15,6 +15,13 @@ class ImageStorageService
     "#{ENV['R2_PUBLIC_URL']}/#{path}"
   end
 
+  def self.exists?(path)
+    client.head_object(bucket: ENV['R2_BUCKET'], key: path)
+    true
+  rescue Aws::S3::Errors::NotFound
+    false
+  end
+
   def self.delete(path)
     client.delete_object(bucket: ENV['R2_BUCKET'], key: path)
   end
