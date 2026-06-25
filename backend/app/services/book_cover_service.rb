@@ -6,8 +6,8 @@ require 'uri'
 # BookCoverService - Finds and enriches book covers from multiple sources
 #
 # Priority order:
-# 1. Open Library Covers API (best quality, free, no key required)
-# 2. Google Books API (good coverage)
+# 1. Google Books API (consistent look, zoom=0 ~512px)
+# 2. Open Library Covers API (fallback, free, no key required)
 # 3. Returns nil for frontend to show placeholder
 #
 # Quality scoring:
@@ -31,12 +31,12 @@ class BookCoverService
 
   # Find the best cover from all sources
   def find_best_cover
-    # Try Open Library first (best quality)
-    cover_data = try_open_library
+    # Try Google Books first (consistent look, zoom=0 ~512px)
+    cover_data = try_google_books
     return cover_data if cover_data
 
-    # Fallback to Google Books
-    cover_data = try_google_books
+    # Fallback to Open Library
+    cover_data = try_open_library
     return cover_data if cover_data
 
     # No cover found
@@ -136,8 +136,10 @@ class BookCoverService
     
     return nil unless cover_url
 
-    # Replace http with https for security
-    cover_url = cover_url.gsub('http://', 'https://')
+    cover_url = cover_url
+      .gsub('zoom=1', 'zoom=0')
+      .gsub('&edge=curl', '')
+      .gsub('http://', 'https://')
     
     # Estimate quality based on which size we got
     quality = if image_links['large']
