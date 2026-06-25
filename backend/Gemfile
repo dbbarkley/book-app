@@ -39,3 +39,6 @@ group :development do
 end
 
 gem 'ruby-openai'
+
+gem 'aws-sdk-s3', '~> 1'
+gem 'fastimage'

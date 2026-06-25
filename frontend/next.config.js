@@ -75,6 +75,10 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'assets.hardcover.app',
       },
+      {
+        protocol: 'https',
+        hostname: '**.r2.dev',
+      },
     ],
   },
   webpack: (config, { dev }) => {
