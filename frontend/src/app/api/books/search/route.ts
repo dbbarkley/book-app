@@ -106,7 +106,10 @@ function writeToCatalog(items: any[]): void {
         isbn,
         title:           v.title,
         author_name:     (v.authors || [])[0] || null,
-        cover_image_url: v.imageLinks?.thumbnail?.replace('http://', 'https://') || null,
+        cover_image_url: v.imageLinks?.thumbnail
+          ?.replace('zoom=1', 'zoom=0')
+          ?.replace('&edge=curl', '')
+          ?.replace('http://', 'https://') || null,
         description:     v.description || null,
         published_date:  v.publishedDate || null,
         page_count:      v.pageCount || null,
