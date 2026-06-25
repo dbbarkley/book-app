@@ -20,26 +20,35 @@ class CoverDownloadService
   end
 
   def call
-    # Fast path: try the stored cover_image_url first — avoids an API call for
-    # the majority of books that already have a valid URL in the DB.
+    book_cover_service = BookCoverService.new(@book)
+
+    # 1. Fast path: try the stored cover_image_url (no API call)
     url, data, content_type = try_existing_url
+
+    # 2. Fresh source search: Google Books → Open Library
     unless data
-      # Fall back to fresh source search (Google Books API, then Open Library)
-      url = BookCoverService.new(@book).find_best_cover[:url]
-
-      unless url.present?
-        Rails.logger.warn("[CoverDownload] book=#{@book.id} (#{@book.title.inspect}): no cover URL found")
-        @book.update_column(:cover_last_enriched_at, Time.current)
-        return false
+      best_url = book_cover_service.find_best_cover[:url]
+      if best_url.present?
+        data, content_type = fetch(best_url)
+        url = best_url if data
       end
+    end
 
-      data, content_type = fetch(url)
-
-      unless data
-        Rails.logger.warn("[CoverDownload] book=#{@book.id} (#{@book.title.inspect}): fetch failed or non-image response — url=#{url}")
-        @book.update_column(:cover_last_enriched_at, Time.current)
-        return false
+    # 3. Last resort: Serper image search — fires when all sources above either
+    #    returned no URL or returned a URL that failed to download (e.g. OL
+    #    passing HEAD but serving non-image on GET).
+    unless data
+      serper_result = book_cover_service.try_image_search
+      if serper_result&.dig(:url).present?
+        data, content_type = fetch(serper_result[:url])
+        url = serper_result[:url] if data
       end
+    end
+
+    unless data
+      Rails.logger.warn("[CoverDownload] book=#{@book.id} (#{@book.title.inspect}): all sources failed")
+      @book.update_column(:cover_last_enriched_at, Time.current)
+      return false
     end
 
     unless valid?(data, url)
