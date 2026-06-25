@@ -25,6 +25,11 @@
       class: GeneratePeerRecommendationsJob
       queue: low_priority
       description: "Daily peer-based book recommendations via user similarity scoring"
+    enrich_book_covers_nightly:
+      cron: "0 3 * * *"  # Daily at 3:00 AM
+      class: EnrichBookCoversJob
+      queue: low_priority
+      description: "Downloads and validates book covers to R2, backfills missing covers"
     # scrape_new_releases:
     #   cron: "0 3 */3 * *" # Every 3 days at 3:00 AM (disabled — replaced by ISBNdb)
     #   class: ScrapeNewReleasesJob
