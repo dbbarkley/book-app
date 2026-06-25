@@ -17,6 +17,8 @@ FactoryBot.define do
     sequence(:google_books_id) { |n| "gbid_#{n}" }
     release_date               { 2.years.ago.to_date }
     categories                 { [] }
+    cover_image_url            { 'https://books.google.com/books/cover.jpg' }
+    cover_storage_path         { nil }
     association :author
     association :work
     work_id { work.id }

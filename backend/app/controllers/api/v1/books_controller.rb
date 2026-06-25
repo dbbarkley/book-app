@@ -305,7 +305,7 @@ module Api
             title:           book.title,
             author:          book.author&.name,
             description:     book.description,
-            cover_image_url: book.cover_image_url,
+            cover_image_url: book.resolved_cover_url,
             page_count:      book.page_count,
           )
           book.update_column(:work_id, work.id)
@@ -317,7 +317,7 @@ module Api
           isbn:            book.isbn,
           title:           book.title,
           author_name:     book.author&.name,
-          cover_image_url: book.cover_image_url,
+          cover_image_url: book.resolved_cover_url,
           description:     book.description,
           published_date:  book.release_date&.to_s,
           page_count:      book.page_count,
@@ -1213,7 +1213,7 @@ module Api
           author_name: book.author.name,
           author_id: book.author.id,
           google_books_id: book.google_books_id,
-          cover_image_url: book.cover_image_url,
+          cover_image_url: book.resolved_cover_url,
           release_date: book.release_date,
           page_count: book.respond_to?(:page_count) ? book.page_count : nil
         }
@@ -1249,7 +1249,7 @@ module Api
           title: book.title,
           isbn: book.isbn,
           description: book.description,
-          cover_image_url: book.cover_image_url,
+          cover_image_url: book.resolved_cover_url,
           release_date: book.release_date,
           page_count: book.respond_to?(:page_count) ? book.page_count : nil,
           # Flat fields expected by shared Book type (mobile + web)
