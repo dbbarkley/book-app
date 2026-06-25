@@ -15,32 +15,39 @@ class CoverDownloadService
     d41d8cd98f00b204e9800998ecf8427e
   ].freeze
 
-  def initialize(book)
-    @book = book
+  SOURCES = %w[serper google openlibrary].freeze
+
+  def initialize(book, source: nil)
+    @book   = book
+    @source = source&.to_s
+    raise ArgumentError, "Unknown source #{@source.inspect}. Valid: #{SOURCES.join(', ')}" if @source && !SOURCES.include?(@source)
   end
 
   def call
     book_cover_service = BookCoverService.new(@book)
+    url = data = content_type = nil
 
-    # 1. Serper image search — best quality, most canonical cover
-    url, data, content_type = book_cover_service.try_image_search_download(self)
+    if @source
+      url, data, content_type = fetch_from_source(book_cover_service, @source)
+    else
+      # Priority order: Serper → existing URL → Google Books / Open Library
+      url, data, content_type = book_cover_service.try_image_search_download(self)
 
-    # 2. Fast path: existing cover_image_url (no API call)
-    unless data
-      url, data, content_type = try_existing_url
-    end
+      unless data
+        url, data, content_type = try_existing_url
+      end
 
-    # 3. Google Books API → Open Library
-    unless data
-      best_url = book_cover_service.find_best_cover[:url]
-      if best_url.present?
-        data, content_type = fetch(best_url)
-        url = best_url if data
+      unless data
+        best_url = book_cover_service.find_best_cover[:url]
+        if best_url.present?
+          data, content_type = fetch(best_url)
+          url = best_url if data
+        end
       end
     end
 
     unless data
-      Rails.logger.warn("[CoverDownload] book=#{@book.id} (#{@book.title.inspect}): all sources failed")
+      warn "book=#{@book.id} (#{@book.title.inspect}): all sources failed"
       @book.update_column(:cover_last_enriched_at, Time.current)
       return false
     end
@@ -61,12 +68,29 @@ class CoverDownloadService
 
     true
   rescue StandardError => e
-    Rails.logger.warn("[CoverDownload] Failed for book #{@book.id}: #{e.message}")
+    warn "book=#{@book.id}: exception — #{e.class}: #{e.message}\n#{e.backtrace.first(5).join("\n")}"
     @book.update_column(:cover_last_enriched_at, Time.current) rescue nil
     false
   end
 
   private
+
+  def fetch_from_source(book_cover_service, source)
+    case source
+    when 'serper'
+      book_cover_service.try_image_search_download(self)
+    when 'google'
+      result = book_cover_service.try_google_books
+      return [nil, nil, nil] unless result&.dig(:url)
+      data, content_type = fetch(result[:url])
+      data ? [result[:url], data, content_type] : [nil, nil, nil]
+    when 'openlibrary'
+      result = book_cover_service.try_open_library
+      return [nil, nil, nil] unless result&.dig(:url)
+      data, content_type = fetch(result[:url])
+      data ? [result[:url], data, content_type] : [nil, nil, nil]
+    end
+  end
 
   def try_existing_url
     return [nil, nil, nil] if @book.cover_image_url.blank?
@@ -86,13 +110,13 @@ class CoverDownloadService
     ) { |http| http.get(uri.request_uri) }
 
     unless response.is_a?(Net::HTTPSuccess)
-      Rails.logger.warn("[CoverDownload] book=#{@book.id}: HTTP #{response.code} from #{url}")
+      warn "book=#{@book.id}: HTTP #{response.code} from #{url}"
       return nil
     end
 
     content_type = response['content-type']&.split(';')&.first&.strip
     unless content_type&.start_with?('image/')
-      Rails.logger.warn("[CoverDownload] book=#{@book.id}: non-image content-type '#{content_type}' from #{url}")
+      warn "book=#{@book.id}: non-image content-type '#{content_type}' from #{url}"
       return nil
     end
 
@@ -101,15 +125,15 @@ class CoverDownloadService
 
   def valid?(data, url)
     if data.bytesize < MIN_BYTES
-      Rails.logger.warn("[CoverDownload] book=#{@book.id} (#{@book.title.inspect}): rejected — too small (#{data.bytesize}B < #{MIN_BYTES}B) url=#{url}")
+      warn "book=#{@book.id} (#{@book.title.inspect}): rejected — too small (#{data.bytesize}B < #{MIN_BYTES}B) url=#{url}"
       return false
     end
     if data.bytesize > MAX_BYTES
-      Rails.logger.warn("[CoverDownload] book=#{@book.id} (#{@book.title.inspect}): rejected — too large (#{data.bytesize}B) url=#{url}")
+      warn "book=#{@book.id} (#{@book.title.inspect}): rejected — too large (#{data.bytesize}B) url=#{url}"
       return false
     end
     if PLACEHOLDER_HASHES.include?(Digest::MD5.hexdigest(data))
-      Rails.logger.warn("[CoverDownload] book=#{@book.id} (#{@book.title.inspect}): rejected — known placeholder hash url=#{url}")
+      warn "book=#{@book.id} (#{@book.title.inspect}): rejected — known placeholder hash url=#{url}"
       return false
     end
     unless dimensions_ok?(data, url)
@@ -123,12 +147,18 @@ class CoverDownloadService
     return true unless info  # unknown format — don't reject
 
     if info[0] < MIN_DIMENSION || info[1] < MIN_DIMENSION
-      Rails.logger.warn("[CoverDownload] book=#{@book.id} (#{@book.title.inspect}): rejected — dimensions too small (#{info[0]}x#{info[1]}) url=#{url}")
+      warn "book=#{@book.id} (#{@book.title.inspect}): rejected — dimensions too small (#{info[0]}x#{info[1]}) url=#{url}"
       return false
     end
     true
   rescue StandardError
     true
+  end
+
+  def warn(msg)
+    tagged = "[CoverDownload] #{msg}"
+    Rails.logger.warn(tagged)
+    puts tagged
   end
 
   def storage_path(content_type)

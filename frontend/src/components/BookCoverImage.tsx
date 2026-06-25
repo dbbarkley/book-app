@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import Image from 'next/image'
 import { motion } from 'framer-motion'
 import { SkeletonLoader } from './SkeletonLoader'
@@ -46,8 +46,14 @@ export function BookCoverImage({
   const [hasError, setHasError]                 = useState(false)
   const [imageSrc, setImageSrc]                 = useState<string | null>(src || null)
   const [hasTriedFallback, setHasTriedFallback] = useState(false)
+  const imgRef = useRef<HTMLImageElement>(null)
 
   const dimensions = SIZE_MAP[size]
+
+  const finishLoading = useCallback(() => {
+    setIsLoading(false)
+    setShowSkeleton(false)
+  }, [])
 
   useEffect(() => {
     if (src) {
@@ -62,6 +68,18 @@ export function BookCoverImage({
     }
   }, [src])
 
+  // Cached images load before onLoad can fire — check img.complete after paint
+  useEffect(() => {
+    if (!imageSrc) return
+    const rafId = requestAnimationFrame(() => {
+      const img = imgRef.current
+      if (img?.complete && img.naturalWidth > 0) {
+        finishLoading()
+      }
+    })
+    return () => cancelAnimationFrame(rafId)
+  }, [imageSrc, finishLoading])
+
   // Only show skeleton after 100ms — avoids flash for browser-cached images
   useEffect(() => {
     if (!isLoading || !imageSrc) {
@@ -73,8 +91,7 @@ export function BookCoverImage({
   }, [isLoading, imageSrc])
 
   const handleLoad = () => {
-    setIsLoading(false)
-    setShowSkeleton(false)
+    finishLoading()
     onLoad?.()
   }
 
@@ -118,6 +135,7 @@ export function BookCoverImage({
       )}
 
       <Image
+        ref={imgRef}
         src={imageSrc}
         alt={`Cover of ${title || 'Unknown'}`}
         {...(isFull ? { fill: true } : { width: dimensions.width, height: dimensions.height })}

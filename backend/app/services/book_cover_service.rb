@@ -121,7 +121,108 @@ class BookCoverService
     { url: url, quality: HIGH_QUALITY, source: 'image_search' }
   end
 
+  def try_open_library
+    isbn = @book.isbn
+    return nil if isbn.blank?
+
+    url = "#{OPEN_LIBRARY_BASE}/isbn/#{isbn}-L.jpg"
+
+    if cover_exists?(url)
+      return { url: url, quality: HIGH_QUALITY, source: 'open_library' }
+    end
+
+    nil
+  rescue StandardError => e
+    Rails.logger.error("Open Library cover fetch failed for book #{@book.id}: #{e.message}")
+    nil
+  end
+
+  def try_google_books
+    query = if @book.isbn.present?
+              "isbn:#{@book.isbn}"
+            else
+              "intitle:#{@book.title}+inauthor:#{@book.author.name}"
+            end
+
+    key = ENV['GOOGLE_BOOKS_API_KEY']
+    api_key_param = key.present? ? "&key=#{key}" : ''
+    uri = URI("#{GOOGLE_BOOKS_BASE}?q=#{URI.encode_www_form_component(query)}&maxResults=1#{api_key_param}")
+
+    response = Net::HTTP.get_response(uri)
+    return nil unless response.is_a?(Net::HTTPSuccess)
+
+    data = JSON.parse(response.body)
+    return nil if data['totalItems'].to_i.zero?
+
+    volume = data['items']&.first
+    image_links = volume&.dig('volumeInfo', 'imageLinks')
+    return nil unless image_links
+
+    cover_url = image_links['large'] ||
+                image_links['medium'] ||
+                image_links['thumbnail']
+    return nil unless cover_url
+
+    cover_url = cover_url
+      .gsub('zoom=1', 'zoom=0')
+      .gsub('&edge=curl', '')
+      .gsub('http://', 'https://')
+
+    quality = if image_links['large']
+                HIGH_QUALITY
+              elsif image_links['medium']
+                MEDIUM_QUALITY
+              else
+                LOW_QUALITY
+              end
+
+    categories = volume&.dig('volumeInfo', 'categories') || []
+    page_count = volume&.dig('volumeInfo', 'pageCount')
+
+    {
+      url:        cover_url,
+      quality:    quality,
+      source:     'google_books',
+      categories: categories,
+      page_count: page_count,
+    }
+  rescue StandardError => e
+    Rails.logger.error("Google Books cover fetch failed for book #{@book.id}: #{e.message}")
+    nil
+  end
+
   private
+
+  # Domains that reliably serve clean, flat book cover art
+  COVER_DOMAINS = %w[
+    m.media-amazon.com
+    images-na.ssl-images-amazon.com
+    i.gr-assets.com
+    images.gr-assets.com
+    s.gr-assets.com
+    images.isbndb.com
+    books.google.com
+    covers.openlibrary.org
+    cdn.waterstones.com
+    images.penguinrandomhouse.com
+    harpercollins.com
+    simonandschuster.com
+    macmillan.com
+    bloomsbury.com
+  ].freeze
+
+  # Domains that often return lifestyle/photo-of-book results — skip entirely
+  BLOCKED_DOMAINS = %w[
+    instagram.com
+    pinterest.com
+    tumblr.com
+    twitter.com
+    x.com
+    facebook.com
+    reddit.com
+    tiktok.com
+    youtube.com
+  ].freeze
 
   def serper_candidates
     unless ENV['SERPER_API_KEY'].present?
@@ -129,6 +230,7 @@ class BookCoverService
       return nil
     end
 
+    # "book cover" at the end signals we want the flat art, not a photo of the book
     query = "\"#{@book.title}\" \"#{@book.author.name}\" book cover"
     Rails.logger.info("[Serper] book=#{@book.id} (#{@book.title.inspect}): querying — #{query}")
 
@@ -141,7 +243,7 @@ class BookCoverService
     req = Net::HTTP::Post.new(uri.request_uri)
     req['Content-Type'] = 'application/json'
     req['X-API-KEY']    = ENV['SERPER_API_KEY']
-    req.body            = { q: query, num: 5 }.to_json
+    req.body            = { q: query, num: 10 }.to_json
 
     resp = http.request(req)
     unless resp.is_a?(Net::HTTPSuccess)
@@ -157,98 +259,64 @@ class BookCoverService
       return nil
     end
 
-    # Prefer portrait-oriented results — book covers are taller than wide
-    portrait   = images.select { |img| img['imageHeight'].to_i > img['imageWidth'].to_i }
-    candidates = portrait.any? ? portrait : images
-    Rails.logger.info("[Serper] book=#{@book.id}: #{portrait.size} portrait / #{images.size} total")
-    candidates
+    scored = images
+      .reject { |img| blocked?(img['imageUrl']) }
+      .reject { |img| img['imageUrl'].to_s.include?('cloudfront.net') }
+      .map    { |img| [img, cover_score(img)] }
+      .sort_by { |_, score| -score }
+
+    scored.each do |img, score|
+      Rails.logger.info("[Serper] book=#{@book.id}: score=#{score} title=#{img['title'].inspect} url=#{img['imageUrl']}")
+      puts "[Serper] book=#{@book.id}: score=#{score} w=#{img['imageWidth']} h=#{img['imageHeight']} title=#{img['title'].inspect} url=#{img['imageUrl']}"
+    end
+    Rails.logger.info("[Serper] book=#{@book.id}: #{scored.size} candidates after filtering")
+
+    scored.empty? ? nil : scored.map(&:first)
   rescue StandardError => e
     Rails.logger.warn("[Serper] book=#{@book.id}: request failed — #{e.message}")
     nil
   end
 
-  def try_open_library
-    # Try ISBN13 first, then ISBN10
-    isbn = @book.isbn
-    return nil if isbn.blank?
-
-    # Open Library supports multiple sizes: S, M, L
-    # We use L for best quality
-    url = "#{OPEN_LIBRARY_BASE}/isbn/#{isbn}-L.jpg"
-    
-    # Check if cover exists by making a HEAD request
-    if cover_exists?(url)
-      # Open Library L size is typically high quality
-      return {
-        url: url,
-        quality: HIGH_QUALITY,
-        source: 'open_library'
-      }
-    end
-
-    nil
-  rescue StandardError => e
-    Rails.logger.error("Open Library cover fetch failed for book #{@book.id}: #{e.message}")
-    nil
+  def blocked?(url)
+    host = URI.parse(url.to_s).host.to_s
+    BLOCKED_DOMAINS.any? { |d| host.include?(d) }
+  rescue URI::InvalidURIError
+    true
   end
 
-  def try_google_books
-    # Search by ISBN or title+author
-    query = if @book.isbn.present?
-              "isbn:#{@book.isbn}"
-            else
-              "intitle:#{@book.title}+inauthor:#{@book.author.name}"
-            end
+  # Title/alt keywords that strongly suggest clean flat cover art
+  COVER_TITLE_SIGNALS = %w[cover paperback hardcover edition jacket artwork art].freeze
 
-    key = ENV['GOOGLE_BOOKS_API_KEY']
-    api_key_param = key.present? ? "&key=#{key}" : ''
-    uri = URI("#{GOOGLE_BOOKS_BASE}?q=#{URI.encode_www_form_component(query)}&maxResults=1#{api_key_param}")
-    
-    response = Net::HTTP.get_response(uri)
-    return nil unless response.is_a?(Net::HTTPSuccess)
+  # Title keywords that suggest a lifestyle photo of the book, not the flat art
+  PHOTO_TITLE_SIGNALS = %w[reading unboxing haul stack bookshelf shelf review photo
+                            holding aesthetic bookstagram tbr wrap].freeze
 
-    data = JSON.parse(response.body)
-    return nil if data['totalItems'].to_i.zero?
+  # Higher score = more likely to be a clean flat cover image.
+  def cover_score(img)
+    url   = img['imageUrl'].to_s
+    host  = URI.parse(url).host.to_s rescue ''
+    title = "#{img['title']} #{img['imageUrl']}".downcase
+    w     = img['imageWidth'].to_i
+    h     = img['imageHeight'].to_i
 
-    volume = data['items']&.first
-    image_links = volume&.dig('volumeInfo', 'imageLinks')
-    return nil unless image_links
+    score = 0
 
-    # Google Books provides different sizes, prefer larger ones
-    cover_url = image_links['large'] || 
-                image_links['medium'] || 
-                image_links['thumbnail']
-    
-    return nil unless cover_url
+    # Trusted cover-art CDNs
+    score += 20 if COVER_DOMAINS.any? { |d| host.end_with?(d) }
 
-    cover_url = cover_url
-      .gsub('zoom=1', 'zoom=0')
-      .gsub('&edge=curl', '')
-      .gsub('http://', 'https://')
-    
-    # Estimate quality based on which size we got
-    quality = if image_links['large']
-                HIGH_QUALITY
-              elsif image_links['medium']
-                MEDIUM_QUALITY
-              else
-                LOW_QUALITY
-              end
+    # Title/alt signals
+    score += 15 if COVER_TITLE_SIGNALS.any? { |kw| title.include?(kw) }
+    score -= 20 if PHOTO_TITLE_SIGNALS.any? { |kw| title.include?(kw) }
 
-    # Google Books provides categories/genres and page count
-    categories = volume&.dig('volumeInfo', 'categories') || []
-    page_count = volume&.dig('volumeInfo', 'pageCount')
+    # Book covers are typically 0.58–0.72 wide relative to height (e.g. 6"×9")
+    if h > 0
+      ratio = w.to_f / h
+      score += 15 if ratio.between?(0.58, 0.72)
+      score += 5  if ratio.between?(0.5, 0.8) && !ratio.between?(0.58, 0.72)
+      score -= 15 if ratio > 0.9  # too square or wide — likely a photo of the physical book
+    end
 
-    {
-      url:        cover_url,
-      quality:    quality,
-      source:     'google_books',
-      categories: categories,
-      page_count: page_count,
-    }
-  rescue StandardError => e
-    Rails.logger.error("Google Books cover fetch failed for book #{@book.id}: #{e.message}")
-    nil
+    score
   end
 
   def cover_exists?(url)
