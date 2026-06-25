@@ -87,7 +87,7 @@ module Api
           book: event.book ? {
             id: event.book.id,
             title: event.book.title,
-            cover_image_url: event.book.cover_image_url
+            cover_image_url: event.book.resolved_cover_url
           } : nil
         }
       end

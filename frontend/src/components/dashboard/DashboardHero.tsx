@@ -211,8 +211,10 @@ export default function DashboardHero({
                     src={book.cover_image_url}
                     title={book.title}
                     author={book.author_name}
+                    isbn={book.isbn}
                     size="medium"
                     className="w-full h-full object-cover"
+                    priority={true}
                   />
                 </div>
               </Link>

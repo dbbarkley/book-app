@@ -342,7 +342,7 @@ module Api
           title: book.title,
           isbn: book.isbn,
           description: book.description,
-          cover_image_url: book.cover_image_url,
+          cover_image_url: book.resolved_cover_url,
           release_date: book.release_date,
           author: serialize_author_summary(book.author),
           author_name: book.author&.name,
@@ -449,7 +449,7 @@ module Api
           id: book.id,
           title: book.title,
           author_name: book.author_name || book.author&.name,
-          cover_image_url: book.cover_image_url,
+          cover_image_url: book.resolved_cover_url,
           release_date: book.release_date
         }
       end
@@ -470,7 +470,7 @@ module Api
           {
             title: book.title,
             author_name: book.author&.name,
-            cover_image_url: book.cover_image_url,
+            cover_image_url: book.resolved_cover_url,
             id: book.id,
             release_date: book.release_date,
             source: 'Local Library'

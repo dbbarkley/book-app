@@ -1,85 +1,69 @@
 # frozen_string_literal: true
 
-# EnrichBookCoversJob - Background job to fetch and update book covers
-#
-# This job runs after Goodreads import or can be scheduled periodically
-# to improve cover quality for all books.
-#
-# Features:
-# - Processes books in batches to avoid overwhelming APIs
-# - Rate limits API requests
-# - Skips books that don't need enrichment
-# - Can be run for specific books or all books
 class EnrichBookCoversJob < ApplicationJob
-  queue_as :default
+  queue_as :low_priority
 
-  # Batch size to avoid memory issues
-  BATCH_SIZE = 50
-  
-  # Delay between API requests (rate limiting)
+  BATCH_SIZE    = 50
   REQUEST_DELAY = 0.5.seconds
 
-  # Enrich covers for specific books or all books
-  # @param book_ids [Array<Integer>] Optional array of book IDs to enrich
-  def perform(book_ids = nil)
+  # book_ids: array of DB integer ids OR google_books_id strings (e.g. "hc_454009").
+  # source:   "serper", "google", or "openlibrary" — pin to one source.
+  #           Omit to use the default priority order (serper → google → openlibrary).
+  # When ids are given explicitly, needs_enrichment? is bypassed.
+  def perform(book_ids = nil, source = nil)
+    force = book_ids.present?
+
     books = if book_ids.present?
-              Book.where(id: book_ids)
-            else
-              Book.all
-            end
+      int_ids = book_ids.select { |id| id.to_s =~ /\A\d+\z/ }.map(&:to_i)
+      ext_ids = book_ids.reject { |id| id.to_s =~ /\A\d+\z/ }
 
-    total_books = books.count
-    enriched_count = 0
-    skipped_count = 0
-    failed_count = 0
+      by_pk  = int_ids.any? ? Book.where(id: int_ids) : Book.none
+      by_ext = ext_ids.any? ? Book.where(google_books_id: ext_ids) : Book.none
 
-    Rails.logger.info("Starting cover enrichment for #{total_books} books")
+      missing = ext_ids - by_ext.pluck(:google_books_id)
+      if missing.any?
+        msg = "[EnrichBookCoversJob] IDs not found in books table: #{missing.inspect}"
+        Rails.logger.warn(msg)
+        puts msg
+      end
+
+      Book.where(id: (by_pk + by_ext).map(&:id))
+    else
+      Book.all
+    end
+
+    log "Starting — #{books.count} book(s) to process (force=#{force} source=#{source || 'auto'})"
+
+    enriched = skipped = failed = 0
 
     books.find_each(batch_size: BATCH_SIZE) do |book|
-      service = BookCoverService.new(book)
-      
-      # Skip if enrichment not needed
-      unless service.needs_enrichment?
-        skipped_count += 1
+      unless force || BookCoverService.new(book).needs_enrichment?
+        log "  skip  book=#{book.id} (#{book.title.inspect}) — already enriched"
+        skipped += 1
         next
       end
 
-      begin
-        result = service.enrich_cover!
-        
-        if result[:url].present?
-          enriched_count += 1
-          Rails.logger.info("Enriched cover for '#{book.title}' from #{result[:source]}")
-        else
-          skipped_count += 1
-          Rails.logger.info("No cover found for '#{book.title}'")
-        end
+      log "  start book=#{book.id} (#{book.title.inspect}) google_books_id=#{book.google_books_id.inspect}"
 
-        # Rate limit to be respectful to APIs
-        sleep REQUEST_DELAY
-      rescue StandardError => e
-        failed_count += 1
-        Rails.logger.error("Failed to enrich cover for book #{book.id}: #{e.message}")
+      if CoverDownloadService.new(book, source: source).call
+        log "  done  book=#{book.id} cover_storage_path=#{book.reload.cover_storage_path.inspect}"
+        enriched += 1
+      else
+        log "  fail  book=#{book.id}"
+        failed += 1
       end
 
-      # Log progress every 50 books
-      if (enriched_count + skipped_count + failed_count) % 50 == 0
-        progress = enriched_count + skipped_count + failed_count
-        Rails.logger.info("Progress: #{progress}/#{total_books} books processed")
-      end
+      sleep REQUEST_DELAY
     end
 
-    Rails.logger.info(
-      "Cover enrichment complete: #{enriched_count} enriched, " \
-      "#{skipped_count} skipped, #{failed_count} failed"
-    )
+    log "Done — #{enriched} enriched, #{skipped} skipped, #{failed} failed"
+  end
 
-    {
-      total: total_books,
-      enriched: enriched_count,
-      skipped: skipped_count,
-      failed: failed_count
-    }
+  private
+
+  def log(msg)
+    tagged = "[EnrichBookCoversJob] #{msg}"
+    Rails.logger.info(tagged)
+    puts tagged
   end
 end
-

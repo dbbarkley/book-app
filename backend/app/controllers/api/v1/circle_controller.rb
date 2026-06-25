@@ -19,7 +19,7 @@ module Api
           .where('user_books.updated_at >= ?', since)
           .where(status: %w[to_read reading read])
           .joins(:book)
-          .select('user_books.book_id, user_books.status, user_books.rating, books.title, books.id AS b_id, books.cover_image_url, books.google_books_id')
+          .select('user_books.book_id, user_books.status, user_books.rating, books.title, books.id AS b_id, books.cover_image_url, books.cover_storage_path, books.google_books_id')
           .includes(book: :author)
 
         agg = Hash.new do |h, k|
@@ -55,7 +55,7 @@ module Api
               id:              b.id,
               title:           b.title,
               author_name:     b.try(:author)&.name,
-              cover_image_url: b.cover_image_url,
+              cover_image_url: b.resolved_cover_url,
               google_books_id: b.google_books_id,
             },
             total_count:    total,
@@ -109,7 +109,7 @@ module Api
               id:              b.id,
               title:           b.title,
               author_name:     b.author_name.presence || b.try(:author)&.name,
-              cover_image_url: b.cover_image_url,
+              cover_image_url: b.resolved_cover_url,
               google_books_id: b.google_books_id,
             },
           }

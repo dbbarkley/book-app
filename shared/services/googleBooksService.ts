@@ -32,7 +32,10 @@ function transformBook(item: any): GoogleBooksBook {
     title:           v.title || 'Unknown Title',
     authors:         v.authors || [],
     description:     v.description,
-    cover_image_url: v.imageLinks?.thumbnail || v.imageLinks?.smallThumbnail,
+    cover_image_url: (v.imageLinks?.thumbnail || v.imageLinks?.smallThumbnail)
+      ?.replace('zoom=1', 'zoom=0')
+      ?.replace('&edge=curl', '')
+      ?.replace('http://', 'https://'),
     published_date:  v.publishedDate,
     isbn:            v.industryIdentifiers?.find((x: any) => x.type === 'ISBN_13')?.identifier ||
                      v.industryIdentifiers?.find((x: any) => x.type === 'ISBN_10')?.identifier,

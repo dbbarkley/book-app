@@ -157,8 +157,10 @@ export default function Shelf({
                         src={userBook.book.cover_image_url}
                         title={userBook.book.title}
                         author={userBook.book.author_name}
+                        isbn={userBook.book.isbn}
                         size="medium"
                         className="w-full h-full object-cover"
+                        priority={i < 6}
                       />
                     </div>
                   </Link>

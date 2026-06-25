@@ -1,47 +1,30 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import Image from 'next/image'
 import { motion } from 'framer-motion'
 import { SkeletonLoader } from './SkeletonLoader'
 import { ModernPlaceholder } from './ModernPlaceholder'
-
-/**
- * BookCoverImage Component
- * 
- * Smart book cover component with:
- * - Lazy loading for performance
- * - Skeleton loader while fetching
- * - Modern placeholder fallback for missing covers
- * - Smooth fade-in animation
- * - Error handling
- * - Framer Motion support for shared layout transitions
- * 
- * Features:
- * - Uses Next.js Image for optimization
- * - Supports Open Library and Google Books URLs
- * - Genre-based placeholder colors
- * - Responsive sizing
- */
 
 interface BookCoverImageProps {
   src?: string | null
   title: string
   author?: string
   genre?: string
+  isbn?: string
   size?: 'small' | 'medium' | 'large'
   className?: string
-  priority?: boolean // For above-the-fold images
+  priority?: boolean
   onLoad?: () => void
   onError?: () => void
-  layoutId?: string // For shared layout transitions
+  layoutId?: string
   objectFit?: 'cover' | 'contain'
 }
 
 const SIZE_MAP = {
-  small: { width: 96, height: 144 },      // 24rem x 36rem (2:3 ratio)
-  medium: { width: 128, height: 192 },    // 32rem x 48rem
-  large: { width: 192, height: 288 },     // 48rem x 72rem
+  small:  { width: 96,  height: 144 },
+  medium: { width: 128, height: 192 },
+  large:  { width: 192, height: 288 },
 }
 
 export function BookCoverImage({
@@ -49,6 +32,7 @@ export function BookCoverImage({
   title,
   author,
   genre,
+  isbn,
   size = 'medium',
   className = '',
   priority = false,
@@ -57,18 +41,26 @@ export function BookCoverImage({
   layoutId,
   objectFit,
 }: BookCoverImageProps) {
-  const [isLoading, setIsLoading] = useState(true)
-  const [hasError, setHasError] = useState(false)
-  const [imageSrc, setImageSrc] = useState<string | null>(src || null)
+  const [isLoading, setIsLoading]               = useState(true)
+  const [showSkeleton, setShowSkeleton]         = useState(false)
+  const [hasError, setHasError]                 = useState(false)
+  const [imageSrc, setImageSrc]                 = useState<string | null>(src || null)
+  const [hasTriedFallback, setHasTriedFallback] = useState(false)
+  const imgRef = useRef<HTMLImageElement>(null)
 
   const dimensions = SIZE_MAP[size]
 
-  // Reset states when src changes
+  const finishLoading = useCallback(() => {
+    setIsLoading(false)
+    setShowSkeleton(false)
+  }, [])
+
   useEffect(() => {
     if (src) {
       setImageSrc(src)
       setIsLoading(true)
       setHasError(false)
+      setHasTriedFallback(false)
     } else {
       setImageSrc(null)
       setIsLoading(false)
@@ -76,19 +68,45 @@ export function BookCoverImage({
     }
   }, [src])
 
+  // Cached images load before onLoad can fire — check img.complete after paint
+  useEffect(() => {
+    if (!imageSrc) return
+    const rafId = requestAnimationFrame(() => {
+      const img = imgRef.current
+      if (img?.complete && img.naturalWidth > 0) {
+        finishLoading()
+      }
+    })
+    return () => cancelAnimationFrame(rafId)
+  }, [imageSrc, finishLoading])
+
+  // Only show skeleton after 100ms — avoids flash for browser-cached images
+  useEffect(() => {
+    if (!isLoading || !imageSrc) {
+      setShowSkeleton(false)
+      return
+    }
+    const timer = setTimeout(() => setShowSkeleton(true), 100)
+    return () => clearTimeout(timer)
+  }, [isLoading, imageSrc])
+
   const handleLoad = () => {
-    setIsLoading(false)
+    finishLoading()
     onLoad?.()
   }
 
   const handleError = () => {
+    if (!hasTriedFallback && isbn) {
+      setHasTriedFallback(true)
+      setImageSrc(`https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg`)
+      return
+    }
     setIsLoading(false)
     setHasError(true)
     setImageSrc(null)
     onError?.()
   }
 
-  // Show placeholder if no image or error
   if (!imageSrc || hasError) {
     return (
       <ModernPlaceholder
@@ -101,29 +119,23 @@ export function BookCoverImage({
     )
   }
 
-  const isFull = className.includes('w-full') || className.includes('h-full')
+  const isFull   = className.includes('w-full') || className.includes('h-full')
   const fitClass = objectFit ? `object-${objectFit}` : isFull ? 'object-cover' : 'object-contain'
 
   return (
-    <motion.div 
+    <motion.div
       layoutId={layoutId}
-      className={`relative overflow-hidden flex items-center justify-center ${className}`} 
+      className={`relative overflow-hidden flex items-center justify-center ${className}`}
       style={!isFull ? { width: dimensions.width, height: dimensions.height } : undefined}
     >
-      {/* Loading skeleton */}
-      {isLoading && (
-        <div className="absolute inset-0 z-10">
-          <SkeletonLoader
-            variant="rectangular"
-            width="100%"
-            height="100%"
-            animation="shimmer"
-          />
+      {isLoading && showSkeleton && (
+        <div className="absolute inset-0 z-10" data-testid="skeleton-loader">
+          <SkeletonLoader variant="rectangular" width="100%" height="100%" animation="shimmer" />
         </div>
       )}
 
-      {/* Actual image */}
       <Image
+        ref={imgRef}
         src={imageSrc}
         alt={`Cover of ${title || 'Unknown'}`}
         {...(isFull ? { fill: true } : { width: dimensions.width, height: dimensions.height })}
@@ -145,4 +157,3 @@ export function BookCoverImage({
     </motion.div>
   )
 }
-

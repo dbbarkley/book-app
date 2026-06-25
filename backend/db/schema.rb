@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_06_23_000001) do
+ActiveRecord::Schema[7.2].define(version: 2026_06_25_134930) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -146,6 +146,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_06_23_000001) do
     t.jsonb "categories", default: []
     t.integer "page_count"
     t.bigint "work_id"
+    t.string "cover_storage_path"
     t.index ["author_id"], name: "index_books_on_author_id"
     t.index ["categories"], name: "index_books_on_categories", using: :gin
     t.index ["cover_image_quality"], name: "index_books_on_cover_image_quality"

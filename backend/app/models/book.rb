@@ -20,5 +20,10 @@ class Book < ApplicationRecord
 
   # Categories are stored as a JSONB array of strings
   # Example: ["Fiction", "Fantasy", "Young Adult"]
+
+  def resolved_cover_url
+    return ImageStorageService.url_for(cover_storage_path) if cover_storage_path.present?
+    cover_image_url
+  end
 end
 

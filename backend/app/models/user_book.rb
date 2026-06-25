@@ -115,7 +115,7 @@ class UserBook < ApplicationRecord
       'id'             => book.id,
       'title'          => book.title,
       'author_name'    => book.author&.name,
-      'cover_image_url'=> book.cover_image_url,
+      'cover_image_url'=> book.resolved_cover_url,
       'google_books_id'=> book.google_books_id,
     }
   end

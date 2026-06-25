@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
+    "test": "jest",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,css,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,css,md}\""
   },
@@ -24,6 +25,10 @@
     "zustand": "^4.4.0"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/jest": "^30.0.0",
     "@types/node": "^20.11.0",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
@@ -33,10 +38,13 @@
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-react": "^7.33.0",
     "eslint-plugin-react-hooks": "^4.6.0",
+    "jest": "^30.4.2",
+    "jest-environment-jsdom": "^30.4.1",
     "nodemon": "^3.1.11",
     "postcss": "^8.4.0",
     "prettier": "^3.2.0",
     "tailwindcss": "^3.4.0",
+    "ts-jest": "^29.4.11",
     "typescript": "^5.3.0"
   }
 }

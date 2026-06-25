@@ -99,7 +99,7 @@ module Api
             id: suggestion.book.id,
             title: suggestion.book.title,
             author_name: suggestion.book.author&.name,
-            cover_image_url: suggestion.book.cover_image_url,
+            cover_image_url: suggestion.book.resolved_cover_url,
             google_books_id: suggestion.book.google_books_id,
           }
         }

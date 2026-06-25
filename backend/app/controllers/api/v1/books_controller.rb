@@ -231,7 +231,24 @@ module Api
 
         return render json: { books: [], count: 0 } if q.blank?
 
-        books = BookCatalog.search(q, limit: limit).map(&:to_api_hash)
+        catalog_results = BookCatalog.search(q, limit: limit)
+        books = catalog_results.map(&:to_api_hash)
+
+        # Overlay R2 cover URLs for books already enriched in our DB
+        gids = catalog_results.map(&:google_books_id).compact
+        if gids.any?
+          r2_covers = Book.where(google_books_id: gids)
+                          .where.not(cover_storage_path: nil)
+                          .pluck(:google_books_id, :cover_storage_path)
+                          .to_h
+          if r2_covers.any?
+            books = books.map do |b|
+              path = r2_covers[b[:google_books_id]]
+              path ? b.merge(cover_image_url: ImageStorageService.url_for(path)) : b
+            end
+          end
+        end
+
         render json: { books: books, count: books.size }
       end
 
@@ -305,7 +322,7 @@ module Api
             title:           book.title,
             author:          book.author&.name,
             description:     book.description,
-            cover_image_url: book.cover_image_url,
+            cover_image_url: book.resolved_cover_url,
             page_count:      book.page_count,
           )
           book.update_column(:work_id, work.id)
@@ -317,7 +334,7 @@ module Api
           isbn:            book.isbn,
           title:           book.title,
           author_name:     book.author&.name,
-          cover_image_url: book.cover_image_url,
+          cover_image_url: book.resolved_cover_url,
           description:     book.description,
           published_date:  book.release_date&.to_s,
           page_count:      book.page_count,
@@ -610,9 +627,9 @@ module Api
             'publishedDate'       => book.published_date,
             'pageCount'           => book.page_count,
             'description'         => book.description,
-            'imageLinks'          => book.cover_image_url.present? ? {
-              'thumbnail'      => book.cover_image_url,
-              'smallThumbnail' => book.cover_image_url,
+            'imageLinks'          => book.resolved_cover_url.present? ? {
+              'thumbnail'      => book.resolved_cover_url,
+              'smallThumbnail' => book.resolved_cover_url,
             } : nil,
             'industryIdentifiers' => book.isbn.present? ? [{ 'type' => 'ISBN_13', 'identifier' => book.isbn }] : [],
             'averageRating'       => book.average_rating,
@@ -638,7 +655,10 @@ module Api
             isbn:            isbn,
             title:           vi['title'],
             author_name:     Array(vi['authors']).first,
-            cover_image_url: vi.dig('imageLinks', 'thumbnail')&.sub('http://', 'https://'),
+            cover_image_url: vi.dig('imageLinks', 'thumbnail')
+              &.gsub('zoom=1', 'zoom=0')
+              &.gsub('&edge=curl', '')
+              &.sub('http://', 'https://'),
             description:     vi['description'],
             published_date:  vi['publishedDate'],
             page_count:      vi['pageCount'],
@@ -1111,7 +1131,10 @@ module Api
           isbn: identifiers.find { |i| i['type'] == 'ISBN_13' }&.dig('identifier') ||
                 identifiers.find { |i| i['type'] == 'ISBN_10' }&.dig('identifier'),
           description: strip_html(v['description']),
-          cover_image_url: image_links['thumbnail'] || image_links['smallThumbnail'],
+          cover_image_url: (image_links['thumbnail'] || image_links['smallThumbnail'])
+            &.gsub('zoom=1', 'zoom=0')
+            &.gsub('&edge=curl', '')
+            &.sub('http://', 'https://'),
           release_date: v['publishedDate'],
           page_count: v['pageCount'],
           author_name: Array(v['authors']).first || 'Unknown Author',
@@ -1154,7 +1177,10 @@ module Api
           title: v['title'] || 'Unknown Title',
           isbn: isbn,
           description: strip_html(v['description']),
-          cover_image_url: image_links['thumbnail'] || image_links['smallThumbnail'],
+          cover_image_url: (image_links['thumbnail'] || image_links['smallThumbnail'])
+            &.gsub('zoom=1', 'zoom=0')
+            &.gsub('&edge=curl', '')
+            &.sub('http://', 'https://'),
           release_date: v['publishedDate'],
           page_count: v['pageCount'],
           author_name: Array(v['authors']).first || 'Unknown Author',
@@ -1213,7 +1239,7 @@ module Api
           author_name: book.author.name,
           author_id: book.author.id,
           google_books_id: book.google_books_id,
-          cover_image_url: book.cover_image_url,
+          cover_image_url: book.resolved_cover_url,
           release_date: book.release_date,
           page_count: book.respond_to?(:page_count) ? book.page_count : nil
         }
@@ -1236,7 +1262,7 @@ module Api
               position:        b.series_position,
               title:           b.title,
               google_books_id: real&.google_books_id || b.google_books_id,
-              cover_image_url: b.cover_image_url,
+              cover_image_url: b.resolved_cover_url,
               isbn:            b.isbn,
             }
           end,
@@ -1249,7 +1275,7 @@ module Api
           title: book.title,
           isbn: book.isbn,
           description: book.description,
-          cover_image_url: book.cover_image_url,
+          cover_image_url: book.resolved_cover_url,
           release_date: book.release_date,
           page_count: book.respond_to?(:page_count) ? book.page_count : nil,
           # Flat fields expected by shared Book type (mobile + web)
