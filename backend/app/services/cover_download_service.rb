@@ -22,26 +22,20 @@ class CoverDownloadService
   def call
     book_cover_service = BookCoverService.new(@book)
 
-    # 1. Fast path: try the stored cover_image_url (no API call)
-    url, data, content_type = try_existing_url
+    # 1. Serper image search — best quality, most canonical cover
+    url, data, content_type = book_cover_service.try_image_search_download(self)
 
-    # 2. Fresh source search: Google Books → Open Library
+    # 2. Fast path: existing cover_image_url (no API call)
+    unless data
+      url, data, content_type = try_existing_url
+    end
+
+    # 3. Google Books API → Open Library
     unless data
       best_url = book_cover_service.find_best_cover[:url]
       if best_url.present?
         data, content_type = fetch(best_url)
         url = best_url if data
-      end
-    end
-
-    # 3. Last resort: Serper image search — fires when all sources above either
-    #    returned no URL or returned a URL that failed to download (e.g. OL
-    #    passing HEAD but serving non-image on GET).
-    unless data
-      serper_result = book_cover_service.try_image_search
-      if serper_result&.dig(:url).present?
-        data, content_type = fetch(serper_result[:url])
-        url = serper_result[:url] if data
       end
     end
 

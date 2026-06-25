@@ -80,9 +80,52 @@ class BookCoverService
     false
   end
 
+  # Returns [url, data, content_type] by trying each Serper candidate in order,
+  # skipping CloudFront URLs (require auth cookies). Accepts the downloader so
+  # it can call fetch without duplicating HTTP logic.
+  def try_image_search_download(downloader)
+    candidates = serper_candidates
+    return [nil, nil, nil] if candidates.nil?
+
+    candidates.each do |img|
+      url = img['imageUrl']
+      next unless url.present?
+
+      if url.include?('cloudfront.net')
+        Rails.logger.info("[Serper] book=#{@book.id}: skipping CloudFront url=#{url}")
+        next
+      end
+
+      data, content_type = downloader.send(:fetch, url)
+      if data
+        Rails.logger.info("[Serper] book=#{@book.id}: success source=#{img['source']} url=#{url}")
+        return [url, data, content_type]
+      else
+        Rails.logger.info("[Serper] book=#{@book.id}: fetch failed, trying next — url=#{url}")
+      end
+    end
+
+    Rails.logger.warn("[Serper] book=#{@book.id}: all candidates failed")
+    [nil, nil, nil]
+  end
+
+  # Returns the Serper URL only (used as fallback URL source in find_best_cover context).
   def try_image_search
+    candidates = serper_candidates
+    return nil if candidates.nil?
+
+    url = candidates.reject { |img| img['imageUrl'].to_s.include?('cloudfront.net') }
+                    .first&.dig('imageUrl')
+    return nil unless url.present?
+
+    { url: url, quality: HIGH_QUALITY, source: 'image_search' }
+  end
+
+  private
+
+  def serper_candidates
     unless ENV['SERPER_API_KEY'].present?
-      Rails.logger.warn("[BookCoverService] book=#{@book.id}: SERPER_API_KEY not set, skipping image search")
+      Rails.logger.warn("[Serper] book=#{@book.id}: SERPER_API_KEY not set")
       return nil
     end
 
@@ -102,7 +145,7 @@ class BookCoverService
 
     resp = http.request(req)
     unless resp.is_a?(Net::HTTPSuccess)
-      Rails.logger.warn("[Serper] book=#{@book.id}: HTTP #{resp.code} from Serper")
+      Rails.logger.warn("[Serper] book=#{@book.id}: HTTP #{resp.code}")
       return nil
     end
 
@@ -110,29 +153,19 @@ class BookCoverService
     Rails.logger.info("[Serper] book=#{@book.id}: #{images.size} results returned")
 
     if images.empty?
-      Rails.logger.warn("[Serper] book=#{@book.id}: no image results for query — #{query}")
+      Rails.logger.warn("[Serper] book=#{@book.id}: no results for — #{query}")
       return nil
     end
 
     # Prefer portrait-oriented results — book covers are taller than wide
     portrait   = images.select { |img| img['imageHeight'].to_i > img['imageWidth'].to_i }
     candidates = portrait.any? ? portrait : images
-    Rails.logger.info("[Serper] book=#{@book.id}: #{portrait.size} portrait / #{images.size} total — using #{candidates.first&.dig('source')}")
-
-    url = candidates.first&.dig('imageUrl')
-    unless url.present?
-      Rails.logger.warn("[Serper] book=#{@book.id}: top result had no imageUrl")
-      return nil
-    end
-
-    Rails.logger.info("[Serper] book=#{@book.id}: selected url=#{url}")
-    { url: url, quality: HIGH_QUALITY, source: 'image_search' }
+    Rails.logger.info("[Serper] book=#{@book.id}: #{portrait.size} portrait / #{images.size} total")
+    candidates
   rescue StandardError => e
     Rails.logger.warn("[Serper] book=#{@book.id}: request failed — #{e.message}")
     nil
   end
-
-  private
 
   def try_open_library
     # Try ISBN13 first, then ISBN10
