@@ -20,20 +20,26 @@ class CoverDownloadService
   end
 
   def call
-    url = BookCoverService.new(@book).find_best_cover[:url]
-
-    unless url.present?
-      Rails.logger.warn("[CoverDownload] book=#{@book.id} (#{@book.title.inspect}): no cover URL found")
-      @book.update_column(:cover_last_enriched_at, Time.current)
-      return false
-    end
-
-    data, content_type = fetch(url)
-
+    # Fast path: try the stored cover_image_url first — avoids an API call for
+    # the majority of books that already have a valid URL in the DB.
+    url, data, content_type = try_existing_url
     unless data
-      Rails.logger.warn("[CoverDownload] book=#{@book.id} (#{@book.title.inspect}): fetch failed or non-image response — url=#{url}")
-      @book.update_column(:cover_last_enriched_at, Time.current)
-      return false
+      # Fall back to fresh source search (Google Books API, then Open Library)
+      url = BookCoverService.new(@book).find_best_cover[:url]
+
+      unless url.present?
+        Rails.logger.warn("[CoverDownload] book=#{@book.id} (#{@book.title.inspect}): no cover URL found")
+        @book.update_column(:cover_last_enriched_at, Time.current)
+        return false
+      end
+
+      data, content_type = fetch(url)
+
+      unless data
+        Rails.logger.warn("[CoverDownload] book=#{@book.id} (#{@book.title.inspect}): fetch failed or non-image response — url=#{url}")
+        @book.update_column(:cover_last_enriched_at, Time.current)
+        return false
+      end
     end
 
     unless valid?(data, url)
@@ -58,6 +64,14 @@ class CoverDownloadService
   end
 
   private
+
+  def try_existing_url
+    return [nil, nil, nil] if @book.cover_image_url.blank?
+    url = @book.cover_image_url
+    data, content_type = fetch(url)
+    return [nil, nil, nil] unless data
+    [url, data, content_type]
+  end
 
   def fetch(url)
     uri = URI(url)
