@@ -19,7 +19,7 @@ module Api
           .where('user_books.updated_at >= ?', since)
           .where(status: %w[to_read reading read])
           .joins(:book)
-          .select('user_books.book_id, user_books.status, user_books.rating, books.title, books.id AS b_id, books.cover_image_url, books.google_books_id')
+          .select('user_books.book_id, user_books.status, user_books.rating, books.title, books.id AS b_id, books.cover_image_url, books.cover_storage_path, books.google_books_id')
           .includes(book: :author)
 
         agg = Hash.new do |h, k|
