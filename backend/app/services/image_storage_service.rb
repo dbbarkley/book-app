@@ -7,7 +7,7 @@ class ImageStorageService
       key:           path,
       body:          data,
       content_type:  content_type,
-      cache_control: 'public, max-age=31536000, immutable'
+      cache_control: 'public, max-age=300'
     )
   end
 

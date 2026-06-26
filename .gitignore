@@ -14,11 +14,16 @@ out/
 .env
 .env.local
 .env*.local
+.env.prod
+!.env.prod.example
 
 # Logs
 *.log
 logs/
 **/logs/
+.agents/
+.claude/
+skills-lock.json
 
 # OS
 .DS_Store
@@ -33,6 +38,7 @@ Thumbs.db
 
 # Docs
 docs/
+CLAUDE.md
 
 # Backend specific
 backend/tmp/
