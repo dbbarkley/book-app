@@ -619,6 +619,7 @@ module Api
       end
 
       def catalog_book_to_volume_item(book)
+        cover_url = r2_cover_for_catalog(book) || book.cover_image_url
         {
           'id'         => book.google_books_id,
           'volumeInfo' => {
@@ -627,9 +628,9 @@ module Api
             'publishedDate'       => book.published_date,
             'pageCount'           => book.page_count,
             'description'         => book.description,
-            'imageLinks'          => book.resolved_cover_url.present? ? {
-              'thumbnail'      => book.resolved_cover_url,
-              'smallThumbnail' => book.resolved_cover_url,
+            'imageLinks'          => cover_url.present? ? {
+              'thumbnail'      => cover_url,
+              'smallThumbnail' => cover_url,
             } : nil,
             'industryIdentifiers' => book.isbn.present? ? [{ 'type' => 'ISBN_13', 'identifier' => book.isbn }] : [],
             'averageRating'       => book.average_rating,
@@ -637,6 +638,13 @@ module Api
           }.compact,
           '_source'    => 'catalog',
         }
+      end
+
+      def r2_cover_for_catalog(catalog_book)
+        book = Book.where(google_books_id: catalog_book.google_books_id)
+                   .where.not(cover_storage_path: nil)
+                   .pick(:cover_storage_path)
+        book ? ImageStorageService.url_for(book) : nil
       end
 
       def write_to_catalog(volume_items)
