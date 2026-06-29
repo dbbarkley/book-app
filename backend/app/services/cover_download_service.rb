@@ -46,12 +46,9 @@ class CoverDownloadService
     if @source
       url, data, content_type = fetch_from_source(book_cover_service, @source)
     else
-      # Priority order: Serper → existing URL → Google Books / Open Library
-      url, data, content_type = book_cover_service.try_image_search_download(self)
-
-      unless data
-        url, data, content_type = try_existing_url
-      end
+      # Priority order: existing cover_image_url (what the user saw) → Google Books / Open Library → Serper
+      # Serper is last so we don't silently swap in a different edition's cover.
+      url, data, content_type = try_existing_url
 
       unless data
         best_url = book_cover_service.find_best_cover[:url]
@@ -59,6 +56,10 @@ class CoverDownloadService
           data, content_type = fetch(best_url)
           url = best_url if data
         end
+      end
+
+      unless data
+        url, data, content_type = book_cover_service.try_image_search_download(self)
       end
     end
 
