@@ -287,7 +287,7 @@ module Api
           pages_read: user_book.pages_read,
           total_pages: user_book.total_pages,
           completion_percentage: user_book.completion_percentage,
-          rating: user_book.rating,
+          rating: user_book.rating&.to_f,
           review: user_book.review,
           notes: user_book.notes,
           dnf_reason: user_book.dnf_reason,

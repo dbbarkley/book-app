@@ -43,7 +43,7 @@ export function StarRatingInput({ value, onChange, size = 30 }: StarRatingInputP
   const [hovered, setHovered] = useState(0)
   const ref = useRef<HTMLDivElement>(null)
 
-  const display = hovered || value
+  const display = hovered || Number(value) || 0
 
   const handleMouseMove  = (e: React.MouseEvent) => {
     if (ref.current) setHovered(clientXToRating(e.clientX, ref.current))
