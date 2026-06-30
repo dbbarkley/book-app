@@ -349,6 +349,26 @@ module Api
         render json: { error: 'Could not save book' }, status: :unprocessable_entity
       end
 
+      # Returns true if the URL is from Google Books or Open Library and the
+      # server reports it as image/png. A HEAD request avoids downloading the
+      # full image; timeout is kept short since this is on the hot path.
+      def gb_or_ol_png_cover?(url)
+        return false if url.blank?
+        return false unless url.include?('googleapis.com') ||
+                            url.include?('books.google.com') ||
+                            url.include?('openlibrary.org')
+
+        uri = URI(url)
+        response = Net::HTTP.start(uri.hostname, uri.port,
+                                   use_ssl: uri.scheme == 'https',
+                                   open_timeout: 3, read_timeout: 3) do |http|
+          http.head(uri.request_uri)
+        end
+        response['content-type'].to_s.include?('image/png')
+      rescue StandardError
+        false
+      end
+
       def parse_release_date(date_string)
         return Date.current if date_string.blank?
         case date_string.to_s.length
@@ -405,11 +425,13 @@ module Api
             )
             book.update_column(:work_id, work.id)
 
-            # Enrich synchronously so the response already contains the R2 cover.
-            # GB/OL covers are often "title on white background" PNGs; Serper
-            # finds a real photo. Running now avoids showing a cover that changes.
-            EnrichBookCoversJob.perform_now([book.id], 'serper')
-            book.reload
+            # Only enrich if the cover we got from GB/OL is a PNG.
+            # GB frequently returns "title on white background" PNGs instead of
+            # real cover photos. Serper finds a better image in that case.
+            if gb_or_ol_png_cover?(book.cover_image_url)
+              EnrichBookCoversJob.perform_now([book.id], 'serper')
+              book.reload
+            end
           else
             return render json: { error: book.errors.full_messages.join(', ') }, status: :unprocessable_entity
           end
