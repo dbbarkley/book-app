@@ -81,12 +81,13 @@ export default function BarcodeScannerModal({ isOpen, onClose }: BarcodeScannerM
   const lastIsbnRef      = useRef<string>('')
   const zxingControlsRef = useRef<{ stop: () => void } | null>(null)
 
-  const [scanState,    setScanState]    = useState<ScanState>('scanning')
-  const [foundBook,    setFoundBook]    = useState<Book | null>(null)
-  const [scannedIsbn,  setScannedIsbn]  = useState('')
-  const [manualIsbn,   setManualIsbn]   = useState('')
-  const [manualError,  setManualError]  = useState('')
-  const [addModalOpen, setAddModalOpen] = useState(false)
+  const [scanState,       setScanState]       = useState<ScanState>('scanning')
+  const [foundBook,       setFoundBook]       = useState<Book | null>(null)
+  const [scannedIsbn,     setScannedIsbn]     = useState('')
+  const [manualIsbn,      setManualIsbn]      = useState('')
+  const [manualError,     setManualError]     = useState('')
+  const [addModalOpen,    setAddModalOpen]    = useState(false)
+  const [isCoverEnriching, setIsCoverEnriching] = useState(false)
 
   // Phantom UserBook passed to QuickUpdateModal — id:0 triggers the "add" flow
   const phantomUserBook = useMemo<UserBook | null>(() => {
@@ -156,8 +157,10 @@ export default function BarcodeScannerModal({ isOpen, onClose }: BarcodeScannerM
         setFoundBook(book)
         setScanState('found')
 
-        // If not yet in our DB, pre-create it so the detail page loads instantly.
+        // Register the book in our DB and run Serper enrichment synchronously
+        // so we get a real cover photo instead of the GB/OL PNG placeholder.
         if (!book.id) {
+          setIsCoverEnriching(true)
           apiClient.registerBook({
             title:           book.title,
             isbn:            book.isbn ?? undefined,
@@ -169,8 +172,13 @@ export default function BarcodeScannerModal({ isOpen, onClose }: BarcodeScannerM
             page_count:      book.page_count ?? undefined,
             categories:      book.categories ?? undefined,
           }).then(registered => {
-            setFoundBook(prev => prev ? { ...prev, id: registered.id } : prev)
+            setFoundBook(prev => prev ? {
+              ...prev,
+              id:              registered.id,
+              cover_image_url: registered.cover_image_url ?? prev.cover_image_url,
+            } : prev)
           }).catch(() => {/* non-critical */})
+            .finally(() => setIsCoverEnriching(false))
         }
       } else {
         setScanState('not_found')
@@ -288,6 +296,7 @@ export default function BarcodeScannerModal({ isOpen, onClose }: BarcodeScannerM
       setManualIsbn('')
       setManualError('')
       setAddModalOpen(false)
+      setIsCoverEnriching(false)
       lastIsbnRef.current = ''
       return
     }
@@ -300,6 +309,7 @@ export default function BarcodeScannerModal({ isOpen, onClose }: BarcodeScannerM
   const handleScanAgain = useCallback(() => {
     setFoundBook(null)
     setScannedIsbn('')
+    setIsCoverEnriching(false)
     lastIsbnRef.current = ''
     setScanState('scanning')
     startCamera()
@@ -703,17 +713,33 @@ export default function BarcodeScannerModal({ isOpen, onClose }: BarcodeScannerM
                 }}
               >
                 <div style={{ border: '1.5px solid var(--color-ink)', boxShadow: '2px 2px 0px var(--color-ink)', borderRadius: 4, flexShrink: 0 }}>
-                  <BookCoverImage
-                    src={foundBook.cover_image_url
-                      ?.replace('zoom=1', 'zoom=0')
-                      ?.replace('&edge=curl', '')
-                      ?.replace('http://', 'https://')}
-                    isbn={foundBook.isbn ?? undefined}
-                    title={foundBook.title}
-                    author={foundBook.author_name ?? undefined}
-                    size="small"
-                    priority
-                  />
+                  {isCoverEnriching ? (
+                    <div
+                      style={{
+                        width: 96, height: 144, borderRadius: 4,
+                        backgroundColor: 'var(--color-cave)',
+                        display: 'flex', flexDirection: 'column',
+                        alignItems: 'center', justifyContent: 'center', gap: 6,
+                      }}
+                    >
+                      <Loader2 size={18} className="animate-spin" style={{ color: 'var(--color-accent)' }} />
+                      <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.12em', color: 'var(--color-ink-3)', textTransform: 'uppercase', textAlign: 'center', lineHeight: 1.3, padding: '0 6px' }}>
+                        Finding cover
+                      </span>
+                    </div>
+                  ) : (
+                    <BookCoverImage
+                      src={foundBook.cover_image_url
+                        ?.replace('zoom=1', 'zoom=0')
+                        ?.replace('&edge=curl', '')
+                        ?.replace('http://', 'https://')}
+                      isbn={foundBook.isbn ?? undefined}
+                      title={foundBook.title}
+                      author={foundBook.author_name ?? undefined}
+                      size="small"
+                      priority
+                    />
+                  )}
                 </div>
                 <div className="flex-1 min-w-0 py-0.5">
                   <p className="font-serif font-black leading-snug" style={{ fontSize: 15, color: 'var(--color-ink)' }}>

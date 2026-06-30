@@ -405,9 +405,11 @@ module Api
             )
             book.update_column(:work_id, work.id)
 
-            # Kick off Serper enrichment immediately — GB/OL covers are often
-            # "title on white background" PNGs rather than real cover photos.
-            EnrichBookCoversJob.perform_later([book.id], 'serper')
+            # Enrich synchronously so the response already contains the R2 cover.
+            # GB/OL covers are often "title on white background" PNGs; Serper
+            # finds a real photo. Running now avoids showing a cover that changes.
+            EnrichBookCoversJob.perform_now([book.id], 'serper')
+            book.reload
           else
             return render json: { error: book.errors.full_messages.join(', ') }, status: :unprocessable_entity
           end
