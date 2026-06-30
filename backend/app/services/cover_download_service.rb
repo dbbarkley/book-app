@@ -49,9 +49,14 @@ class CoverDownloadService
     if @source
       url, data, content_type = fetch_from_source(book_cover_service, @source)
     else
-      # Priority order: existing cover_image_url (what the user saw) → Google Books / Open Library → Serper
-      # Serper is last so we don't silently swap in a different edition's cover.
+      # Priority order: existing cover_image_url → Google Books / Open Library → Serper
+      # Exception: if the existing URL is from GB or OL and returns a PNG, skip it.
+      # GB frequently returns "title on white page" PNGs instead of real cover photos.
       url, data, content_type = try_existing_url
+      if data && content_type == 'image/png' && gb_or_ol_url?(url)
+        log "book=#{@book.id}: GB/OL returned PNG cover — skipping, falling through to Serper"
+        url = data = content_type = nil
+      end
 
       unless data
         best_url = book_cover_service.find_best_cover[:url]
@@ -173,6 +178,12 @@ class CoverDownloadService
     true
   rescue StandardError
     true
+  end
+
+  def gb_or_ol_url?(url)
+    return false if url.blank?
+    url.include?('googleapis.com') || url.include?('books.google.com') ||
+      url.include?('openlibrary.org')
   end
 
   def warn(msg)

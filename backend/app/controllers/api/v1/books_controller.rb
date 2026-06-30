@@ -404,6 +404,10 @@ module Api
               page_count:      book.page_count,
             )
             book.update_column(:work_id, work.id)
+
+            # Kick off Serper enrichment immediately — GB/OL covers are often
+            # "title on white background" PNGs rather than real cover photos.
+            EnrichBookCoversJob.perform_later([book.id], 'serper')
           else
             return render json: { error: book.errors.full_messages.join(', ') }, status: :unprocessable_entity
           end
