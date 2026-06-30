@@ -212,8 +212,9 @@ module Api
           return
         end
 
-        # Live fallback — search Google Books by ISBN
+        # Live fallback — Google Books first, then Open Library
         book_data = fetch_google_book_by_isbn(isbn)
+        book_data ||= fetch_open_library_book_by_isbn(isbn)
         if book_data
           render json: { book: book_data }, status: :ok
         else
@@ -1264,6 +1265,63 @@ module Api
         }
       rescue => e
         Rails.logger.error("Google Books ISBN lookup error for #{isbn}: #{e.message}")
+        nil
+      end
+
+      # Fetch a book by ISBN from Open Library's /isbn/:isbn.json endpoint.
+      # Returns the same flat Book hash shape as fetch_google_book_by_isbn.
+      def fetch_open_library_book_by_isbn(isbn)
+        uri  = URI("https://openlibrary.org/isbn/#{isbn}.json")
+        http = Net::HTTP.new(uri.host, 443)
+        http.use_ssl     = true
+        http.open_timeout = 5
+        http.read_timeout = 10
+
+        response = http.get(uri.request_uri, { 'Accept' => 'application/json' })
+        return nil unless response.is_a?(Net::HTTPSuccess)
+
+        ol = JSON.parse(response.body)
+        title = ol['title'].presence
+        return nil unless title
+
+        work_key = (Array(ol['works']).first&.dig('key') || ol['key']).to_s
+        ol_id    = work_key.sub(%r{\A/works/OL}, '').presence || isbn
+        cover_id = Array(ol['covers']).first
+
+        cover_url = cover_id ? "https://covers.openlibrary.org/b/id/#{cover_id}-L.jpg" : nil
+
+        author_name = ''
+        author_key  = Array(ol['authors']).first&.dig('key')
+        if author_key.present?
+          begin
+            a_uri  = URI("https://openlibrary.org#{author_key}.json")
+            a_http = Net::HTTP.new(a_uri.host, 443)
+            a_http.use_ssl      = true
+            a_http.open_timeout = 3
+            a_http.read_timeout = 5
+            a_resp = a_http.get(a_uri.request_uri)
+            author_name = JSON.parse(a_resp.body)['name'].to_s if a_resp.is_a?(Net::HTTPSuccess)
+          rescue => e
+            Rails.logger.warn("[show_by_isbn] OL author fetch failed: #{e.message}")
+          end
+        end
+
+        {
+          id:              nil,
+          google_books_id: "ol_#{ol_id}",
+          title:           title,
+          isbn:            isbn,
+          description:     ol['description'].is_a?(Hash) ? ol['description']['value'] : ol['description'].to_s.presence,
+          cover_image_url: cover_url,
+          release_date:    ol['publish_date'],
+          page_count:      ol['number_of_pages'],
+          author_name:     author_name.presence || 'Unknown Author',
+          author:          nil,
+          followers_count: 0,
+          categories:      [],
+        }
+      rescue => e
+        Rails.logger.warn("[show_by_isbn] Open Library fallback failed for #{isbn}: #{e.message}")
         nil
       end
 

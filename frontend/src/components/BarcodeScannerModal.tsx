@@ -124,38 +124,54 @@ export default function BarcodeScannerModal({ isOpen, onClose }: BarcodeScannerM
     setScanState('loading')
     setScannedIsbn(isbn)
     try {
-      const results = await searchBooks(`isbn:${isbn}`, 1)
-      if (results.length > 0) {
-        const gb = results[0]
-        const book: Book = {
-          id: null,
-          title:           gb.title,
-          author_name:     gb.authors.join(', '),
-          cover_image_url: gb.cover_image_url,
-          release_date:    gb.published_date || new Date().toISOString().split('T')[0],
-          isbn:            gb.isbn,
-          page_count:      gb.page_count,
-          description:     gb.description,
-          google_books_id: gb.id,
+      // Check our DB first (instant if already registered; falls back to GB internally)
+      let book: Book | null = null
+      try {
+        book = await apiClient.getBookByIsbn(isbn)
+      } catch {
+        // 404 or network error — fall through to external search
+      }
+
+      if (!book) {
+        // DB miss — call the external search as fallback
+        const results = await searchBooks(`isbn:${isbn}`, 1)
+        if (results.length > 0) {
+          const gb = results[0]
+          book = {
+            id:              null,
+            title:           gb.title,
+            author_name:     gb.authors.join(', '),
+            cover_image_url: gb.cover_image_url,
+            release_date:    gb.published_date || new Date().toISOString().split('T')[0],
+            isbn:            gb.isbn,
+            page_count:      gb.page_count,
+            description:     gb.description,
+            google_books_id: gb.id,
+          }
         }
+      }
+
+      if (book) {
         cacheSearchResults([book])
         setFoundBook(book)
         setScanState('found')
 
-        // Pre-create the book in our DB so the detail page loads instantly.
-        apiClient.registerBook({
-          title:           book.title,
-          isbn:            book.isbn ?? undefined,
-          google_books_id: book.google_books_id ?? undefined,
-          author_name:     book.author_name ?? undefined,
-          cover_image_url: book.cover_image_url ?? undefined,
-          description:     book.description ?? undefined,
-          release_date:    book.release_date ?? undefined,
-          page_count:      book.page_count ?? undefined,
-          categories:      book.categories ?? undefined,
-        }).then(registered => {
-          setFoundBook(prev => prev ? { ...prev, id: registered.id } : prev)
-        }).catch(() => {/* non-critical — detail page will create it on demand */})
+        // If not yet in our DB, pre-create it so the detail page loads instantly.
+        if (!book.id) {
+          apiClient.registerBook({
+            title:           book.title,
+            isbn:            book.isbn ?? undefined,
+            google_books_id: book.google_books_id ?? undefined,
+            author_name:     book.author_name ?? undefined,
+            cover_image_url: book.cover_image_url ?? undefined,
+            description:     book.description ?? undefined,
+            release_date:    book.release_date ?? undefined,
+            page_count:      book.page_count ?? undefined,
+            categories:      book.categories ?? undefined,
+          }).then(registered => {
+            setFoundBook(prev => prev ? { ...prev, id: registered.id } : prev)
+          }).catch(() => {/* non-critical */})
+        }
       } else {
         setScanState('not_found')
       }
