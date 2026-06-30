@@ -8,11 +8,14 @@ class CoverDownloadService
   MIN_BYTES     = 5.kilobytes
   MIN_DIMENSION = 80
 
-  # MD5 hashes of known placeholder images.
-  # d41d8cd98f00b204e9800998ecf8427e is the MD5 of an empty string/file.
-  # Add new hashes here when you encounter fake covers in production.
+  # MD5 hashes of known placeholder images that must never be stored to R2.
+  # d41d8cd98f00b204e9800998ecf8427e — empty file
+  # a64fa89d7ebc97075c1d363fc5fea71f — Google Books "No preview available" PNG (575x750, zoom=0)
+  # 0d23d0b62908b75e89014ac3f864484e — Open Library 1x1 transparent GIF (no cover)
   PLACEHOLDER_HASHES = %w[
     d41d8cd98f00b204e9800998ecf8427e
+    a64fa89d7ebc97075c1d363fc5fea71f
+    0d23d0b62908b75e89014ac3f864484e
   ].freeze
 
   SOURCES = %w[serper google openlibrary].freeze

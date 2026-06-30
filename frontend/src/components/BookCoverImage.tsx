@@ -91,6 +91,20 @@ export function BookCoverImage({
   }, [isLoading, imageSrc])
 
   const handleLoad = () => {
+    const img = imgRef.current
+    if (img) {
+      // Reject 1×1 pixel GIF — Open Library's "no cover" placeholder
+      if (img.naturalWidth <= 1 || img.naturalHeight <= 1) {
+        handleError()
+        return
+      }
+      // Reject Google Books' "No preview available" PNG (575×750px at zoom=0).
+      // Real GB covers at zoom=0 are always 1,740px+ wide.
+      if (imageSrc?.includes('googleapis.com') && img.naturalWidth < 700) {
+        handleError()
+        return
+      }
+    }
     finishLoading()
     onLoad?.()
   }
