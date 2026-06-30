@@ -348,6 +348,72 @@ module Api
         render json: { error: 'Could not save book' }, status: :unprocessable_entity
       end
 
+      def parse_release_date(date_string)
+        return Date.current if date_string.blank?
+        case date_string.to_s.length
+        when 4 then Date.new(date_string.to_i, 1, 1)
+        when 7
+          year, month = date_string.split('-').map(&:to_i)
+          Date.new(year, month, 1)
+        else
+          Date.parse(date_string.to_s)
+        end
+      rescue
+        Date.current
+      end
+
+      # POST /api/v1/books/register
+      # Pre-creates a book in our DB from scan/search result data so it exists
+      # before the user navigates to the detail page. Safe to call fire-and-forget.
+      def register
+        book = Book.find_by(isbn: params[:isbn]) if params[:isbn].present?
+        book ||= Book.find_by(google_books_id: params[:google_books_id]) if params[:google_books_id].present?
+
+        unless book
+          author_name = params[:author_name].presence || 'Unknown Author'
+          author = Author.find_or_create_by!(name: author_name)
+
+          raw_categories = params[:categories]
+          categories = case raw_categories
+                       when String then raw_categories.split(',').map(&:strip)
+                       when Array  then raw_categories
+                       else []
+                       end
+
+          book = Book.new(
+            title:           params[:title],
+            isbn:            params[:isbn].presence,
+            description:     params[:description].presence,
+            cover_image_url: params[:cover_image_url].presence,
+            release_date:    parse_release_date(params[:release_date]),
+            author:          author,
+            google_books_id: params[:google_books_id].presence,
+            page_count:      params[:page_count].presence,
+            categories:      categories,
+          )
+
+          if book.save
+            work = WorkResolutionService.resolve(
+              google_books_id: book.google_books_id,
+              isbn:            book.isbn,
+              title:           book.title,
+              author:          author.name,
+              description:     book.description,
+              cover_image_url: book.cover_image_url,
+              page_count:      book.page_count,
+            )
+            book.update_column(:work_id, work.id)
+          else
+            return render json: { error: book.errors.full_messages.join(', ') }, status: :unprocessable_entity
+          end
+        end
+
+        render json: { book: serialize_book_detail(book) }, status: :ok
+      rescue StandardError => e
+        Rails.logger.error("[BooksController#register] #{e.message}")
+        render json: { error: 'Registration failed' }, status: :unprocessable_entity
+      end
+
       # GET /api/v1/books/search?q=...&maxResults=20&type=books|authors
       # Unified book search: catalog-first, then OL + GB in parallel.
       # Both external sources are always called concurrently and merged so a book

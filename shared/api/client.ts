@@ -528,6 +528,21 @@ export class ApiClient {
     return response.data.book
   }
 
+  async registerBook(data: {
+    title?: string
+    isbn?: string
+    google_books_id?: string
+    author_name?: string
+    cover_image_url?: string
+    description?: string
+    release_date?: string
+    page_count?: number
+    categories?: string[]
+  }) {
+    const response = await this.client.post<{ book: Book }>('/books/register', data)
+    return response.data.book
+  }
+
   async getBookFriends(id: number) {
     const response = await this.client.get<{ 
       friends: Array<{ 

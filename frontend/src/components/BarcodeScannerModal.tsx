@@ -5,7 +5,9 @@ import { useRouter } from 'next/navigation'
 import { X, Camera, BookOpen, Loader2, AlertCircle, ScanLine, Hash, Check } from 'lucide-react'
 import { searchBooks } from '@book-app/shared/services/googleBooksService'
 import { useBooksStore } from '@book-app/shared/store/booksStore'
+import { apiClient } from '@book-app/shared/api/client'
 import QuickUpdateModal from './QuickUpdateModal'
+import { BookCoverImage } from './BookCoverImage'
 import type { Book, UserBook } from '@book-app/shared'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -139,6 +141,21 @@ export default function BarcodeScannerModal({ isOpen, onClose }: BarcodeScannerM
         cacheSearchResults([book])
         setFoundBook(book)
         setScanState('found')
+
+        // Pre-create the book in our DB so the detail page loads instantly.
+        apiClient.registerBook({
+          title:           book.title,
+          isbn:            book.isbn ?? undefined,
+          google_books_id: book.google_books_id ?? undefined,
+          author_name:     book.author_name ?? undefined,
+          cover_image_url: book.cover_image_url ?? undefined,
+          description:     book.description ?? undefined,
+          release_date:    book.release_date ?? undefined,
+          page_count:      book.page_count ?? undefined,
+          categories:      book.categories ?? undefined,
+        }).then(registered => {
+          setFoundBook(prev => prev ? { ...prev, id: registered.id } : prev)
+        }).catch(() => {/* non-critical — detail page will create it on demand */})
       } else {
         setScanState('not_found')
       }
@@ -669,29 +686,19 @@ export default function BarcodeScannerModal({ isOpen, onClose }: BarcodeScannerM
                   backgroundColor: 'var(--color-surface)',
                 }}
               >
-                {foundBook.cover_image_url ? (
-                  <img
-                    src={foundBook.cover_image_url}
-                    alt={foundBook.title}
-                    className="w-14 flex-shrink-0"
-                    style={{
-                      aspectRatio: '2/3', objectFit: 'cover',
-                      borderRadius: 4, border: '1.5px solid var(--color-ink)',
-                      boxShadow: '2px 2px 0px var(--color-ink)',
-                    }}
+                <div style={{ border: '1.5px solid var(--color-ink)', boxShadow: '2px 2px 0px var(--color-ink)', borderRadius: 4, flexShrink: 0 }}>
+                  <BookCoverImage
+                    src={foundBook.cover_image_url
+                      ?.replace('zoom=1', 'zoom=0')
+                      ?.replace('&edge=curl', '')
+                      ?.replace('http://', 'https://')}
+                    isbn={foundBook.isbn ?? undefined}
+                    title={foundBook.title}
+                    author={foundBook.author_name ?? undefined}
+                    size="small"
+                    priority
                   />
-                ) : (
-                  <div
-                    className="w-14 flex-shrink-0 flex items-center justify-center"
-                    style={{
-                      aspectRatio: '2/3',
-                      backgroundColor: 'var(--color-cave)',
-                      borderRadius: 4, border: '1.5px solid var(--color-ink)',
-                    }}
-                  >
-                    <BookOpen size={18} style={{ color: 'var(--color-ink-3)' }} />
-                  </div>
-                )}
+                </div>
                 <div className="flex-1 min-w-0 py-0.5">
                   <p className="font-serif font-black leading-snug" style={{ fontSize: 15, color: 'var(--color-ink)' }}>
                     {foundBook.title}
