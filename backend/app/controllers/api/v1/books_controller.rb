@@ -212,9 +212,9 @@ module Api
           return
         end
 
-        # Live fallback — Google Books first, then Open Library
-        book_data = fetch_google_book_by_isbn(isbn)
-        book_data ||= fetch_open_library_book_by_isbn(isbn)
+        # Live fallback — Open Library first, then Google Books
+        book_data = fetch_open_library_book_by_isbn(isbn)
+        book_data ||= fetch_google_book_by_isbn(isbn)
         if book_data
           render json: { book: book_data }, status: :ok
         else
